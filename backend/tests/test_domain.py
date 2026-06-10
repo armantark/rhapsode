@@ -233,6 +233,59 @@ def test_junctures_generated_between_lines(session_factory: object) -> None:
         assert planned == ["line", "juncture", "line"]
 
 
+def test_new_segments_shadow_first_when_reference_audio_exists(
+    session_factory: object,
+) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="greek-shadow", name="Ancient Greek")
+        passage = models.Passage(title="Iliad", language_profile=language)
+        db.add(passage)
+        db.flush()
+        revision = create_revision(
+            db,
+            passage,
+            schemas.RevisionInput(
+                source_text="...",
+                segments=[
+                    schemas.SegmentInput(kind="line", ordinal=0, text="line one words"),
+                    schemas.SegmentInput(kind="line", ordinal=1, text="line two words"),
+                ],
+            ),
+        )
+
+        # Without audio, brand-new lines go straight to fading.
+        plan = build_smart_plan(db, revision, None)
+        assert [item["mode"] for item in plan] == [
+            "progressive_fading",
+            "progressive_fading",
+            "progressive_fading",
+        ]
+
+        db.add(
+            models.MediaAsset(
+                revision_id=revision.id,
+                category="reference",
+                mime_type="audio/mpeg",
+                original_name="teacher.mp3",
+                storage_path="ref/teacher.mp3",
+                size_bytes=1,
+            )
+        )
+        db.flush()
+
+        # With audio, each new LINE shadows first, then fades; the juncture
+        # is a fragment and skips the shadowing pass.
+        plan = build_smart_plan(db, revision, None)
+        kinds = {s.id: s.kind for s in revision.segments}
+        assert [(kinds[item["segment_id"]], item["mode"]) for item in plan] == [
+            ("line", "shadowing"),
+            ("line", "progressive_fading"),
+            ("juncture", "progressive_fading"),
+            ("line", "shadowing"),
+            ("line", "progressive_fading"),
+        ]
+
+
 def test_minutes_budget_sizes_session_and_prioritizes_finisher(
     session_factory: object,
 ) -> None:

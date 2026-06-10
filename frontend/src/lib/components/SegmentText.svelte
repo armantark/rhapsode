@@ -24,6 +24,10 @@
 	const reading = $derived(showRuby ? rubyReading(node) : null);
 	const annotations = $derived(textLayers(node, layers));
 	const dir = $derived(profile?.direction === 'rtl' ? 'rtl' : undefined);
+	// Tokens flow horizontally as an interlinear row — a vertical word stack
+	// makes a five-line passage scroll like fifty.
+	const tokenChildren = $derived(node.children.filter((child) => child.kind === 'token'));
+	const blockChildren = $derived(node.children.filter((child) => child.kind !== 'token'));
 </script>
 
 <div class="segment kind-{node.kind}" style:margin-inline-start="{depth * 18}px" data-segment-id={node.id}>
@@ -42,7 +46,14 @@
 	{#each annotations as annotation (annotation.layer + annotation.value)}
 		<div class="annotation"><span class="tag">{annotation.layer}</span> {annotation.value}</div>
 	{/each}
-	{#each node.children as child (child.id)}
+	{#if tokenChildren.length}
+		<div class="token-row" lang={langCode(profile)} {dir}>
+			{#each tokenChildren as child (child.id)}
+				<SegmentText node={child} {profile} {layers} {showRuby} {showCues} depth={0} />
+			{/each}
+		</div>
+	{/if}
+	{#each blockChildren as child (child.id)}
 		<SegmentText node={child} {profile} {layers} {showRuby} {showCues} depth={depth + 1} />
 	{/each}
 </div>
@@ -78,5 +89,20 @@
 		color: var(--text-dim);
 		font-size: 0.9rem;
 		margin: 2px 0 2px 4px;
+	}
+
+	.token-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 2px 14px;
+		margin: 4px 0 4px 18px;
+	}
+
+	/* Token chips inside the row are inline words, not stacked blocks; any
+	   token-level annotations render under their word, interlinear style. */
+	.token-row :global(.segment) {
+		margin-bottom: 0 !important;
+		margin-inline-start: 0 !important;
 	}
 </style>

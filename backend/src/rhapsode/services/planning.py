@@ -186,6 +186,15 @@ def _mode_seconds(db: Session) -> dict[str, float]:
     return estimates
 
 
+def _has_reference_audio(db: Session, revision_id: str) -> bool:
+    count = db.scalar(
+        select(func.count(models.MediaAsset.id))
+        .where(models.MediaAsset.revision_id == revision_id)
+        .where(models.MediaAsset.category == "reference")
+    )
+    return bool(count)
+
+
 def _triage_rank(stage: str | None, difficult: bool) -> int:
     """When the cap bites, spend the session where it pays most: repair weak
     links, push learning segments, then introduce new material, and only then
@@ -224,6 +233,16 @@ def build_smart_plan(
         segment.id: smart_mode_for(stages.get(segment.id), segment.id in difficult_ids)
         for segment in segments
     }
+    # First exposure rides the recording when one exists (grill D2): hear a
+    # fluent rendition and speak along BEFORE fading it from memory. Junctures
+    # are fragments and don't map onto the audio, so they skip the pass.
+    shadow_first: set[str] = set()
+    if _has_reference_audio(db, revision.id):
+        shadow_first = {
+            segment.id
+            for segment in segments
+            if stages.get(segment.id) in (None, "new") and segment.kind != "juncture"
+        }
     # The finisher is appended once every targeted segment graduates —
     # per-segment drilling alone never exercises flow.
     all_graduated = len(segments) > 1 and all(
@@ -237,6 +256,7 @@ def build_smart_plan(
             segment.ordinal,
         ),
     )
+    chosen: list[models.Segment] = []
     if minutes is not None:
         seconds = _mode_seconds(db)
         budget = minutes * 60.0
@@ -247,25 +267,45 @@ def build_smart_plan(
             budget -= seconds.get(
                 PracticeMode.full_passage.value, FALLBACK_MODE_SECONDS
             )
-        chosen: list[models.Segment] = []
         for segment in triaged:
             cost = seconds.get(modes[segment.id], FALLBACK_MODE_SECONDS)
+            if segment.id in shadow_first:
+                cost += seconds.get(
+                    PracticeMode.shadowing.value, FALLBACK_MODE_SECONDS
+                )
             if chosen and budget - cost < 0:
                 break
             budget -= cost
             chosen.append(segment)
-        segments = chosen
-    elif len(segments) > SMART_SESSION_CAP:
-        segments = triaged[:SMART_SESSION_CAP]
+    else:
+        # The cap limits ITEMS, not segments: a shadowed new segment takes
+        # two slots, so a fresh passage with audio still ends while momentum
+        # lasts.
+        used = 0
+        for segment in triaged:
+            weight = 2 if segment.id in shadow_first else 1
+            if chosen and used + weight > SMART_SESSION_CAP:
+                break
+            used += weight
+            chosen.append(segment)
     # Present the survivors in passage order: verse is memorized in sequence
     # even when triage picked the targets. A juncture shares its ordinal with
     # its landing line and drills first.
     segments = sorted(
-        segments, key=lambda segment: (segment.ordinal, segment.kind != "juncture")
+        chosen, key=lambda segment: (segment.ordinal, segment.kind != "juncture")
     )
 
     items: list[dict[str, Any]] = []
     for index, target in enumerate(segments):
+        if target.id in shadow_first:
+            shadow = PracticeMode.shadowing.value
+            items.append(
+                {
+                    "segment_id": target.id,
+                    "mode": shadow,
+                    "prompt": prompt_for(shadow, target, segments[index:]),
+                }
+            )
         mode = modes[target.id]
         items.append(
             {

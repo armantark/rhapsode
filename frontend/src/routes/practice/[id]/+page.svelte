@@ -223,8 +223,20 @@
 			onReveal={() => (revealed = true)}
 		/>
 
-		{#if referenceMedia.length && currentItem.mode === 'shadowing'}
-			<AudioPlayer src={api.mediaUrl(referenceMedia[0].id)} title="Reference audio" storageKey={referenceMedia[0].id} />
+		{#if referenceMedia.length}
+			{#if currentItem.mode === 'shadowing'}
+				<!-- Shadowing IS listening: every recording, expanded. -->
+				{#each referenceMedia as media (media.id)}
+					<AudioPlayer src={api.mediaUrl(media.id)} title={media.original_name} storageKey={media.id} />
+				{/each}
+			{:else}
+				<details class="reference">
+					<summary class="muted small">Reference audio ({referenceMedia.length})</summary>
+					{#each referenceMedia as media (media.id)}
+						<AudioPlayer src={api.mediaUrl(media.id)} title={media.original_name} storageKey={media.id} />
+					{/each}
+				</details>
+			{/if}
 		{/if}
 
 		{#if micEnabled}
@@ -320,6 +332,14 @@
 		border: none;
 		padding: 2px 0;
 		margin-bottom: 10px;
+		cursor: pointer;
+	}
+
+	.reference {
+		margin: 14px 0;
+	}
+
+	.reference summary {
 		cursor: pointer;
 	}
 

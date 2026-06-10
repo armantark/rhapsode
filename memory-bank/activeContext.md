@@ -2,7 +2,9 @@
 
 ## Current Focus
 
-The backend lane is complete and ready for a separate Svelte frontend thread.
+Both backend and frontend lanes are complete. The frontend is verified against
+the backend through unit tests, type checks, API integration tests, and manual
+browser testing.
 
 ## Active Decisions
 
@@ -12,19 +14,20 @@ The backend lane is complete and ready for a separate Svelte frontend thread.
 - Self-grading is canonical; speech scoring remains an extension point.
 - All language-specific assistance is optional and profile/plugin driven.
 - Frontend and backend coordinate through OpenAPI plus fixtures and handoff notes.
+- Frontend uses localStorage for media registry, cue points, and session
+  recovery until the backend provides listing/persistence endpoints.
 
 ## Verified Results
 
-- `uv run pytest -q`: 17 tests pass.
-- `uv run ruff check .`: clean.
-- `uv run mypy src`: clean under strict mode.
-- `uv run python ../scripts/generate_openapi.py --check`: generated contract matches.
-- `uv run rhapsode-migrate` creates the schema and snapshots an existing SQLite database.
-- `uv run rhapsode` migrated and served a fresh installation on `127.0.0.1`.
-- Live API verification created the Ancient Greek fixture and replayed its
-  idempotent mutation.
+- Backend: `uv run pytest -q` (17 pass), `ruff check .` (clean), `mypy src`
+  (clean), OpenAPI contract matches, live HTTP smoke checks pass.
+- Frontend: `npm test` (44 pass), `svelte-check` (0 errors), `npm run build`
+  (succeeds), full API integration cycle confirmed, Pinchtab manual testing
+  confirmed.
 
 ## Next Work
 
-Implement the Svelte frontend against `contracts/openapi.json` and
-`memory-bank/handoffs/backend-to-frontend.md`.
+- Backend: implement the three requested contract additions from
+  `memory-bank/handoffs/frontend-to-backend.md`.
+- Run the Playwright e2e suite once a dedicated backend instance on port 8643
+  is available.

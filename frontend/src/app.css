@@ -1,0 +1,186 @@
+/* Scholarly arcade: manuscript serifs for the texts, cabinet-glow chrome for
+   the controls. Desktop-first; layouts collapse below 900px. */
+:root {
+	--bg: #0c0e12;
+	--surface: #161a21;
+	--surface-2: #1e232c;
+	--border: #2a3040;
+	--text: #e8ecf4;
+	--text-dim: #8b95a8;
+	--gold: #f0a830;
+	--gold-glow: rgba(240, 168, 48, 0.14);
+	--blue: #4f8cff;
+	--green: #4ade80;
+	--red: #ff5c5c;
+	--purple: #a78bfa;
+	--radius: 12px;
+	--font-ui: 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
+	--font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+	--font-passage: 'Noto Serif', Georgia, serif;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	background: radial-gradient(circle at 12% 0, #221c0e 0, transparent 38%), var(--bg);
+	color: var(--text);
+	font-family: var(--font-ui);
+	min-height: 100vh;
+}
+
+h1, h2, h3 {
+	font-weight: 600;
+	line-height: 1.15;
+}
+
+a {
+	color: var(--blue);
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+button {
+	font: inherit;
+	color: var(--text);
+	background: var(--surface-2);
+	border: 1px solid var(--border);
+	border-bottom-width: 3px;
+	border-radius: 8px;
+	padding: 8px 14px;
+	cursor: pointer;
+	transition: transform 0.1s, border-color 0.15s, background 0.15s;
+}
+
+button:hover:not(:disabled) {
+	border-color: #43516b;
+	transform: translateY(-1px);
+}
+
+button:active:not(:disabled) {
+	transform: translateY(1px);
+	border-bottom-width: 1px;
+}
+
+button:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+button.primary {
+	background: var(--gold-glow);
+	border-color: var(--gold);
+	color: var(--gold);
+	font-weight: 600;
+}
+
+button.danger {
+	border-color: var(--red);
+	color: var(--red);
+}
+
+:focus-visible {
+	outline: 2px solid var(--gold);
+	outline-offset: 2px;
+}
+
+input, textarea, select {
+	font: inherit;
+	color: var(--text);
+	background: var(--bg);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	padding: 8px 10px;
+	width: 100%;
+}
+
+input:focus, textarea:focus, select:focus {
+	border-color: var(--gold);
+	outline: none;
+}
+
+label {
+	display: block;
+	font-size: 0.8rem;
+	color: var(--text-dim);
+	margin-bottom: 4px;
+}
+
+.eyebrow {
+	font-family: var(--font-mono);
+	font-size: 0.66rem;
+	text-transform: uppercase;
+	letter-spacing: 0.12em;
+	color: var(--gold);
+}
+
+.card {
+	background: linear-gradient(145deg, var(--surface), #11151b);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: 20px;
+}
+
+.muted {
+	color: var(--text-dim);
+}
+
+.tag {
+	font-family: var(--font-mono);
+	font-size: 0.62rem;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	background: var(--surface-2);
+	border: 1px solid var(--border);
+	padding: 4px 8px;
+	border-radius: 6px;
+	color: var(--text-dim);
+	white-space: nowrap;
+}
+
+.error-banner {
+	background: rgba(255, 92, 92, 0.12);
+	border: 1px solid var(--red);
+	border-radius: 8px;
+	padding: 10px 14px;
+	color: var(--red);
+	margin: 12px 0;
+}
+
+/* Passage scripts */
+.passage-text {
+	font-family: var(--font-passage);
+	font-size: 1.35rem;
+	line-height: 1.9;
+}
+
+.passage-text[lang='ja'] {
+	line-height: 2.3;
+}
+
+.vertical-text {
+	writing-mode: vertical-rl;
+	text-orientation: mixed;
+	min-height: 16em;
+	max-height: 70vh;
+}
+
+ruby rt {
+	font-size: 0.55em;
+	color: var(--text-dim);
+}
+
+kbd {
+	font-family: var(--font-mono);
+	font-size: 0.75rem;
+	border: 1px solid var(--border);
+	border-bottom-width: 3px;
+	border-radius: 6px;
+	padding: 2px 7px;
+	background: var(--surface-2);
+}

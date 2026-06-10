@@ -131,6 +131,11 @@ class PrepSuggestResult(BaseModel):
 class CuePoint(BaseModel):
     label: str = Field(min_length=1, max_length=120)
     time: float = Field(ge=0, allow_inf_nan=False)
+    # When a cue marks a passage line (e.g. from pause-based audio alignment),
+    # these let the practice loop jump the player straight to that line and
+    # loop just its span for shadowing.
+    segment_id: str | None = None
+    end: float | None = Field(default=None, ge=0, allow_inf_nan=False)
 
 
 class CuePointsUpdate(BaseModel):
@@ -208,6 +213,10 @@ class AttemptCreate(BaseModel):
     rating: AttemptRating
     latency_ms: int | None = Field(default=None, ge=0)
     media_asset_id: str | None = None
+    # Whether the learner showed the answer before grading. Informational only:
+    # the grade is the canonical signal (Anki model), so peeking never forces a
+    # rating — the learner self-grades honestly with Again/Hard/Good/Easy.
+    revealed: bool = False
 
 
 class AttemptRead(ORMModel):

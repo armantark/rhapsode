@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Practice loop: reveal, undo, juice & audio</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=JetBrains+Mono:wght@400;600&display=swap"
+			rel="stylesheet"
+		/>
+		<style>
+			:root {
+				--bg: #0c0e12;
+				--surface: #161a21;
+				--surface-2: #1e232c;
+				--border: #2a3040;
+				--text: #e8ecf4;
+				--text-dim: #8b95a8;
+				--accent: #4f8cff;
+				--accent-glow: rgba(79, 140, 255, 0.15);
+				--red: #ff5c5c;
+				--green: #4ade80;
+				--amber: #fbbf24;
+				--purple: #a78bfa;
+				--radius: 12px;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				margin: 0;
+				background: radial-gradient(1200px 600px at 70% -10%, #11151d 0%, var(--bg) 55%);
+				color: var(--text);
+				font-family: 'Outfit', sans-serif;
+				font-weight: 300;
+				line-height: 1.5;
+				padding: 40px 20px 80px;
+			}
+			.wrap {
+				max-width: 1080px;
+				margin: 0 auto;
+			}
+			.badge {
+				font-family: 'JetBrains Mono', monospace;
+				font-size: 0.7rem;
+				font-weight: 600;
+				letter-spacing: 0.12em;
+				color: var(--green);
+				background: rgba(74, 222, 128, 0.1);
+				border: 1px solid rgba(74, 222, 128, 0.3);
+				padding: 5px 11px;
+				border-radius: 999px;
+			}
+			h1 {
+				font-weight: 700;
+				font-size: 2rem;
+				margin: 16px 0 6px;
+			}
+			.sub {
+				color: var(--text-dim);
+				max-width: 70ch;
+				margin: 0 0 28px;
+			}
+			.grid {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 16px;
+			}
+			@media (max-width: 900px) {
+				.grid {
+					grid-template-columns: 1fr;
+				}
+			}
+			.card {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius);
+				padding: 20px;
+				transition:
+					transform 0.15s ease,
+					box-shadow 0.15s ease;
+			}
+			.card:hover {
+				transform: translateY(-2px);
+				box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+			}
+			.card h3 {
+				margin: 8px 0 6px;
+				font-weight: 500;
+				font-size: 1.12rem;
+			}
+			.plabel {
+				font-family: 'JetBrains Mono', monospace;
+				font-size: 0.62rem;
+				font-weight: 600;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				padding: 3px 8px;
+				border-radius: 5px;
+			}
+			.p-done {
+				color: var(--green);
+				background: rgba(74, 222, 128, 0.1);
+			}
+			.p-open {
+				color: var(--amber);
+				background: rgba(251, 191, 36, 0.1);
+			}
+			.card p {
+				color: var(--text-dim);
+				font-size: 0.92rem;
+				margin: 0 0 12px;
+			}
+			.files {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 6px;
+			}
+			.file {
+				font-family: 'JetBrains Mono', monospace;
+				font-size: 0.64rem;
+				color: var(--text-dim);
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				padding: 3px 7px;
+				border-radius: 5px;
+			}
+			.panes {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 10px;
+				margin: 6px 0 14px;
+			}
+			.pane {
+				background: var(--bg);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				padding: 11px;
+			}
+			.pane .tag {
+				font-family: 'JetBrains Mono', monospace;
+				font-size: 0.58rem;
+				letter-spacing: 0.1em;
+				color: var(--text-dim);
+			}
+			.mini {
+				font-size: 0.74rem;
+				color: var(--text);
+				margin-top: 7px;
+			}
+			.mini .gold {
+				color: var(--amber);
+			}
+			.btnrow {
+				display: flex;
+				gap: 5px;
+				margin-top: 8px;
+			}
+			.mbtn {
+				flex: 1;
+				text-align: center;
+				font-family: 'JetBrains Mono', monospace;
+				font-size: 0.6rem;
+				padding: 5px 0;
+				border-radius: 5px;
+				border: 1px solid var(--border);
+			}
+			.g {
+				color: var(--green);
+				border-color: rgba(74, 222, 128, 0.4);
+			}
+			.a {
+				color: var(--amber);
+				border-color: rgba(251, 191, 36, 0.4);
+			}
+			.r {
+				color: var(--red);
+				border-color: rgba(255, 92, 92, 0.4);
+			}
+			.pu {
+				color: var(--purple);
+				border-color: rgba(167, 139, 250, 0.4);
+			}
+			.section-title {
+				font-family: 'JetBrains Mono', monospace;
+				font-size: 0.72rem;
+				letter-spacing: 0.14em;
+				color: var(--text-dim);
+				text-transform: uppercase;
+				margin: 38px 0 14px;
+			}
+			.decision {
+				background: linear-gradient(180deg, var(--surface) 0%, #14181f 100%);
+				border: 1px solid rgba(251, 191, 36, 0.35);
+				border-radius: var(--radius);
+				padding: 22px;
+			}
+			.opt {
+				display: block;
+				width: 100%;
+				text-align: left;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: 9px;
+				padding: 13px 15px;
+				margin-bottom: 9px;
+				color: var(--text);
+				font-family: inherit;
+				font-size: 0.92rem;
+				cursor: pointer;
+				transition: all 0.12s ease;
+			}
+			.opt:hover {
+				border-color: var(--accent);
+			}
+			.opt.sel {
+				border-color: var(--amber);
+				background: rgba(251, 191, 36, 0.08);
+				box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.3);
+			}
+			.opt b {
+				font-weight: 600;
+			}
+			.opt small {
+				display: block;
+				color: var(--text-dim);
+				font-size: 0.78rem;
+				margin-top: 3px;
+			}
+			.rec {
+				font-family: 'JetBrains Mono', monospace;
+				font-size: 0.58rem;
+				color: var(--amber);
+				border: 1px solid rgba(251, 191, 36, 0.4);
+				padding: 1px 6px;
+				border-radius: 4px;
+				margin-left: 7px;
+			}
+			.copy {
+				margin-top: 14px;
+				font-family: 'JetBrains Mono', monospace;
+				font-size: 0.72rem;
+				background: var(--accent);
+				color: #fff;
+				border: none;
+				padding: 9px 16px;
+				border-radius: 8px;
+				cursor: pointer;
+			}
+			.copy:hover {
+				filter: brightness(1.1);
+			}
+			.metrics {
+				display: flex;
+				gap: 10px;
+				flex-wrap: wrap;
+				margin-top: 10px;
+			}
+			.metric {
+				font-family: 'JetBrains Mono', monospace;
+				font-size: 0.72rem;
+				color: var(--text-dim);
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				padding: 8px 12px;
+			}
+			.metric b {
+				color: var(--green);
+			}
+			kbd {
+				font-family: 'JetBrains Mono', monospace;
+				font-size: 0.66rem;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-bottom-width: 2px;
+				border-radius: 5px;
+				padding: 1px 5px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="wrap">
+			<span class="badge">SHIPPED · 2026-06-10</span>
+			<h1>The practice loop got honest, reversible, and a little loud</h1>
+			<p class="sub">
+				Four things you asked for. Three are done and verified end to end; the fourth (working
+				from your teacher's audio) is half-built and waiting on one call from you at the bottom.
+			</p>
+
+			<div class="grid">
+				<div class="card">
+					<span class="plabel p-done">Done · verify</span>
+					<h3>"Show answer" is neutral now</h3>
+					<p>
+						Revealing the text no longer slams the grade to "Again". It's the normal Anki
+						middle step: recite, peek to check, then grade yourself honestly. The peek is
+						still recorded as a flag, just decoupled from the score.
+					</p>
+					<div class="panes">
+						<div class="pane">
+							<span class="tag">BEFORE</span>
+							<div class="mini">Reveal text <span class="gold">(counts as "revealed")</span></div>
+							<div class="mini" style="color: var(--red)">→ forced Again, every time</div>
+						</div>
+						<div class="pane">
+							<span class="tag">AFTER</span>
+							<div class="mini">Show answer to check</div>
+							<div class="btnrow">
+								<span class="mbtn pu">Again</span><span class="mbtn r">Hard</span
+								><span class="mbtn a">Good</span><span class="mbtn g">Easy</span>
+							</div>
+						</div>
+					</div>
+					<div class="files">
+						<span class="file">PromptCard.svelte</span><span class="file">practice/[id]</span
+						><span class="file">schemas.py</span><span class="file">router.py</span>
+					</div>
+				</div>
+
+				<div class="card">
+					<span class="plabel p-done">Done · verify</span>
+					<h3><kbd>⌘Z</kbd> undoes a card — all the way back</h3>
+					<p>
+						Each attempt now snapshots the review state of every segment it touches, so undo
+						rewinds FSRS + mastery exactly, re-opens the card, and even resurrects a
+						just-finished session. Repeatable to the start of the session.
+					</p>
+					<div class="metrics">
+						<span class="metric">snapshot on <b>attempt</b></span>
+						<span class="metric"><b>POST</b> /sessions/{id}/undo</span>
+						<span class="metric">tally <b>rewinds</b> in step</span>
+					</div>
+					<div class="files" style="margin-top: 12px">
+						<span class="file">models.py</span><span class="file">scheduling.py</span
+						><span class="file">migration a1f2c3d4</span>
+					</div>
+				</div>
+
+				<div class="card">
+					<span class="plabel p-done">Done · verify</span>
+					<h3>Juicier feedback</h3>
+					<p>
+						Each grade lands with a colour pulse over the screen and a tuned tone — a rising
+						scale so Easy literally sounds brighter than Again. Finishing a session plays a
+						little arpeggio and a laurel pop. Mute toggle in the header; all motion respects
+						reduced-motion.
+					</p>
+					<div class="btnrow">
+						<span class="mbtn pu">196 Hz</span><span class="mbtn r">261 Hz</span
+						><span class="mbtn a">392 Hz</span><span class="mbtn g">523 + 784 Hz</span>
+					</div>
+					<div class="files" style="margin-top: 12px">
+						<span class="file">utils/feedback.ts</span><span class="file">practice/[id]</span>
+					</div>
+				</div>
+
+				<div class="card">
+					<span class="plabel p-done">Done</span>
+					<h3>Chamberlain's reading is gone</h3>
+					<p>
+						Deleted from the Iliad revision — too unlike your teacher's voice to shadow
+						against. Its import script went with it. The teacher's <code>Iliad 1.1-22.m4a</code>
+						is now the only reference, and the shadowing player can auto-seek to a line once
+						it's aligned.
+					</p>
+					<div class="files">
+						<span class="file">− import_reference_audio.py</span
+						><span class="file">+ align_reference_audio.py</span
+						><span class="file">CuePoint.segment_id/end</span>
+					</div>
+				</div>
+			</div>
+
+			<div class="section-title">One decision: how to line up the teacher's audio</div>
+			<div class="decision">
+				<p style="color: var(--text-dim); margin-top: 0">
+					I wired the whole path: cues can link to a line + span, and during shadowing the
+					player jumps to that line and loops it. I also wrote a pause-detection script. But on
+					your 26-second recording the pauses don't fall on line breaks cleanly — the first
+					"line" it found was actually ~2 lines (10.8s), and later ones fragmented. Auto-detect
+					alone would write wrong cues. So I held off. Pick the path:
+				</p>
+
+				<button class="opt sel" data-k="manual" onclick="pick(this)">
+					<b>Build a manual "tap the line starts" aligner</b><span class="rec">RECOMMENDED</span>
+					<small
+						>Play the teacher audio, tap a key at the start of each line, save. Dead reliable,
+						~30 min of frontend. Best for a recording you'll reuse daily.</small
+					>
+				</button>
+				<button class="opt" data-k="auto" onclick="pick(this)">
+					<b>Accept approximate auto-cues and hand-fix</b>
+					<small
+						>I write the best pause-based guess now (5 cues), you nudge the off ones in a small
+						editor I'd add. Faster to "something", but you'll be correcting it.</small
+					>
+				</button>
+				<button class="opt" data-k="plain" onclick="pick(this)">
+					<b>Leave the audio un-aligned for now</b>
+					<small
+						>Shadowing just plays the whole clip; no per-line jump. Ship what's done, revisit
+						alignment later.</small
+					>
+				</button>
+
+				<button class="copy" onclick="copyPrompt()">Copy my choice as a prompt →</button>
+			</div>
+		</div>
+
+		<script>
+			let choice = 'manual';
+			function pick(el) {
+				document.querySelectorAll('.opt').forEach((o) => o.classList.remove('sel'));
+				el.classList.add('sel');
+				choice = el.dataset.k;
+			}
+			function copyPrompt() {
+				const map = {
+					manual:
+						"For the teacher's audio: build the manual tap-to-align aligner — play the recording, let me tap at each line start, then save segment-linked cues to the backend.",
+					auto: "For the teacher's audio: write the approximate pause-based cues now and add a small editor so I can nudge the boundaries that are off.",
+					plain: "Leave the teacher's audio un-aligned for now; shadowing can just play the whole clip. We'll revisit per-line alignment later."
+				};
+				navigator.clipboard.writeText(map[choice]).then(() => {
+					const b = document.querySelector('.copy');
+					b.textContent = '✓ Copied — paste it back to me';
+					setTimeout(() => (b.textContent = 'Copy my choice as a prompt →'), 2200);
+				});
+			}
+		</script>
+	</body>
+</html>

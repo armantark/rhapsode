@@ -13,7 +13,16 @@ once" ruling. The app is now ready for real daily Iliad practice.
   keep 14) in `services/backup.py`; point `RHAPSODE_BACKUP_DIR` at a synced
   folder for off-machine durability.
 - Grading is Anki-labeled (Again/Hard/Good/Easy keys 1-4) mapping to
-  revealed/incorrect/hesitant/clean.
+  revealed/incorrect/hesitant/clean. Showing the answer is a NEUTRAL self-check
+  (Anki model): it never forces a grade. The peek is recorded as an
+  informational `revealed` flag on the attempt, independent of the rating.
+- Every attempt stores a `review_snapshot` (prior review state of each segment
+  it touched), so `POST /sessions/{id}/undo` rolls the last card back exactly —
+  re-opens the item, rewinds FSRS/mastery, and reactivates a just-completed
+  session. Cmd/Ctrl+Z drives it from the practice page, repeatable to the start.
+- Grade feedback is "juicy": a per-grade colour pulse + tuned Web Audio tone
+  (rising scale Again→Easy), a session-complete arpeggio, and a sound toggle
+  (`rhapsode.soundEnabled`). All animations honour prefers-reduced-motion.
 - `clean_count` on review states holds CONSECUTIVE cleans; mastery stages can
   regress (Again resets, Hard demotes one step). Difficulty flags decay after
   2 consecutive cleans.
@@ -27,6 +36,13 @@ once" ruling. The app is now ready for real daily Iliad practice.
 - Frontend latency clock counts focused time only (pauses on blur/hidden).
 - Mic is opt-in (`rhapsode.micEnabled`); reference audio listing is now
   API-backed (`GET /media`) so script-imported scholar audio appears.
+- Chamberlain's CC-BY recitation was removed (too unlike the teacher's reading
+  to shadow). We now work from the teacher's own recording. `CuePoint` gained
+  optional `segment_id` + `end`; `scripts/align_reference_audio.py` derives
+  per-line cue spans from pauses (ffmpeg silencedetect). During shadowing the
+  player auto-seeks and loops the practised line's span. Pause auto-detect is
+  heuristic and did NOT cleanly fit the teacher's 26s file (first span swallowed
+  ~2 lines); a manual "tap line starts" UI is the reliable follow-up.
 - LLM prep assistant: Gemini `gemini-3.1-pro-preview` (the only API id for
   3.1 Pro), key from repo-root `.env` as `GEMINI_API_KEY`. Prep-only: drafts
   cue/gloss/translation, never overwrites authored content, practice loop has
@@ -46,7 +62,8 @@ once" ruling. The app is now ready for real daily Iliad practice.
 ## Next Work
 
 - Set `RHAPSODE_BACKUP_DIR` to an iCloud-synced path in the launch command.
-- Extend `AUDIO_URLS` in `import_reference_audio.py` as more line ranges are
-  needed (archive.org item ids vary per book).
+- Build a manual line-alignment affordance (play teacher audio, tap at each
+  line start) that PUTs segment-linked cues — the reliable path, since
+  pause auto-detect under-segments the teacher's recording.
 - LLM-assisted chunking for prose passages is deferred until a prose passage
   exists (grill B4/C1).

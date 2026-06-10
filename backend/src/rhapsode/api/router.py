@@ -379,6 +379,19 @@ def submit_attempt(
             raise HTTPException(
                 status_code=422, detail="Only saved_best media may be attached to an attempt."
             )
+    if item.mode == schemas.PracticeMode.full_passage.value:
+        affected_ids = list(
+            db.scalars(
+                select(models.Segment.id)
+                .where(models.Segment.revision_id == session.revision_id)
+                .order_by(models.Segment.ordinal)
+            )
+        )
+    elif item.segment_id:
+        affected_ids = [item.segment_id]
+    else:
+        affected_ids = []
+    snapshot = [scheduling.snapshot_review_state(db, sid) for sid in affected_ids]
     attempt = models.Attempt(
         session_id=session_id,
         item_id=item.id,
@@ -387,23 +400,16 @@ def submit_attempt(
         mode=item.mode,
         rating=payload.rating.value,
         latency_ms=payload.latency_ms,
-        revealed=payload.rating == schemas.AttemptRating.revealed,
+        revealed=payload.revealed,
+        review_snapshot=snapshot,
     )
     db.add(attempt)
     item.completed = True
     session.current_index = max(session.current_index, item.position + 1)
     state = None
-    if item.mode == schemas.PracticeMode.full_passage.value:
-        segment_ids = db.scalars(
-            select(models.Segment.id)
-            .where(models.Segment.revision_id == session.revision_id)
-            .order_by(models.Segment.ordinal)
-        )
-        for segment_id in segment_ids:
-            reviewed = scheduling.review_segment(db, segment_id, payload.rating.value)
-            state = state or reviewed
-    elif item.segment_id:
-        state = scheduling.review_segment(db, item.segment_id, payload.rating.value)
+    for segment_id in affected_ids:
+        reviewed = scheduling.review_segment(db, segment_id, payload.rating.value)
+        state = state or reviewed
     remaining = db.scalar(
         select(func.count(models.PracticeItem.id)).where(
             models.PracticeItem.session_id == session_id,
@@ -420,6 +426,34 @@ def submit_attempt(
         due_at=state.due_at if state else None,
         mastery_stage=state.mastery_stage if state else None,
     )
+
+
+@router.post(
+    "/sessions/{session_id}/undo", response_model=schemas.SessionRead, tags=["practice"]
+)
+def undo_attempt(session_id: str, db: Db) -> schemas.SessionRead:
+    session = db.get(models.PracticeSession, session_id)
+    if session is None:
+        raise not_found("Session")
+    attempt = db.scalar(
+        select(models.Attempt)
+        .where(models.Attempt.session_id == session_id)
+        .order_by(models.Attempt.created_at.desc(), models.Attempt.id.desc())
+    )
+    if attempt is None:
+        raise HTTPException(status_code=409, detail="Nothing to undo in this session.")
+    for snapshot in attempt.review_snapshot or []:
+        scheduling.restore_review_state(db, snapshot)
+    item = db.get(models.PracticeItem, attempt.item_id)
+    if item is not None:
+        item.completed = False
+        session.current_index = item.position
+    # Undo can resurrect a session that the final grade had completed.
+    session.status = "active"
+    session.completed_at = None
+    db.delete(attempt)
+    db.commit()
+    return schemas.SessionRead.model_validate(get_session_detail(session_id, db))
 
 
 @router.post(

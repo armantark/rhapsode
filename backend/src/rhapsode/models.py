@@ -181,6 +181,9 @@ class Attempt(Base):
     rating: Mapped[str] = mapped_column(String)
     latency_ms: Mapped[int | None] = mapped_column(Integer)
     revealed: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Prior review state of every segment this attempt touched, so the attempt
+    # can be rolled back exactly. Full-passage attempts touch many segments.
+    review_snapshot: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

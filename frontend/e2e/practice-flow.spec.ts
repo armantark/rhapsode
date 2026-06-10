@@ -36,17 +36,19 @@ test('full loop: create, render Unicode, practice, grade, review', async ({ page
 	// Item 1: grade clean via the Anki-style "Easy" shortcut (4).
 	await expect(page.getByText('Sing, goddess')).toBeVisible();
 	await page.keyboard.press('4');
-	await expect(page.getByText(/clean · mastery/)).toBeVisible();
+	await expect(page.getByText(/Easy · mastery/)).toBeVisible();
 
-	// Item 2: revealing forces the "revealed" rating regardless of the key.
-	await page.getByRole('button', { name: /Reveal text/ }).click();
+	// Item 2: showing the answer is a neutral self-check (Anki model); the grade
+	// is whatever the learner presses. Here we needed the text, so "Again" (1).
+	await page.getByRole('button', { name: /Show answer/ }).click();
 	await expect(page.getByText(GREEK_LINE_2).first()).toBeVisible();
-	await page.keyboard.press('4');
+	await expect(page.getByText(/grade yourself honestly/)).toBeVisible();
+	await page.keyboard.press('1');
 
-	// Both items done → completion summary with the local tally.
+	// Both items done → completion summary with the local tally (Anki labels).
 	await expect(page.getByText('Session complete')).toBeVisible();
-	await expect(page.getByText('clean × 1')).toBeVisible();
-	await expect(page.getByText('revealed × 1')).toBeVisible();
+	await expect(page.getByText('Easy × 1')).toBeVisible();
+	await expect(page.getByText('Again × 1')).toBeVisible();
 
 	// Review analytics reflect the attempts.
 	await page.goto('/review');
@@ -65,12 +67,12 @@ test('an interrupted session resumes at the persisted cursor after reload', asyn
 
 	await expect(page.getByText('Sing, goddess')).toBeVisible();
 	await page.keyboard.press('3'); // "Good" → hesitant on item 1
-	await expect(page.getByText(/hesitant · mastery/)).toBeVisible();
+	await expect(page.getByText(/Good · mastery/)).toBeVisible();
 
 	// Simulate a crash: hard reload, then verify the same item cursor.
 	await page.reload();
 	await expect(page.getByText('1/2 items')).toBeVisible();
-	await expect(page.getByRole('button', { name: /Reveal text/ })).toBeVisible();
+	await expect(page.getByRole('button', { name: /Show answer/ })).toBeVisible();
 
 	// The practice list also offers recovery from the localStorage pointer.
 	await page.goto('/practice');
@@ -79,6 +81,28 @@ test('an interrupted session resumes at the persisted cursor after reload', asyn
 	await resumeBanner.click();
 	await expect(page).toHaveURL(sessionUrl);
 	await expect(page.getByText('1/2 items')).toBeVisible();
+});
+
+test('Cmd+Z reopens the last graded card and rewinds the tally', async ({ page }) => {
+	const title = `Undo e2e ${Date.now()}`;
+	await createGreekPassage(page, title);
+	await startManualSession(page);
+	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
+
+	// Grade item 1, advancing the cursor.
+	await expect(page.getByText('Sing, goddess')).toBeVisible();
+	await page.keyboard.press('4');
+	await expect(page.getByText('1/2 items')).toBeVisible();
+
+	// Cmd/Ctrl+Z rolls the card back: the cursor returns and the first cue shows.
+	await page.keyboard.press('ControlOrMeta+z');
+	await expect(page.getByText('0/2 items')).toBeVisible();
+	await expect(page.getByText('Sing, goddess')).toBeVisible();
+	await expect(page.getByText('Undid the last card')).toBeVisible();
+
+	// A second undo with nothing left is a no-op with a hint, not an error.
+	await page.keyboard.press('ControlOrMeta+z');
+	await expect(page.getByText('Nothing left to undo')).toBeVisible();
 });
 
 test('creating without generating segments still yields practiceable lines', async ({ page }) => {

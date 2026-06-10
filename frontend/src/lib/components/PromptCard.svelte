@@ -11,7 +11,8 @@
 	}: {
 		item: PracticeItem;
 		profile?: LanguageProfile | null;
-		/** Parent owns reveal state: revealing implies the "revealed" rating. */
+		/** Parent owns reveal state. Showing the answer is neutral (Anki model):
+		 *  it is the expected self-check step and never forces a grade. */
 		revealed?: boolean;
 		/** cue_recall/full_passage prompts omit the answer; the parent looks it
 		 *  up from the revision's segments. */
@@ -82,7 +83,7 @@
 	{/if}
 
 	{#if !revealed && (item.mode === 'cue_recall' || item.mode === 'weak_link' || item.mode === 'full_passage')}
-		<button class="reveal" onclick={onReveal}>Reveal text (counts as “revealed”)</button>
+		<button class="reveal" onclick={onReveal}>Show answer to check</button>
 	{/if}
 </div>
 
@@ -127,7 +128,7 @@
 	}
 
 	.revealed-text {
-		border-inline-start: 3px solid var(--purple);
+		border-inline-start: 3px solid var(--gold);
 		padding-inline-start: 12px;
 	}
 
@@ -147,7 +148,7 @@
 
 	.reveal {
 		align-self: flex-start;
-		color: var(--purple);
-		border-color: var(--purple);
+		color: var(--gold);
+		border-color: var(--gold);
 	}
 </style>

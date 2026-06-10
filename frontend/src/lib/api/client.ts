@@ -140,6 +140,8 @@ export const api = {
 		send<PracticeSession>('POST', '/sessions', { body: input, key }),
 	submitAttempt: (sessionId: string, attempt: AttemptCreate, key?: string) =>
 		send<AttemptResult>('POST', `/sessions/${sessionId}/attempts`, { body: attempt, key }),
+	undoAttempt: (sessionId: string, key?: string) =>
+		send<PracticeSession>('POST', `/sessions/${sessionId}/undo`, { key }),
 	completeSession: (sessionId: string, key?: string) =>
 		send<PracticeSession>('POST', `/sessions/${sessionId}/complete`, { key }),
 

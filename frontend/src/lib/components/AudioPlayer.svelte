@@ -1,14 +1,23 @@
 <script lang="ts">
+	import type { CuePoint } from '$lib/api/types';
+
 	let {
 		src,
 		title = 'Audio',
-		storageKey = null
+		storageKey = null,
+		cuePoints = [],
+		focusSegmentId = null
 	}: {
 		src: string;
 		title?: string;
-		/** When set, cue points persist in localStorage under this key.
-		 *  Cue points have no contract field yet — requested in the handoff. */
+		/** When set, ad-hoc cue points persist in localStorage under this key. */
 		storageKey?: string | null;
+		/** Server-side cue points (e.g. from pause-based line alignment). When a
+		 *  cue carries an `end`, jumping to it loops just that line's span. */
+		cuePoints?: CuePoint[];
+		/** During shadowing, the segment being practised: if a server cue matches
+		 *  it, the player jumps there and loops the line automatically. */
+		focusSegmentId?: string | null;
 	} = $props();
 
 	let audio: HTMLAudioElement | undefined = $state();
@@ -90,6 +99,37 @@
 		cues = cues.toSpliced(index, 1);
 		persistCues();
 	}
+
+	function jumpToCue(cue: CuePoint) {
+		seek(cue.time);
+		if (cue.end != null) {
+			loopStart = cue.time;
+			loopEnd = cue.end;
+			looping = true;
+		}
+		void audio?.play();
+	}
+
+	const focusCue = $derived.by(() =>
+		focusSegmentId ? (cuePoints.find((cue) => cue.segment_id === focusSegmentId) ?? null) : null
+	);
+
+	$effect(() => {
+		// When the practised line changes (or the audio finishes loading), cue the
+		// player to that line's span so shadowing starts in the right place.
+		const cue = focusCue;
+		if (!cue || !audio) return;
+		const apply = () => {
+			seek(cue.time);
+			if (cue.end != null) {
+				loopStart = cue.time;
+				loopEnd = cue.end;
+				looping = true;
+			}
+		};
+		if (duration) apply();
+		else audio.addEventListener('loadedmetadata', apply, { once: true });
+	});
 </script>
 
 <div class="player card">
@@ -146,6 +186,21 @@
 			</select>
 		</label>
 	</div>
+
+	{#if cuePoints.length}
+		<div class="row cues lines">
+			<span class="muted small">Lines</span>
+			{#each cuePoints as cue (cue.time)}
+				<button
+					class="cue-jump line"
+					class:focused={focusCue?.time === cue.time}
+					onclick={() => jumpToCue(cue)}
+				>
+					{cue.label}
+				</button>
+			{/each}
+		</div>
+	{/if}
 
 	<div class="row cues">
 		<button onclick={addCue}>+ Cue at {format(currentTime)}</button>
@@ -221,5 +276,24 @@
 		border-end-start-radius: 0;
 		border-inline-start: none;
 		padding: 8px 9px;
+	}
+
+	.cues.lines {
+		gap: 6px;
+	}
+
+	.small {
+		font-size: 0.72rem;
+	}
+
+	.cue-jump.line {
+		border-radius: 6px;
+		font-size: 0.72rem;
+	}
+
+	.cue-jump.line.focused {
+		border-color: var(--gold);
+		color: var(--gold);
+		box-shadow: 0 0 6px var(--gold-glow);
 	}
 </style>

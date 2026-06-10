@@ -24,7 +24,12 @@ export type SessionCreate = Omit<components['schemas']['SessionCreate'], 'due_on
 };
 export type PracticeItem = components['schemas']['PracticeItemRead'];
 export type PracticeMode = components['schemas']['PracticeMode'];
-export type AttemptCreate = components['schemas']['AttemptCreate'];
+// Same defaultNonNullable quirk as SessionCreate.due_only: `revealed` carries
+// a literal default and is optional on the wire.
+export type AttemptCreate = Omit<components['schemas']['AttemptCreate'], 'revealed'> & {
+	revealed?: boolean;
+};
+export type CuePoint = components['schemas']['CuePoint'];
 export type AttemptResult = components['schemas']['AttemptResult'];
 export type AttemptRating = components['schemas']['AttemptRating'];
 export type ReviewState = components['schemas']['ReviewStateRead'];

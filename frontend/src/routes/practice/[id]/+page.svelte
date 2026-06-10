@@ -5,7 +5,7 @@
 	import AudioPlayer from '$lib/components/AudioPlayer.svelte';
 	import GradeBar from '$lib/components/GradeBar.svelte';
 	import PromptCard from '$lib/components/PromptCard.svelte';
-	import { api } from '$lib/api/client';
+	import { api, isConflict } from '$lib/api/client';
 	import type {
 		AttemptRating,
 		LanguageProfile,
@@ -17,6 +17,20 @@
 	import type { AttemptRecording } from '$lib/audio/recorder';
 	import { registerMedia } from '$lib/utils/mediaRegistry';
 	import { clearActiveSession, rememberActiveSession } from '$lib/utils/recovery';
+	import {
+		isSoundEnabled,
+		playComplete,
+		playGrade,
+		playUndo,
+		setSoundEnabled
+	} from '$lib/utils/feedback';
+
+	const RATING_LABELS: Record<AttemptRating, string> = {
+		clean: 'Easy',
+		hesitant: 'Good',
+		incorrect: 'Hard',
+		revealed: 'Again'
+	};
 
 	let session: PracticeSession | null = $state(null);
 	let revision: Revision | null = $state(null);
@@ -27,10 +41,20 @@
 
 	let revealed = $state(false);
 	let submitting = $state(false);
+	let undoing = $state(false);
 	let savingBest = $state(false);
 	let pendingMediaId: string | null = $state(null);
 	let lastFeedback = $state('');
 	let tally: Record<AttemptRating, number> = $state({ clean: 0, hesitant: 0, incorrect: 0, revealed: 0 });
+	// Client-side stack of the ratings submitted this tab, so Cmd+Z can roll the
+	// on-screen tally back in step with the server-side review-state undo.
+	const history: AttemptRating[] = [];
+	// Juicy feedback: a brief full-card colour pulse keyed to the grade, plus
+	// tuned tones (see utils/feedback). flashToken retriggers the CSS animation.
+	let flash: AttemptRating | null = $state(null);
+	let flashToken = $state(0);
+	let celebrate = $state(false);
+	let soundOn = $state(true);
 	// Recording is deliberately opt-in (grill D2): speaking aloud is the
 	// learning act; the mic is for occasionally capturing a best take.
 	const MIC_KEY = 'rhapsode.micEnabled';
@@ -98,6 +122,7 @@
 
 	onMount(async () => {
 		micEnabled = localStorage.getItem(MIC_KEY) === 'true';
+		soundOn = isSoundEnabled();
 		try {
 			session = await api.getSession(page.params.id ?? '');
 			revision = await api.getRevision(session.revision_id);
@@ -123,28 +148,87 @@
 		}
 	});
 
+	function pulse(rating: AttemptRating) {
+		flash = rating;
+		const token = flashToken + 1;
+		flashToken = token;
+		setTimeout(() => {
+			if (flashToken === token) flash = null;
+		}, 600);
+	}
+
 	async function grade(rating: AttemptRating) {
-		if (!session || !currentItem || submitting) return;
+		if (!session || !currentItem || submitting || undoing) return;
 		submitting = true;
 		error = '';
 		try {
+			// Anki model (grill): showing the answer is a neutral self-check, so
+			// the grade is exactly what the learner pressed. We still record that
+			// they peeked as an informational flag.
 			const result = await api.submitAttempt(session.id, {
 				item_id: currentItem.id,
-				rating: revealed ? 'revealed' : rating,
+				rating,
+				revealed,
 				latency_ms: Math.max(0, Math.round(elapsedFocusedMs())),
 				media_asset_id: pendingMediaId
 			});
-			tally = { ...tally, [result.attempt.rating as AttemptRating]: tally[result.attempt.rating as AttemptRating] + 1 };
+			const landed = result.attempt.rating as AttemptRating;
+			history.push(landed);
+			tally = { ...tally, [landed]: tally[landed] + 1 };
 			lastFeedback = result.mastery_stage
-				? `${result.attempt.rating} · mastery ${result.mastery_stage}${result.due_at ? ` · next ${new Date(result.due_at).toLocaleDateString()}` : ''}`
-				: result.attempt.rating;
+				? `${RATING_LABELS[landed]} · mastery ${result.mastery_stage}${result.due_at ? ` · next ${new Date(result.due_at).toLocaleDateString()}` : ''}`
+				: RATING_LABELS[landed];
 			session = result.session;
-			if (items.every((item) => item.completed)) await finish();
+			playGrade(landed);
+			pulse(landed);
+			if (items.every((item) => item.completed)) {
+				await finish();
+				celebrate = true;
+				playComplete();
+			}
 		} catch (cause) {
 			error = `Could not submit the attempt: ${cause instanceof Error ? cause.message : cause}`;
 		} finally {
 			submitting = false;
 		}
+	}
+
+	async function undo() {
+		if (!session || submitting || undoing) return;
+		undoing = true;
+		error = '';
+		try {
+			session = await api.undoAttempt(session.id);
+			celebrate = false;
+			const last = history.pop();
+			if (last) tally = { ...tally, [last]: Math.max(0, tally[last] - 1) };
+			lastFeedback = 'Undid the last card';
+			playUndo();
+		} catch (cause) {
+			if (isConflict(cause)) {
+				lastFeedback = 'Nothing left to undo';
+			} else {
+				error = `Could not undo: ${cause instanceof Error ? cause.message : cause}`;
+			}
+		} finally {
+			undoing = false;
+		}
+	}
+
+	function onWindowKeydown(event: KeyboardEvent) {
+		if (!(event.metaKey || event.ctrlKey) || event.shiftKey || event.key.toLowerCase() !== 'z') {
+			return;
+		}
+		const target = event.target as HTMLElement | null;
+		if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+		event.preventDefault();
+		void undo();
+	}
+
+	function toggleSound() {
+		soundOn = !soundOn;
+		setSoundEnabled(soundOn);
+		if (soundOn) playUndo();
 	}
 
 	async function finish() {
@@ -185,8 +269,14 @@
 	}
 </script>
 
-<svelte:window onblur={pauseClock} onfocus={resumeClock} />
+<svelte:window onblur={pauseClock} onfocus={resumeClock} onkeydown={onWindowKeydown} />
 <svelte:document onvisibilitychange={() => (document.hidden ? pauseClock() : resumeClock())} />
+
+{#if flash}
+	{#key flashToken}
+		<div class="flash {flash}" aria-hidden="true"></div>
+	{/key}
+{/if}
 
 {#if loading}
 	<p class="muted">Loading…</p>
@@ -198,7 +288,20 @@
 			<span class="eyebrow">Practice session</span>
 			<h1>{passageTitle}</h1>
 		</div>
-		<span class="tag">{doneCount}/{items.length} items</span>
+		<div class="head-actions">
+			<button
+				class="ghost"
+				onclick={undo}
+				disabled={undoing || (doneCount === 0 && session.status !== 'completed')}
+				title="Undo last card (⌘Z)"
+			>
+				↶ Undo <kbd>⌘Z</kbd>
+			</button>
+			<button class="ghost" onclick={toggleSound} aria-pressed={soundOn} title="Toggle sound">
+				{soundOn ? '🔊' : '🔇'}
+			</button>
+			<span class="tag">{doneCount}/{items.length} items</span>
+		</div>
 	</header>
 
 	<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax={items.length} aria-valuenow={doneCount}>
@@ -225,15 +328,29 @@
 
 		{#if referenceMedia.length}
 			{#if currentItem.mode === 'shadowing'}
-				<!-- Shadowing IS listening: every recording, expanded. -->
+				<!-- Shadowing IS listening: every recording, expanded. When the
+				     audio has been line-aligned, the player jumps straight to this
+				     segment's line and loops just its span. -->
 				{#each referenceMedia as media (media.id)}
-					<AudioPlayer src={api.mediaUrl(media.id)} title={media.original_name} storageKey={media.id} />
+					<AudioPlayer
+						src={api.mediaUrl(media.id)}
+						title={media.original_name}
+						storageKey={media.id}
+						cuePoints={media.cue_points}
+						focusSegmentId={currentItem.segment_id}
+					/>
 				{/each}
 			{:else}
 				<details class="reference">
 					<summary class="muted small">Reference audio ({referenceMedia.length})</summary>
 					{#each referenceMedia as media (media.id)}
-						<AudioPlayer src={api.mediaUrl(media.id)} title={media.original_name} storageKey={media.id} />
+						<AudioPlayer
+							src={api.mediaUrl(media.id)}
+							title={media.original_name}
+							storageKey={media.id}
+							cuePoints={media.cue_points}
+							focusSegmentId={currentItem.segment_id}
+						/>
 					{/each}
 				</details>
 			{/if}
@@ -250,24 +367,29 @@
 
 		<GradeBar onGrade={grade} disabled={submitting} />
 		{#if revealed}
-			<p class="muted small">Text was revealed — this attempt is graded as “revealed”.</p>
+			<p class="muted small">
+				Answer shown — grade yourself honestly. Pick <strong>Again</strong> only if you
+				couldn't recall it.
+			</p>
+		{:else}
+			<p class="muted small">Recite from memory, then “Show answer” to check before grading.</p>
 		{/if}
 		{#if lastFeedback}
 			<p class="feedback">{lastFeedback}</p>
 		{/if}
 	{:else}
-		<div class="card summary">
+		<div class="card summary" class:celebrate>
 			<span class="eyebrow">Session complete</span>
-			<h2>Well recited.</h2>
+			<h2>Well recited. <span class="laurel">🏛</span></h2>
 			<ul>
-				<li><span class="clean">clean</span> × {tally.clean}</li>
-				<li><span class="hesitant">hesitant</span> × {tally.hesitant}</li>
-				<li><span class="incorrect">incorrect</span> × {tally.incorrect}</li>
-				<li><span class="revealed">revealed</span> × {tally.revealed}</li>
+				<li><span class="clean">Easy</span> × {tally.clean}</li>
+				<li><span class="hesitant">Good</span> × {tally.hesitant}</li>
+				<li><span class="incorrect">Hard</span> × {tally.incorrect}</li>
+				<li><span class="revealed">Again</span> × {tally.revealed}</li>
 			</ul>
 			<p class="muted small">
 				Counts reflect attempts submitted in this browser tab; the durable record lives in review
-				analytics.
+				analytics. Press <kbd>⌘Z</kbd> to reopen the last card.
 			</p>
 			<div class="row">
 				<a href="/review"><button class="primary">Open review →</button></a>
@@ -286,6 +408,73 @@
 
 	.head h1 {
 		margin: 6px 0 10px;
+	}
+
+	.head-actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.ghost {
+		background: none;
+		border: 1px solid var(--border);
+		color: var(--text-dim);
+		font-size: 0.78rem;
+		padding: 5px 9px;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+	}
+
+	.ghost:disabled {
+		opacity: 0.4;
+	}
+
+	.ghost kbd {
+		font-size: 0.68rem;
+	}
+
+	/* Grade pulse: a quick coloured wash over the viewport, fading out, so each
+	   rating lands with a distinct flash of its own colour. */
+	.flash {
+		position: fixed;
+		inset: 0;
+		pointer-events: none;
+		z-index: 50;
+		opacity: 0;
+		animation: flash 0.6s ease-out;
+	}
+
+	.flash.clean {
+		background: radial-gradient(circle at 50% 60%, var(--green) 0%, transparent 60%);
+	}
+	.flash.hesitant {
+		background: radial-gradient(circle at 50% 60%, var(--gold) 0%, transparent 60%);
+	}
+	.flash.incorrect {
+		background: radial-gradient(circle at 50% 60%, var(--red) 0%, transparent 60%);
+	}
+	.flash.revealed {
+		background: radial-gradient(circle at 50% 60%, var(--purple) 0%, transparent 60%);
+	}
+
+	@keyframes flash {
+		0% {
+			opacity: 0.32;
+			transform: scale(1.04);
+		}
+		100% {
+			opacity: 0;
+			transform: scale(1);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.flash {
+			animation: none;
+			opacity: 0;
+		}
 	}
 
 	.progress {
@@ -365,5 +554,44 @@
 	.summary .row {
 		display: flex;
 		gap: 10px;
+	}
+
+	.summary.celebrate {
+		animation: rise 0.5s ease-out;
+	}
+
+	.summary.celebrate .laurel {
+		display: inline-block;
+		animation: pop 0.6s ease-out;
+	}
+
+	@keyframes rise {
+		from {
+			opacity: 0;
+			transform: translateY(10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	@keyframes pop {
+		0% {
+			transform: scale(0.4) rotate(-12deg);
+		}
+		60% {
+			transform: scale(1.3) rotate(6deg);
+		}
+		100% {
+			transform: scale(1) rotate(0);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.summary.celebrate,
+		.summary.celebrate .laurel {
+			animation: none;
+		}
 	}
 </style>

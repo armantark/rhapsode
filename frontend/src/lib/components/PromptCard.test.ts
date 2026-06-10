@@ -59,11 +59,11 @@ describe('built-in mode rendering', () => {
 			onReveal
 		});
 		expect(screen.queryByText('μῆνιν ἄειδε θεὰ Πηληϊάδεω Ἀχιλῆος')).toBeNull();
-		await fireEvent.click(screen.getByRole('button', { name: /Reveal text/ }));
+		await fireEvent.click(screen.getByRole('button', { name: /Show answer/ }));
 		expect(onReveal).toHaveBeenCalledOnce();
 		await rerender({ revealed: true });
 		expect(screen.getByText('μῆνιν ἄειδε θεὰ Πηληϊάδεω Ἀχιλῆος')).toBeInTheDocument();
-		expect(screen.queryByRole('button', { name: /Reveal text/ })).toBeNull();
+		expect(screen.queryByRole('button', { name: /Show answer/ })).toBeNull();
 	});
 
 	it('full passage starts blank with a reveal escape hatch', () => {
@@ -72,7 +72,7 @@ describe('built-in mode rendering', () => {
 			onReveal: vi.fn()
 		});
 		expect(screen.getByText('Recite the full passage from memory.', { selector: '.blank' })).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: /Reveal text/ })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /Show answer/ })).toBeInTheDocument();
 	});
 
 	it('weak link shows the cue and reveals the target', async () => {

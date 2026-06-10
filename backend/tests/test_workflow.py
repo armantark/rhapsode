@@ -142,6 +142,68 @@ def test_weak_links_report_mean_latency(
     assert [entry["mean_latency_ms"] for entry in weak] == [4800, 1200]
 
 
+def test_undo_rewinds_review_state_and_reopens_item(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    revision = passage["active_revision"]
+    session = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "modes": ["cue_recall"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    ).json()
+    first = session["items"][0]
+    segment_id = first["segment_id"]
+
+    graded = client.post(
+        f"/api/v1/sessions/{session['id']}/attempts",
+        json={"item_id": first["id"], "rating": "clean", "latency_ms": 900},
+        headers=mutation(),
+    ).json()
+    assert graded["session"]["items"][0]["completed"] is True
+    assert graded["session"]["current_index"] == 1
+    # The clean grade created a review state for a previously-unseen segment.
+    mastery_after = client.get("/api/v1/analytics/mastery").json()
+    assert any(state["segment_id"] == segment_id for state in mastery_after["items"])
+
+    undone = client.post(f"/api/v1/sessions/{session['id']}/undo", headers=mutation())
+    assert undone.status_code == 200, undone.text
+    body = undone.json()
+    assert body["items"][0]["completed"] is False
+    assert body["current_index"] == 0
+    assert body["status"] == "active"
+    # The snapshot said no state existed, so undo deleted the one it created.
+    mastery = client.get("/api/v1/analytics/mastery").json()
+    assert all(state["segment_id"] != segment_id for state in mastery["items"])
+
+    empty = client.post(f"/api/v1/sessions/{session['id']}/undo", headers=mutation())
+    assert empty.status_code == 409
+
+
+def test_reveal_flag_is_independent_of_rating(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    revision = passage["active_revision"]
+    session = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "modes": ["cue_recall"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    ).json()
+    first = session["items"][0]
+    result = client.post(
+        f"/api/v1/sessions/{session['id']}/attempts",
+        json={"item_id": first["id"], "rating": "clean", "revealed": True, "latency_ms": 700},
+        headers=mutation(),
+    ).json()
+    # Peeking is recorded but does not drag a clean grade down to "revealed".
+    assert result["attempt"]["revealed"] is True
+    assert result["attempt"]["rating"] == "clean"
+    assert result["mastery_stage"] != "new"
+
+
 def test_incorrect_attempt_becomes_weak_link(
     client: TestClient,
     mutation: Callable[..., dict[str, str]],
@@ -210,8 +272,8 @@ def test_reference_media_round_trip(
     )
     assert cues.status_code == 200, cues.text
     assert cues.json()["cue_points"] == [
-        {"label": "opening", "time": 0.0},
-        {"label": "second line", "time": 9.5},
+        {"label": "opening", "time": 0.0, "segment_id": None, "end": None},
+        {"label": "second line", "time": 9.5, "segment_id": None, "end": None},
     ]
     assert (
         client.get(f"/api/v1/media?revision_id={revision['id']}").json()[0]["cue_points"]

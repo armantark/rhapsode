@@ -4,91 +4,6 @@
  */
 
 export interface paths {
-    "/api/v1/analytics/due": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Due Reviews */
-        get: operations["due_reviews_api_v1_analytics_due_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/analytics/mastery": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Mastery */
-        get: operations["mastery_api_v1_analytics_mastery_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/analytics/weak-links": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Weak Links */
-        get: operations["weak_links_api_v1_analytics_weak_links_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/annotations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create Annotation */
-        post: operations["create_annotation_api_v1_annotations_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/annotations/{annotation_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete Annotation */
-        delete: operations["delete_annotation_api_v1_annotations__annotation_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -124,69 +39,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/media": {
+    "/api/v1/plugins": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List Media */
-        get: operations["list_media_api_v1_media_get"];
+        /** List Plugins */
+        get: operations["list_plugins_api_v1_plugins_get"];
         put?: never;
-        /** Upload Media */
-        post: operations["upload_media_api_v1_media_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/media/{media_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete Media */
-        delete: operations["delete_media_api_v1_media__media_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/media/{media_id}/content": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Stream Media */
-        get: operations["stream_media_api_v1_media__media_id__content_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/media/{media_id}/cues": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Replace Media Cues */
-        put: operations["replace_media_cues_api_v1_media__media_id__cues_put"];
-        post?: never;
+        /** Register Plugin */
+        post: operations["register_plugin_api_v1_plugins_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -245,24 +109,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/plugins": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Plugins */
-        get: operations["list_plugins_api_v1_plugins_get"];
-        put?: never;
-        /** Register Plugin */
-        post: operations["register_plugin_api_v1_plugins_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/revisions/{revision_id}": {
         parameters: {
             query?: never;
@@ -273,6 +119,23 @@ export interface paths {
         /** Get Revision */
         get: operations["get_revision_api_v1_revisions__revision_id__get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/revisions/{revision_id}/segments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace Segments */
+        put: operations["replace_segments_api_v1_revisions__revision_id__segments_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -297,7 +160,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/revisions/{revision_id}/segments": {
+    "/api/v1/annotations": {
         parameters: {
             query?: never;
             header?: never;
@@ -305,10 +168,96 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Replace Segments */
-        put: operations["replace_segments_api_v1_revisions__revision_id__segments_put"];
+        put?: never;
+        /** Create Annotation */
+        post: operations["create_annotation_api_v1_annotations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/annotations/{annotation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Annotation */
+        delete: operations["delete_annotation_api_v1_annotations__annotation_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Media */
+        get: operations["list_media_api_v1_media_get"];
+        put?: never;
+        /** Upload Media */
+        post: operations["upload_media_api_v1_media_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/{media_id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stream Media */
+        get: operations["stream_media_api_v1_media__media_id__content_get"];
+        put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/{media_id}/cues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace Media Cues */
+        put: operations["replace_media_cues_api_v1_media__media_id__cues_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/{media_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Media */
+        delete: operations["delete_media_api_v1_media__media_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -366,6 +315,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sessions/{session_id}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Undo Attempt */
+        post: operations["undo_attempt_api_v1_sessions__session_id__undo_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sessions/{session_id}/complete": {
         parameters: {
             query?: never;
@@ -377,6 +343,57 @@ export interface paths {
         put?: never;
         /** Complete Session */
         post: operations["complete_session_api_v1_sessions__session_id__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/due": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Due Reviews */
+        get: operations["due_reviews_api_v1_analytics_due_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/mastery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mastery */
+        get: operations["mastery_api_v1_analytics_mastery_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/weak-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Weak Links */
+        get: operations["weak_links_api_v1_analytics_weak_links_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -423,52 +440,57 @@ export interface components {
     schemas: {
         /** AnnotationCreate */
         AnnotationCreate: {
+            /** Layer */
+            layer: string;
+            /** Value */
+            value: string;
             /** Data */
             data?: {
                 [key: string]: unknown;
             };
-            /** Layer */
-            layer: string;
             /** Segment Id */
             segment_id: string;
-            /** Value */
-            value: string;
         };
         /** AnnotationInput */
         AnnotationInput: {
-            /** Data */
-            data?: {
-                [key: string]: unknown;
-            };
             /** Layer */
             layer: string;
             /** Value */
             value: string;
+            /** Data */
+            data?: {
+                [key: string]: unknown;
+            };
         };
         /** AnnotationRead */
         AnnotationRead: {
+            /** Id */
+            id: string;
+            /** Segment Id */
+            segment_id: string;
+            /** Layer */
+            layer: string;
+            /** Value */
+            value: string;
             /** Data */
             data: {
                 [key: string]: unknown;
             };
-            /** Id */
-            id: string;
-            /** Layer */
-            layer: string;
-            /** Segment Id */
-            segment_id: string;
-            /** Value */
-            value: string;
         };
         /** AttemptCreate */
         AttemptCreate: {
             /** Item Id */
             item_id: string;
+            rating: components["schemas"]["AttemptRating"];
             /** Latency Ms */
             latency_ms?: number | null;
             /** Media Asset Id */
             media_asset_id?: string | null;
-            rating: components["schemas"]["AttemptRating"];
+            /**
+             * Revealed
+             * @default false
+             */
+            revealed: boolean;
         };
         /**
          * AttemptRating
@@ -477,49 +499,49 @@ export interface components {
         AttemptRating: "clean" | "hesitant" | "incorrect" | "revealed";
         /** AttemptRead */
         AttemptRead: {
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
             /** Id */
             id: string;
+            /** Session Id */
+            session_id: string;
             /** Item Id */
             item_id: string;
-            /** Latency Ms */
-            latency_ms: number | null;
+            /** Segment Id */
+            segment_id: string | null;
             /** Media Asset Id */
             media_asset_id: string | null;
             /** Mode */
             mode: string;
             /** Rating */
             rating: string;
+            /** Latency Ms */
+            latency_ms: number | null;
             /** Revealed */
             revealed: boolean;
-            /** Segment Id */
-            segment_id: string | null;
-            /** Session Id */
-            session_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** AttemptResult */
         AttemptResult: {
             attempt: components["schemas"]["AttemptRead"];
+            session: components["schemas"]["SessionRead"];
             /** Due At */
             due_at?: string | null;
             /** Mastery Stage */
             mastery_stage?: string | null;
-            session: components["schemas"]["SessionRead"];
         };
         /** Body_upload_media_api_v1_media_post */
         Body_upload_media_api_v1_media_post: {
             /** Category */
             category: string;
+            /** Upload */
+            upload: string;
             /** Revision Id */
             revision_id?: string | null;
             /** Segment Id */
             segment_id?: string | null;
-            /** Upload */
-            upload: string;
         };
         /** CuePoint */
         CuePoint: {
@@ -527,6 +549,10 @@ export interface components {
             label: string;
             /** Time */
             time: number;
+            /** Segment Id */
+            segment_id?: string | null;
+            /** End */
+            end?: number | null;
         };
         /** CuePointsUpdate */
         CuePointsUpdate: {
@@ -552,188 +578,188 @@ export interface components {
         };
         /** LanguageProfileInput */
         LanguageProfileInput: {
+            /** Slug */
+            slug: string;
+            /** Name */
+            name: string;
+            /** @default ltr */
+            direction: components["schemas"]["Direction"];
+            /** Fonts */
+            fonts?: string[];
             /** Annotation Schemas */
             annotation_schemas?: {
                 [key: string]: unknown;
             }[];
-            /** @default ltr */
-            direction: components["schemas"]["Direction"];
-            /** Display Options */
-            display_options?: {
-                [key: string]: unknown;
-            };
-            /** Fonts */
-            fonts?: string[];
-            /** Name */
-            name: string;
             /** Segmentation Defaults */
             segmentation_defaults?: {
                 [key: string]: unknown;
             };
-            /** Slug */
-            slug: string;
+            /** Display Options */
+            display_options?: {
+                [key: string]: unknown;
+            };
         };
         /** LanguageProfileRead */
         LanguageProfileRead: {
+            /** Id */
+            id: string;
+            /** Slug */
+            slug: string;
+            /** Name */
+            name: string;
+            /** Direction */
+            direction: string;
+            /** Fonts */
+            fonts: string[];
             /** Annotation Schemas */
             annotation_schemas: {
                 [key: string]: unknown;
             }[];
-            /** Direction */
-            direction: string;
-            /** Display Options */
-            display_options: {
-                [key: string]: unknown;
-            };
-            /** Fonts */
-            fonts: string[];
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
             /** Segmentation Defaults */
             segmentation_defaults: {
                 [key: string]: unknown;
             };
-            /** Slug */
-            slug: string;
+            /** Display Options */
+            display_options: {
+                [key: string]: unknown;
+            };
         };
         /** MasteryPage */
         MasteryPage: {
             /** Items */
             items: components["schemas"]["ReviewStateRead"][];
+            /** Total */
+            total: number;
             /** Limit */
             limit: number;
             /** Offset */
             offset: number;
-            /** Total */
-            total: number;
         };
         /** MediaRead */
         MediaRead: {
+            /** Id */
+            id: string;
+            /** Revision Id */
+            revision_id: string | null;
+            /** Segment Id */
+            segment_id: string | null;
             /** Category */
             category: string;
+            /** Mime Type */
+            mime_type: string;
+            /** Original Name */
+            original_name: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /** Cue Points */
+            cue_points?: components["schemas"]["CuePoint"][];
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
-            /** Cue Points */
-            cue_points?: components["schemas"]["CuePoint"][];
-            /** Id */
-            id: string;
-            /** Mime Type */
-            mime_type: string;
-            /** Original Name */
-            original_name: string;
-            /** Revision Id */
-            revision_id: string | null;
-            /** Segment Id */
-            segment_id: string | null;
-            /** Size Bytes */
-            size_bytes: number;
         };
         /** PassageDetail */
         PassageDetail: {
-            active_revision?: components["schemas"]["RevisionRead"] | null;
-            /** Active Revision Id */
-            active_revision_id: string | null;
-            /** Description */
-            description: string | null;
             /** Id */
             id: string;
-            /** Language Profile Id */
-            language_profile_id: string;
             /** Title */
             title: string;
+            /** Language Profile Id */
+            language_profile_id: string;
+            /** Description */
+            description: string | null;
+            /** Active Revision Id */
+            active_revision_id: string | null;
+            active_revision?: components["schemas"]["RevisionRead"] | null;
         };
         /** PassageInput */
         PassageInput: {
+            /** Title */
+            title: string;
+            /** Language Profile Id */
+            language_profile_id: string;
             /** Description */
             description?: string | null;
+            /** Source Text */
+            source_text: string;
             /** Hierarchy */
             hierarchy?: {
                 [key: string]: unknown;
             };
-            /** Language Profile Id */
-            language_profile_id: string;
             /** Segments */
             segments?: components["schemas"]["SegmentInput"][];
-            /** Source Text */
-            source_text: string;
-            /** Title */
-            title: string;
         };
         /** PassageRead */
         PassageRead: {
-            /** Active Revision Id */
-            active_revision_id: string | null;
-            /** Description */
-            description: string | null;
             /** Id */
             id: string;
-            /** Language Profile Id */
-            language_profile_id: string;
             /** Title */
             title: string;
+            /** Language Profile Id */
+            language_profile_id: string;
+            /** Description */
+            description: string | null;
+            /** Active Revision Id */
+            active_revision_id: string | null;
         };
         /** PluginInput */
         PluginInput: {
-            /** Config */
-            config?: {
-                [key: string]: unknown;
-            };
+            /** Plugin Id */
+            plugin_id: string;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Version */
+            version: string;
             /**
              * Enabled
              * @default true
              */
             enabled: boolean;
+            /** Config */
+            config?: {
+                [key: string]: unknown;
+            };
+        };
+        /** PluginRead */
+        PluginRead: {
+            /** Id */
+            id: string;
+            /** Plugin Id */
+            plugin_id: string;
             /** Kind */
             kind: string;
             /** Name */
             name: string;
-            /** Plugin Id */
-            plugin_id: string;
             /** Version */
             version: string;
-        };
-        /** PluginRead */
-        PluginRead: {
+            /** Enabled */
+            enabled: boolean;
             /** Config */
             config: {
                 [key: string]: unknown;
             };
-            /** Enabled */
-            enabled: boolean;
-            /** Id */
-            id: string;
-            /** Kind */
-            kind: string;
-            /** Name */
-            name: string;
-            /** Plugin Id */
-            plugin_id: string;
-            /** Version */
-            version: string;
         };
         /** PracticeItemRead */
         PracticeItemRead: {
-            /** Completed */
-            completed: boolean;
             /** Id */
             id: string;
-            /** Mode */
-            mode: string;
+            /** Session Id */
+            session_id: string;
+            /** Segment Id */
+            segment_id: string | null;
             /** Position */
             position: number;
+            /** Mode */
+            mode: string;
             /** Prompt */
             prompt: {
                 [key: string]: unknown;
             };
-            /** Segment Id */
-            segment_id: string | null;
-            /** Session Id */
-            session_id: string;
+            /** Completed */
+            completed: boolean;
         };
         /**
          * PracticeMode
@@ -754,10 +780,8 @@ export interface components {
         };
         /** ReviewStateRead */
         ReviewStateRead: {
-            /** Attempt Count */
-            attempt_count: number;
-            /** Clean Count */
-            clean_count: number;
+            /** Segment Id */
+            segment_id: string;
             /**
              * Due At
              * Format: date-time
@@ -765,82 +789,84 @@ export interface components {
             due_at: string;
             /** Mastery Stage */
             mastery_stage: string;
-            /** Segment Id */
-            segment_id: string;
+            /** Clean Count */
+            clean_count: number;
+            /** Attempt Count */
+            attempt_count: number;
         };
         /** RevisionInput */
         RevisionInput: {
+            /** Source Text */
+            source_text: string;
             /** Hierarchy */
             hierarchy?: {
                 [key: string]: unknown;
             };
             /** Segments */
             segments?: components["schemas"]["SegmentInput"][];
-            /** Source Text */
-            source_text: string;
         };
         /** RevisionRead */
         RevisionRead: {
-            /** Hierarchy */
-            hierarchy: {
-                [key: string]: unknown;
-            };
             /** Id */
             id: string;
             /** Passage Id */
             passage_id: string;
-            /** Practiced */
-            practiced: boolean;
             /** Revision Number */
             revision_number: number;
-            /** Segments */
-            segments?: components["schemas"]["SegmentRead"][];
             /** Source Text */
             source_text: string;
+            /** Hierarchy */
+            hierarchy: {
+                [key: string]: unknown;
+            };
+            /** Practiced */
+            practiced: boolean;
+            /** Segments */
+            segments?: components["schemas"]["SegmentRead"][];
         };
         /** SegmentInput */
         SegmentInput: {
-            /** Annotations */
-            annotations?: components["schemas"]["AnnotationInput"][];
             /** Client Id */
             client_id?: string | null;
-            /** Cue */
-            cue?: string | null;
+            /** Parent Client Id */
+            parent_client_id?: string | null;
             /** Kind */
             kind: string;
+            /** Ordinal */
+            ordinal: number;
+            /** Text */
+            text: string;
+            /** Cue */
+            cue?: string | null;
             /** Metadata Json */
             metadata_json?: {
                 [key: string]: unknown;
             };
-            /** Ordinal */
-            ordinal: number;
-            /** Parent Client Id */
-            parent_client_id?: string | null;
-            /** Text */
-            text: string;
+            /** Annotations */
+            annotations?: components["schemas"]["AnnotationInput"][];
         };
         /** SegmentRead */
         SegmentRead: {
-            /** Annotations */
-            annotations?: components["schemas"]["AnnotationRead"][];
-            /** Cue */
-            cue: string | null;
             /** Id */
             id: string;
+            /** Revision Id */
+            revision_id: string;
+            /** Parent Id */
+            parent_id: string | null;
             /** Kind */
             kind: string;
+            /** Ordinal */
+            ordinal: number;
+            /** Text */
+            text: string;
+            /** Cue */
+            cue: string | null;
             /** Metadata Json */
             metadata_json: {
                 [key: string]: unknown;
             };
-            /** Ordinal */
-            ordinal: number;
-            /** Parent Id */
-            parent_id: string | null;
-            /** Revision Id */
-            revision_id: string;
-            /** Text */
-            text: string;
+            /** Annotations */
+            annotations?: components["schemas"]["AnnotationRead"][];
         };
         /** SegmentsReplaceInput */
         SegmentsReplaceInput: {
@@ -849,6 +875,12 @@ export interface components {
         };
         /** SessionCreate */
         SessionCreate: {
+            /** Revision Id */
+            revision_id: string;
+            /** Modes */
+            modes?: components["schemas"]["PracticeMode"][] | null;
+            /** Segment Kinds */
+            segment_kinds?: string[] | null;
             /**
              * Due Only
              * @default false
@@ -856,31 +888,25 @@ export interface components {
             due_only: boolean;
             /** Minutes */
             minutes?: number | null;
-            /** Modes */
-            modes?: components["schemas"]["PracticeMode"][] | null;
-            /** Revision Id */
-            revision_id: string;
-            /** Segment Kinds */
-            segment_kinds?: string[] | null;
         };
         /** SessionRead */
         SessionRead: {
-            /** Completed At */
-            completed_at: string | null;
-            /** Current Index */
-            current_index: number;
             /** Id */
             id: string;
-            /** Items */
-            items?: components["schemas"]["PracticeItemRead"][];
-            /** Plan */
-            plan: {
-                [key: string]: unknown;
-            };
             /** Revision Id */
             revision_id: string;
             /** Status */
             status: string;
+            /** Plan */
+            plan: {
+                [key: string]: unknown;
+            };
+            /** Current Index */
+            current_index: number;
+            /** Completed At */
+            completed_at: string | null;
+            /** Items */
+            items?: components["schemas"]["PracticeItemRead"][];
         };
         /** SettingInput */
         SettingInput: {
@@ -896,19 +922,23 @@ export interface components {
         };
         /** ValidationError */
         ValidationError: {
-            /** Context */
-            ctx?: Record<string, never>;
-            /** Input */
-            input?: unknown;
             /** Location */
             loc: (string | number)[];
             /** Message */
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
         /** WeakLinkRead */
         WeakLinkRead: {
+            /** Segment Id */
+            segment_id: string;
+            /** Text */
+            text: string;
             /** Attempts */
             attempts: number;
             /** Difficult Attempts */
@@ -917,10 +947,6 @@ export interface components {
             difficulty_rate: number;
             /** Mean Latency Ms */
             mean_latency_ms?: number | null;
-            /** Segment Id */
-            segment_id: string;
-            /** Text */
-            text: string;
         };
     };
     responses: never;
@@ -931,166 +957,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    due_reviews_api_v1_analytics_due_get: {
-        parameters: {
-            query?: {
-                before?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReviewStateRead"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    mastery_api_v1_analytics_mastery_get: {
-        parameters: {
-            query?: {
-                limit?: number;
-                offset?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MasteryPage"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    weak_links_api_v1_analytics_weak_links_get: {
-        parameters: {
-            query?: {
-                revision_id?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WeakLinkRead"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_annotation_api_v1_annotations_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AnnotationCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AnnotationRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_annotation_api_v1_annotations__annotation_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                annotation_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: boolean;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     health_api_v1_health_get: {
         parameters: {
             query?: never;
@@ -1164,12 +1030,9 @@ export interface operations {
             };
         };
     };
-    list_media_api_v1_media_get: {
+    list_plugins_api_v1_plugins_get: {
         parameters: {
-            query?: {
-                revision_id?: string | null;
-                category?: string | null;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -1182,21 +1045,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MediaRead"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["PluginRead"][];
                 };
             };
         };
     };
-    upload_media_api_v1_media_post: {
+    register_plugin_api_v1_plugins_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -1205,7 +1059,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["Body_upload_media_api_v1_media_post"];
+                "application/json": components["schemas"]["PluginInput"];
             };
         };
         responses: {
@@ -1215,106 +1069,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MediaRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_media_api_v1_media__media_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                media_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: boolean;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    stream_media_api_v1_media__media_id__content_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                media_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    replace_media_cues_api_v1_media__media_id__cues_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                media_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CuePointsUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MediaRead"];
+                    "application/json": components["schemas"]["PluginRead"];
                 };
             };
             /** @description Validation Error */
@@ -1447,11 +1202,13 @@ export interface operations {
             };
         };
     };
-    list_plugins_api_v1_plugins_get: {
+    get_revision_api_v1_revisions__revision_id__get: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                revision_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -1462,31 +1219,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PluginRead"][];
-                };
-            };
-        };
-    };
-    register_plugin_api_v1_plugins_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PluginInput"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PluginRead"];
+                    "application/json": components["schemas"]["RevisionRead"];
                 };
             };
             /** @description Validation Error */
@@ -1500,7 +1233,7 @@ export interface operations {
             };
         };
     };
-    get_revision_api_v1_revisions__revision_id__get: {
+    replace_segments_api_v1_revisions__revision_id__segments_put: {
         parameters: {
             query?: never;
             header?: never;
@@ -1509,7 +1242,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SegmentsReplaceInput"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -1566,18 +1303,180 @@ export interface operations {
             };
         };
     };
-    replace_segments_api_v1_revisions__revision_id__segments_put: {
+    create_annotation_api_v1_annotations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnotationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_annotation_api_v1_annotations__annotation_id__delete: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                revision_id: string;
+                annotation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_media_api_v1_media_get: {
+        parameters: {
+            query?: {
+                revision_id?: string | null;
+                category?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_media_api_v1_media_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_media_api_v1_media_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stream_media_api_v1_media__media_id__content_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replace_media_cues_api_v1_media__media_id__cues_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SegmentsReplaceInput"];
+                "application/json": components["schemas"]["CuePointsUpdate"];
             };
         };
         responses: {
@@ -1587,7 +1486,40 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RevisionRead"];
+                    "application/json": components["schemas"]["MediaRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_media_api_v1_media__media_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -1731,6 +1663,37 @@ export interface operations {
             };
         };
     };
+    undo_attempt_api_v1_sessions__session_id__undo_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     complete_session_api_v1_sessions__session_id__complete_post: {
         parameters: {
             query?: never;
@@ -1749,6 +1712,100 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    due_reviews_api_v1_analytics_due_get: {
+        parameters: {
+            query?: {
+                before?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewStateRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mastery_api_v1_analytics_mastery_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MasteryPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    weak_links_api_v1_analytics_weak_links_get: {
+        parameters: {
+            query?: {
+                revision_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeakLinkRead"][];
                 };
             };
             /** @description Validation Error */

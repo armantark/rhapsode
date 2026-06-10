@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Any
 
 from fsrs import Card, Rating, Scheduler
 from sqlalchemy import select
@@ -13,6 +14,47 @@ RATING_MAP = {
     "incorrect": Rating.Hard,
     "revealed": Rating.Again,
 }
+
+
+def snapshot_review_state(db: Session, segment_id: str) -> dict[str, Any]:
+    """Capture a segment's review state before an attempt mutates it, so the
+    attempt can be undone exactly. ``existed: False`` means there was no state
+    yet and undo should delete the one the attempt created."""
+    state = db.scalar(
+        select(models.ReviewState).where(models.ReviewState.segment_id == segment_id)
+    )
+    if state is None:
+        return {"segment_id": segment_id, "existed": False}
+    return {
+        "segment_id": segment_id,
+        "existed": True,
+        "fsrs_card_json": state.fsrs_card_json,
+        "due_at": state.due_at.isoformat(),
+        "mastery_stage": state.mastery_stage,
+        "clean_count": state.clean_count,
+        "attempt_count": state.attempt_count,
+    }
+
+
+def restore_review_state(db: Session, snapshot: dict[str, Any]) -> None:
+    """Inverse of an attempt's effect on one segment's review state."""
+    state = db.scalar(
+        select(models.ReviewState).where(
+            models.ReviewState.segment_id == snapshot["segment_id"]
+        )
+    )
+    if not snapshot.get("existed"):
+        if state is not None:
+            db.delete(state)
+        return
+    if state is None:
+        state = models.ReviewState(segment_id=snapshot["segment_id"])
+        db.add(state)
+    state.fsrs_card_json = snapshot["fsrs_card_json"]
+    state.due_at = datetime.fromisoformat(snapshot["due_at"])
+    state.mastery_stage = snapshot["mastery_stage"]
+    state.clean_count = snapshot["clean_count"]
+    state.attempt_count = snapshot["attempt_count"]
 
 
 def review_segment(db: Session, segment_id: str, rating: str) -> models.ReviewState:

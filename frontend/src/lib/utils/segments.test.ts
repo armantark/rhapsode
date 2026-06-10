@@ -46,6 +46,37 @@ describe('draftsToInputs', () => {
 		expect(tokens.map((token) => token.parent_client_id)).toEqual([lineIds[0], lineIds[0], lineIds[1]]);
 	});
 
+	it('attaches the profile render hint so reading layers ruby-render like the fixture', () => {
+		const [draft] = autoSegment('祇園精舎の鐘の声');
+		draft.annotations = [
+			{ layer: 'reading', value: 'ぎおんしょうじゃのかねのこえ' },
+			{ layer: 'translation', value: 'The sound of the bells of Gion Shōja' }
+		];
+		const japaneseProfile = {
+			id: 'lang-ja',
+			slug: 'japanese',
+			name: 'Japanese',
+			direction: 'ltr',
+			fonts: [],
+			annotation_schemas: [
+				{ layer: 'reading', label: 'Reading', render: 'ruby' },
+				{ layer: 'translation', label: 'Translation' }
+			],
+			segmentation_defaults: {},
+			display_options: {}
+		};
+		const [input] = draftsToInputs([draft], japaneseProfile);
+		expect(input.annotations?.[0]).toEqual({
+			layer: 'reading',
+			value: 'ぎおんしょうじゃのかねのこえ',
+			data: { render: 'ruby' }
+		});
+		expect(input.annotations?.[1]).toEqual({
+			layer: 'translation',
+			value: 'The sound of the bells of Gion Shōja'
+		});
+	});
+
 	it('nulls blank cues and drops empty annotations', () => {
 		const [draft] = autoSegment('solus');
 		draft.cue = '  ';

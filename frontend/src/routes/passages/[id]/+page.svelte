@@ -99,7 +99,7 @@
 		saving = true;
 		error = '';
 		try {
-			revision = await api.replaceSegments(revision.id, draftsToInputs(drafts));
+			revision = await api.replaceSegments(revision.id, draftsToInputs(drafts, profile));
 			editing = false;
 		} catch (cause) {
 			if (isConflict(cause)) {
@@ -121,7 +121,7 @@
 			await api.createRevision(passage.id, {
 				source_text: forkSourceText,
 				hierarchy: revision?.hierarchy ?? {},
-				segments: draftsToInputs(drafts)
+				segments: draftsToInputs(drafts, profile)
 			});
 			conflict = false;
 			editing = false;

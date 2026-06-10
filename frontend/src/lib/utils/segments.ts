@@ -1,4 +1,5 @@
-import type { Segment, SegmentInput } from '$lib/api/types';
+import type { LanguageProfile, Segment, SegmentInput } from '$lib/api/types';
+import { layerRenderData } from './language';
 
 /** Hierarchy order, broadest first. A child is always one step down. */
 export const SEGMENT_KINDS = ['section', 'line', 'chunk', 'token'] as const;
@@ -75,7 +76,10 @@ export function autoSegment(sourceText: string, options: { tokenize?: boolean } 
  * Flatten drafts depth-first with globally increasing ordinals, which keeps
  * both the backend's global sort and its per-kind sort stable.
  */
-export function draftsToInputs(drafts: DraftSegment[]): SegmentInput[] {
+export function draftsToInputs(
+	drafts: DraftSegment[],
+	profile: LanguageProfile | null = null
+): SegmentInput[] {
 	const inputs: SegmentInput[] = [];
 	let ordinal = 0;
 	const visit = (draft: DraftSegment, parentClientId: string | null) => {
@@ -88,11 +92,15 @@ export function draftsToInputs(drafts: DraftSegment[]): SegmentInput[] {
 			cue: draft.cue.trim() ? draft.cue.trim() : null,
 			annotations: draft.annotations
 				.filter((annotation) => annotation.layer.trim() && annotation.value.trim())
-				.map((annotation) => ({
-					layer: annotation.layer.trim(),
-					value: annotation.value.trim(),
-					...(annotation.data ? { data: annotation.data } : {})
-				}))
+				.map((annotation) => {
+					const layer = annotation.layer.trim();
+					const data = annotation.data ?? layerRenderData(profile, layer);
+					return {
+						layer,
+						value: annotation.value.trim(),
+						...(data ? { data } : {})
+					};
+				})
 		});
 		for (const child of draft.children) visit(child, draft.clientId);
 	};

@@ -32,3 +32,16 @@ export function profileLayers(profile: LanguageProfile | null | undefined): { la
 		label: String(schema.label ?? schema.layer ?? '')
 	}));
 }
+
+/**
+ * Profiles can declare how a layer renders (Japanese: reading → ruby). Editor
+ * annotations don't carry data, so the hint is attached at save time to match
+ * the fixture shape ({"data": {"render": "ruby"}}).
+ */
+export function layerRenderData(
+	profile: LanguageProfile | null | undefined,
+	layer: string
+): Record<string, unknown> | undefined {
+	const schema = (profile?.annotation_schemas ?? []).find((candidate) => candidate.layer === layer);
+	return typeof schema?.render === 'string' ? { render: schema.render } : undefined;
+}

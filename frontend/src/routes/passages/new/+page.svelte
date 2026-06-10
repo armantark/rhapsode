@@ -40,7 +40,7 @@
 				language_profile_id: languageProfileId,
 				source_text: sourceText,
 				hierarchy: work.trim() ? { work: work.trim() } : {},
-				segments: draftsToInputs(drafts)
+				segments: draftsToInputs(drafts, profile)
 			});
 			await goto(`/passages/${created.id}`);
 		} catch (cause) {

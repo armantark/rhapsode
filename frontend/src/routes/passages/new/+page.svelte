@@ -34,13 +34,16 @@
 		error = '';
 		creating = true;
 		try {
+			// A passage without segments cannot start sessions, so creating
+			// straight from source text falls back to one line per line.
+			const effectiveDrafts = drafts.length ? drafts : autoSegment(sourceText);
 			const created = await api.createPassage({
 				title: title.trim(),
 				description: description.trim() || null,
 				language_profile_id: languageProfileId,
 				source_text: sourceText,
 				hierarchy: work.trim() ? { work: work.trim() } : {},
-				segments: draftsToInputs(drafts, profile)
+				segments: draftsToInputs(effectiveDrafts, profile)
 			});
 			await goto(`/passages/${created.id}`);
 		} catch (cause) {

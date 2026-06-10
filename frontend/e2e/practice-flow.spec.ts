@@ -75,6 +75,38 @@ test('an interrupted session resumes at the persisted cursor after reload', asyn
 	await expect(page.getByText('1/2 items')).toBeVisible();
 });
 
+test('creating without generating segments still yields practiceable lines', async ({ page }) => {
+	const title = `Autosegment e2e ${Date.now()}`;
+	await page.goto('/passages/new');
+	await page.getByLabel('Title').fill(title);
+	await page.getByLabel('Language').selectOption({ label: 'Latin' });
+	await page.getByLabel(/Source text/).fill('Arma virumque cano, Troiae qui primus ab oris');
+	// Deliberately skip "Generate line segments".
+	await page.getByRole('button', { name: 'Create passage' }).click();
+	await expect(page).toHaveURL(/\/passages\/[\w-]+/);
+	await page.getByRole('button', { name: '▶ Start session' }).click();
+	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
+	await expect(page.getByText('0/1 items')).toBeVisible();
+});
+
+test('desktop two-column layout stacks on a phone viewport', async ({ page }) => {
+	const title = `Responsive e2e ${Date.now()}`;
+	await createGreekPassage(page, title);
+
+	await page.setViewportSize({ width: 1280, height: 900 });
+	const columns = page.locator('.columns');
+	const desktopCols = await columns.evaluate(
+		(element) => getComputedStyle(element).gridTemplateColumns.split(' ').length
+	);
+	expect(desktopCols).toBe(2);
+
+	await page.setViewportSize({ width: 390, height: 800 });
+	const phoneCols = await columns.evaluate(
+		(element) => getComputedStyle(element).gridTemplateColumns.split(' ').length
+	);
+	expect(phoneCols).toBe(1);
+});
+
 test('recordings stay browser-local until explicitly saved as best', async ({ page }) => {
 	const title = `Recording e2e ${Date.now()}`;
 	await createGreekPassage(page, title);

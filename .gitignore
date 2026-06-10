@@ -12,3 +12,9 @@ backend/htmlcov/
 backend/.coverage
 
 backend/data-e2e/
+
+node_modules/
+frontend/.svelte-kit/
+frontend/build/
+frontend/test-results/
+frontend/playwright-report/

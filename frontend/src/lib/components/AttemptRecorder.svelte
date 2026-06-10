@@ -13,6 +13,9 @@
 
 	const recorder = new Recorder();
 	let recording = $state(false);
+	// getUserMedia can hang on an unanswered browser permission prompt, so the
+	// pending state is shown rather than leaving the button apparently dead.
+	let requesting = $state(false);
 	let take: AttemptRecording | null = $state(null);
 	let micError = $state('');
 	let savedTakeUrl = $state('');
@@ -27,6 +30,7 @@
 	async function start() {
 		micError = '';
 		discard();
+		requesting = true;
 		try {
 			await recorder.start();
 			recording = true;
@@ -35,6 +39,8 @@
 				error instanceof DOMException && error.name === 'NotAllowedError'
 					? 'Microphone access was denied. Allow it in the browser to record attempts.'
 					: `Could not start recording: ${error instanceof Error ? error.message : error}`;
+		} finally {
+			requesting = false;
 		}
 	}
 
@@ -68,6 +74,9 @@
 		{#if recording}
 			<button class="danger rec-stop" onclick={stop}>■ Stop</button>
 			<span class="pulse" aria-hidden="true"></span><span>Recording…</span>
+		{:else if requesting}
+			<button disabled>● Record</button>
+			<span class="muted">Waiting for microphone permission — check the browser prompt…</span>
 		{:else}
 			<button class="primary" onclick={start}>● Record</button>
 		{/if}

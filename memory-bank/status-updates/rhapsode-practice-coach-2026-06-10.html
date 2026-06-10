@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rhapsode Practice Coach — Shipped</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#0c0e12;--surface:#161a21;--surface-2:#1e232c;--border:#2a3040;--text:#e8ecf4;--text-dim:#8b95a8;--gold:#f0a830;--gold-glow:rgba(240,168,48,.14);--blue:#4f8cff;--red:#ff5c5c;--green:#4ade80;--purple:#a78bfa;--radius:12px}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 88% 0,#1c2310 0,transparent 36%),var(--bg);color:var(--text);font-family:Outfit,sans-serif;line-height:1.6}
+    main{max-width:1120px;margin:auto;padding:60px 24px 80px}
+    .badge{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;padding:7px 11px;border:1px solid var(--green);border-radius:999px;color:var(--green);background:rgba(74,222,128,.12)}
+    h1{font-size:clamp(2rem,5.5vw,3.8rem);font-weight:700;line-height:.96;max-width:840px;margin:20px 0 12px}
+    .lead{color:var(--text-dim);max-width:740px}
+    .eyebrow{font-family:"JetBrains Mono",monospace;font-size:.66rem;text-transform:uppercase;letter-spacing:.1em}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:30px}
+    .card{background:linear-gradient(145deg,var(--surface),#11151b);border:1px solid var(--border);border-radius:var(--radius);padding:22px}
+    .card h2{margin:8px 0 10px;font-size:1.15rem}
+    .card p{color:var(--text-dim);font-size:.9rem;margin:0 0 10px}
+    .wide{grid-column:1/-1}
+    .ladder{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+    .rung{display:flex;align-items:center;gap:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:10px 14px}
+    .rung .stage{font-family:"JetBrains Mono";font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;width:90px;flex-shrink:0}
+    .rung .arrow{color:var(--text-dim)}
+    .rung .mode{font-family:"JetBrains Mono";font-size:.8rem;font-weight:600}
+    .rung .why{color:var(--text-dim);font-size:.78rem;margin-inline-start:auto;text-align:right}
+    .s-new{color:var(--blue)}.s-learn{color:var(--gold)}.s-rev{color:var(--green)}.s-weak{color:var(--red)}.s-grad{color:var(--purple)}
+    .flowrow{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap;margin-top:12px}
+    .flowbox{flex:1;min-width:150px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:.82rem}
+    .flowbox b{display:block;font-family:"JetBrains Mono";font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);margin-bottom:6px}
+    .checks{margin:10px 0 0;padding:0;list-style:none}
+    .checks li{color:var(--green);font-family:"JetBrains Mono";font-size:.8rem;padding:3px 0}
+    .checks li::before{content:"✓ ";font-weight:600}
+    .mock{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:10px}
+    .mock .btn{display:inline-block;background:var(--gold-glow);border:1px solid var(--gold);color:var(--gold);border-radius:7px;padding:8px 14px;font-size:.85rem;font-weight:600}
+    .mock .btn.plain{background:var(--surface-2);border-color:var(--border);color:var(--text-dim);font-weight:400}
+    .mock .small{font-size:.72rem;color:var(--text-dim);margin-top:8px}
+    .tagrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+    .tag{font-family:"JetBrains Mono";font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;background:var(--surface-2);border:1px solid var(--border);padding:4px 8px;border-radius:6px;color:var(--text-dim)}
+    @media(max-width:900px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.rung .why{display:none}}
+  </style>
+</head>
+<body><main>
+  <span class="badge">Shipped — backend + frontend</span>
+  <h1>The coach is in: smart sessions for the Iliad</h1>
+  <p class="lead">You agreed the app encoded techniques but not pedagogy, and that the review loop had a missing edge. Both are closed, tuned for one user memorizing long epic verse in short, winnable sittings.</p>
+
+  <section class="grid">
+    <article class="card wide">
+      <span class="eyebrow" style="color:var(--gold)">The mode ladder</span>
+      <h2>Support fades as mastery grows</h2>
+      <p>Omit <code>modes</code> when creating a session and the planner picks per segment. No more choosing among eight techniques before every practice.</p>
+      <div class="ladder">
+        <div class="rung"><span class="stage s-new">new</span><span class="arrow">→</span><span class="mode s-new">progressive_fading</span><span class="why">maximum scaffolding for first contact</span></div>
+        <div class="rung"><span class="stage s-learn">learning</span><span class="arrow">→</span><span class="mode s-learn">cue_recall</span><span class="why">retrieval practice with a lifeline</span></div>
+        <div class="rung"><span class="stage s-rev">review / durable</span><span class="arrow">→</span><span class="mode s-rev">random_start</span><span class="why">cold retrieval, the honest test</span></div>
+        <div class="rung"><span class="stage s-weak">any + difficult</span><span class="arrow">→</span><span class="mode s-weak">weak_link</span><span class="why">errors pull a segment into drilling</span></div>
+        <div class="rung"><span class="stage s-grad">all graduated</span><span class="arrow">→</span><span class="mode s-grad">full_passage</span><span class="why">one holistic finisher exercises flow</span></div>
+      </div>
+    </article>
+
+    <article class="card">
+      <span class="eyebrow" style="color:var(--blue)">Built for your attention span</span>
+      <h2>12-item cap with triage</h2>
+      <p>A 100-line Iliad passage would otherwise emit a 100-item session — guaranteed abandonment. When the cap bites, the session is spent where it pays most:</p>
+      <div class="flowrow">
+        <div class="flowbox"><b>1 · repair</b>weak links first</div>
+        <div class="flowbox"><b>2 · push</b>learning segments</div>
+        <div class="flowbox"><b>3 · introduce</b>new lines, in order</div>
+        <div class="flowbox"><b>4 · maintain</b>mastered material</div>
+      </div>
+      <p style="margin-top:10px">Survivors are re-sorted into passage order — verse is memorized in sequence even when triage picked the targets.</p>
+    </article>
+
+    <article class="card">
+      <span class="eyebrow" style="color:var(--green)">Review loop closed</span>
+      <h2>One-click "practice due"</h2>
+      <p>The due tab now grows a button per passage. It creates a <code>due_only</code> smart session: only segments the scheduler says need work now.</p>
+      <div class="mock">
+        <span class="btn">▶ Practice 7 due — Iliad 1.1–25</span>
+        <div class="small">due tab → session → graded → rescheduled, no configuration in between</div>
+      </div>
+      <p style="margin-top:10px">Weak links also now show mean hesitation latency — the involuntary signal you can't game with optimistic self-grading. It breaks ties between equally error-prone lines.</p>
+    </article>
+
+    <article class="card">
+      <span class="eyebrow" style="color:var(--purple)">UI shift</span>
+      <h2>Smart is the default, manual is a disclosure</h2>
+      <div class="mock">
+        <span class="btn">✦ Smart session</span>
+        <div class="small">The coach picks a mode per segment from its mastery.</div>
+        <div class="small" style="margin-top:10px">▸ Choose modes manually</div>
+      </div>
+      <p style="margin-top:10px">The eight-mode toggle grid still exists for deliberate technique work — it just no longer stands between you and starting.</p>
+    </article>
+
+    <article class="card wide">
+      <span class="eyebrow" style="color:var(--green)">Verification</span>
+      <h2>All gates green</h2>
+      <ul class="checks">
+        <li>backend: 26 pytest, ruff, strict mypy, contract check</li>
+        <li>frontend: 45 vitest, svelte-check 0 errors</li>
+        <li>e2e: 7/7 including new smart-session flow</li>
+        <li>dev backend restarted on :8000 with cue-point migration applied</li>
+      </ul>
+      <div class="tagrow">
+        <span class="tag">services/planning.py</span><span class="tag">schemas.py</span><span class="tag">api/router.py</span><span class="tag">passages/[id]/+page.svelte</span><span class="tag">review/+page.svelte</span><span class="tag">contracts/openapi.json</span>
+      </div>
+      <p style="margin-top:12px">Next obvious step if you want it: schedule line-to-line <em>transitions</em> as first-class reviewable items (the other tension we discussed). Needs a schema addition, so say the word before starting a big Iliad import if you want junctures tracked from day one.</p>
+    </article>
+  </section>
+</main></body></html>

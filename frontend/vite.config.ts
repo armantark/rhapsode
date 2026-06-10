@@ -1,5 +1,6 @@
 import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { svelteTesting } from '@testing-library/svelte/vite';
 import { defineConfig } from 'vitest/config';
 
 // The backend ships without CORS middleware, so the dev server proxies /api
@@ -19,7 +20,9 @@ export default defineConfig({
 			// Single-user local-first app: build to static files that can be
 			// served next to the backend. SPA fallback because routes carry ids.
 			adapter: adapter({ fallback: 'index.html' })
-		})
+		}),
+		// Resolves svelte to its client build under vitest so components mount.
+		svelteTesting()
 	],
 	server: {
 		proxy: { '/api': apiTarget }

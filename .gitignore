@@ -11,3 +11,4 @@ backend/dist/
 backend/htmlcov/
 backend/.coverage
 
+backend/data-e2e/

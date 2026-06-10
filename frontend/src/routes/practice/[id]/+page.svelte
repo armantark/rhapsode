@@ -29,7 +29,6 @@
 	let submitting = $state(false);
 	let savingBest = $state(false);
 	let pendingMediaId: string | null = $state(null);
-	let recorder: AttemptRecorder | undefined = $state();
 	let lastFeedback = $state('');
 	let tally: Record<AttemptRating, number> = $state({ clean: 0, hesitant: 0, incorrect: 0, revealed: 0 });
 
@@ -64,7 +63,6 @@
 		revealed = false;
 		itemShownAt = performance.now();
 		pendingMediaId = null;
-		recorder?.reset();
 	});
 
 	onMount(async () => {
@@ -187,7 +185,9 @@
 			<AudioPlayer src={api.mediaUrl(referenceMedia[0].id)} title="Reference audio" storageKey={referenceMedia[0].id} />
 		{/if}
 
-		<AttemptRecorder bind:this={recorder} onSaveBest={saveBest} saving={savingBest} />
+		{#key currentItem.id}
+			<AttemptRecorder onSaveBest={saveBest} saving={savingBest} />
+		{/key}
 
 		<GradeBar onGrade={grade} disabled={submitting} />
 		{#if revealed}

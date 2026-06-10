@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { Recorder, disposeRecording, type AttemptRecording } from '$lib/audio/recorder';
 
 	let {
@@ -16,10 +17,12 @@
 	let micError = $state('');
 	let savedTakeUrl = $state('');
 
-	export function reset(): void {
-		discard();
-		savedTakeUrl = '';
-	}
+	// The parent remounts this component per practice item ({#key}), so
+	// unmount is where the mic and any unsaved take get released.
+	onDestroy(() => {
+		recorder.releaseStream();
+		disposeRecording(take);
+	});
 
 	async function start() {
 		micError = '';

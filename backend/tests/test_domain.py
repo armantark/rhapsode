@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from rhapsode import models, schemas
+from rhapsode.services import prep
 from rhapsode.services.backup import (
     SNAPSHOT_RETENTION,
     snapshot_sqlite,
@@ -284,6 +285,82 @@ def test_new_segments_shadow_first_when_reference_audio_exists(
             ("line", "shadowing"),
             ("line", "progressive_fading"),
         ]
+
+
+def test_prep_glosses_attach_to_tokens(session_factory: object) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="greek-token-gloss", name="Ancient Greek")
+        passage = models.Passage(title="Iliad", language_profile=language)
+        db.add(passage)
+        db.flush()
+        revision = create_revision(
+            db,
+            passage,
+            schemas.RevisionInput(
+                source_text="Μῆνιν ἄειδε θεά",
+                segments=[
+                    schemas.SegmentInput(
+                        kind="line", ordinal=0, text="Μῆνιν ἄειδε θεά", client_id="l0"
+                    ),
+                    schemas.SegmentInput(
+                        kind="token",
+                        ordinal=0,
+                        text="Μῆνιν",
+                        parent_client_id="l0",
+                        client_id="t0",
+                    ),
+                    schemas.SegmentInput(
+                        kind="token",
+                        ordinal=1,
+                        text="ἄειδε",
+                        parent_client_id="l0",
+                        client_id="t1",
+                    ),
+                    schemas.SegmentInput(
+                        kind="token",
+                        ordinal=2,
+                        text="θεά",
+                        parent_client_id="l0",
+                        client_id="t2",
+                    ),
+                ],
+            ),
+        )
+
+        def stub(language_name: str, lines: list[str]) -> list[prep.LineSuggestion]:
+            return [
+                prep.LineSuggestion(
+                    index=0,
+                    cue="wrath song",
+                    glosses=[
+                        prep.WordGloss(word_index=0, gloss="μῆνις, acc. sg., wrath"),
+                        prep.WordGloss(word_index=2, gloss="θεά, voc. sg., goddess"),
+                        prep.WordGloss(word_index=9, gloss="out of range, dropped"),
+                    ],
+                    translation="Sing, goddess, the wrath",
+                )
+            ]
+
+        written = prep.suggest_prep(db, revision, ["gloss"], generate=stub)
+        assert written == {"gloss": 2}
+        # expire_on_commit=False keeps the pre-write relationship cache alive.
+        db.expire_all()
+        tokens = sorted(
+            (s for s in revision.segments if s.kind == "token"),
+            key=lambda s: s.ordinal,
+        )
+        by_token = {
+            token.text: [a.value for a in token.annotations if a.layer == "gloss"]
+            for token in tokens
+        }
+        assert by_token == {
+            "Μῆνιν": ["μῆνις, acc. sg., wrath"],
+            "ἄειδε": [],
+            "θεά": ["θεά, voc. sg., goddess"],
+        }
+
+        # Re-running never duplicates: existing token glosses are skipped.
+        assert prep.suggest_prep(db, revision, ["gloss"], generate=stub) == {"gloss": 0}
 
 
 def test_minutes_budget_sizes_session_and_prioritizes_finisher(

@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
+import json
 import sys
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
@@ -54,6 +56,40 @@ class ScannedLine:
             mark = LONG_MARK if syllable.length == "long" else SHORT_MARK
             feet.setdefault(syllable.foot, []).append(mark)
         return " | ".join("".join(feet[foot]) for foot in sorted(feet))
+
+    def token_pieces(self, token_texts: list[str]) -> list[list[dict[str, str]]] | None:
+        """Distribute the line's syllables across its tokens by base-letter
+        counts. The scansion ignores our token boundaries (elided clitics like
+        δ᾽ merge into neighbors), so a syllable can straddle two tokens: the
+        piece where it starts carries the mark, continuations carry none.
+        Returns None when the letter streams disagree (edition mismatch)."""
+        counts = [len(normalize(text)) for text in token_texts]
+        if sum(counts) != sum(len(normalize(s.text)) for s in self.syllables):
+            return None
+        pieces: list[list[dict[str, str]]] = [[] for _ in token_texts]
+        token_index = 0
+        room = counts[0] if counts else 0
+        for syllable in self.syllables:
+            bare = normalize(syllable.text)
+            offset = 0
+            first = True
+            while offset < len(bare):
+                while room == 0:
+                    token_index += 1
+                    if token_index >= len(counts):
+                        return None
+                    room = counts[token_index]
+                take = min(len(bare) - offset, room)
+                pieces[token_index].append(
+                    {
+                        "text": bare[offset : offset + take],
+                        "length": syllable.length if first else "continuation",
+                    }
+                )
+                offset += take
+                room -= take
+                first = False
+        return pieces
 
     def data(self, book: int) -> dict[str, Any]:
         return {
@@ -128,22 +164,27 @@ def resolve_revision(client: httpx.Client, passage_query: str) -> dict[str, Any]
 
 
 def post_annotation(
-    client: httpx.Client, segment_id: str, scanned: ScannedLine, book: int
+    client: httpx.Client, segment_id: str, value: str, data: dict[str, Any] | None
 ) -> None:
     payload = {
         "segment_id": segment_id,
         "layer": "meter",
-        "value": scanned.scheme(),
-        "data": scanned.data(book),
+        "value": value,
+        "data": data,
     }
+    # Content-addressed key: retries of the SAME payload replay, but a
+    # reshaped payload (e.g. word-grouped → per-syllable) posts fresh instead
+    # of replaying a stale stored response.
+    digest = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, ensure_ascii=True).encode()
+    ).hexdigest()[:16]
     last_error: Exception | None = None
     for _ in range(3):
         try:
             response = client.post(
                 "/api/v1/annotations",
                 json=payload,
-                # Deterministic key: retries and re-runs replay, never duplicate.
-                headers={"Idempotency-Key": f"meter-{segment_id}"},
+                headers={"Idempotency-Key": f"meter-{digest}"},
             )
             response.raise_for_status()
             return
@@ -167,14 +208,22 @@ def main() -> None:
         line_segments = [
             segment for segment in revision["segments"] if segment["kind"] == "line"
         ]
-        todo: list[tuple[str, ScannedLine]] = []
-        for segment in line_segments:
-            if any(
+        tokens_by_line: dict[str, list[dict[str, Any]]] = {}
+        for segment in revision["segments"]:
+            if segment["kind"] == "token" and segment.get("parent_id"):
+                tokens_by_line.setdefault(segment["parent_id"], []).append(segment)
+        for tokens in tokens_by_line.values():
+            tokens.sort(key=lambda token: token["ordinal"])
+
+        def has_meter(segment: dict[str, Any]) -> bool:
+            return any(
                 annotation["layer"] == "meter"
                 for annotation in segment.get("annotations", [])
-            ):
-                print(f"skip (already annotated): {segment['text']}")
-                continue
+            )
+
+        todo: list[tuple[str, str, dict[str, Any] | None]] = []
+        matched: list[ScannedLine] = []
+        for segment in line_segments:
             key = normalize(segment["text"])
             scanned = scanned_by_text.get(key)
             if scanned is None:
@@ -183,18 +232,47 @@ def main() -> None:
             if scanned is None:
                 print(f"NO MATCH in book {args.book}: {segment['text']}", file=sys.stderr)
                 continue
-            todo.append((segment["id"], scanned))
+            matched.append(scanned)
+            if not has_meter(segment):
+                todo.append((segment["id"], scanned.scheme(), scanned.data(args.book)))
+            # Per-syllable marks go on the token segments; the value is a
+            # compact fallback, data.syllables drives over-syllable rendering.
+            tokens = tokens_by_line.get(segment["id"], [])
+            if not tokens:
+                continue
+            pieces = scanned.token_pieces([token["text"] for token in tokens])
+            if pieces is None:
+                print(
+                    f"letter streams disagree on {args.book}.{scanned.number}; "
+                    "skipping token marks",
+                    file=sys.stderr,
+                )
+                continue
+            marks = {"long": LONG_MARK, "short": SHORT_MARK, "continuation": ""}
+            for token, syllables in zip(tokens, pieces, strict=True):
+                if has_meter(token) or not syllables:
+                    continue
+                todo.append(
+                    (
+                        token["id"],
+                        "".join(marks[syllable["length"]] for syllable in syllables),
+                        {"source": SOURCE_CREDIT, "syllables": syllables},
+                    )
+                )
 
         with ThreadPoolExecutor(max_workers=8) as pool:
             list(
                 pool.map(
-                    lambda item: post_annotation(client, item[0], item[1], args.book),
+                    lambda item: post_annotation(client, item[0], item[1], item[2]),
                     todo,
                 )
             )
-        for _, scanned in todo:
+        for scanned in matched:
             print(f"{args.book}.{scanned.number}: {scanned.scheme()}")
-        print(f"annotated {len(todo)} of {len(line_segments)} line segments")
+        print(
+            f"matched {len(matched)} of {len(line_segments)} lines; "
+            f"posted {len(todo)} annotations"
+        )
 
 
 if __name__ == "__main__":

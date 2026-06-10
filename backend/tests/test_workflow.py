@@ -270,7 +270,7 @@ def test_prep_suggestions_fill_gaps_without_overwriting(
             prep.LineSuggestion(
                 index=index,
                 cue=f"cue {index}",
-                gloss=f"gloss {index}",
+                glosses=[prep.WordGloss(word_index=0, gloss=f"gloss {index}")],
                 translation=f"translation {index}",
             )
             for index in range(len(lines))

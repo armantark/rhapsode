@@ -18,21 +18,8 @@ async function probe(page: import('@playwright/test').Page): Promise<string> {
 	});
 }
 
-test.describe('no context permissions', () => {
-	test.use({ permissions: [] });
-	test('probe A', async ({ page }) => {
-		console.log('PROBE A (no permissions):', await probe(page));
-	});
-});
-
-test.describe('headful', () => {
-	test.use({ headless: false });
-	test('probe B', async ({ page }) => {
-		console.log('PROBE B (headful):', await probe(page));
-	});
-});
-
-test('probe C default', async ({ page }) => {
-	console.log('PROBE C (default config):', await probe(page));
-	expect(true).toBe(true);
+test('mic probe with default config permissions', async ({ page }) => {
+	const result = await probe(page);
+	console.log('MIC PROBE (default config):', result);
+	expect(result).toContain('granted');
 });

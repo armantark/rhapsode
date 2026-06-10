@@ -1,0 +1,27 @@
+{
+  "title": "Classical Armenian Sample",
+  "language_profile_id": "LANGUAGE_PROFILE_ID_CLASSICAL_ARMENIAN",
+  "description": "Representative Armenian-script passage",
+  "source_text": "Ճանաչել զիմաստութիւն եւ զխրատ",
+  "hierarchy": {},
+  "segments": [
+    {
+      "client_id": "line-1",
+      "kind": "line",
+      "ordinal": 0,
+      "text": "Ճանաչել զիմաստութիւն եւ զխրատ",
+      "cue": "Ճանաչել",
+      "annotations": [
+        {
+          "layer": "translation",
+          "value": "To know wisdom and instruction"
+        },
+        {
+          "layer": "grammar",
+          "value": "զ- marks the definite accusative"
+        }
+      ]
+    }
+  ]
+}
+

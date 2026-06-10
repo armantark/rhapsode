@@ -1,0 +1,46 @@
+{
+  "title": "Iliad 1.1-2",
+  "language_profile_id": "LANGUAGE_PROFILE_ID_ANCIENT_GREEK",
+  "description": "Opening invocation",
+  "source_text": "μῆνιν ἄειδε θεὰ Πηληϊάδεω Ἀχιλῆος\nοὐλομένην, ἣ μυρί᾽ Ἀχαιοῖς ἄλγε᾽ ἔθηκε",
+  "hierarchy": {
+    "work": "Iliad",
+    "book": 1
+  },
+  "segments": [
+    {
+      "client_id": "line-1",
+      "kind": "line",
+      "ordinal": 0,
+      "text": "μῆνιν ἄειδε θεὰ Πηληϊάδεω Ἀχιλῆος",
+      "cue": "Sing, goddess",
+      "metadata_json": {
+        "meter": "dactylic hexameter"
+      },
+      "annotations": [
+        {
+          "layer": "translation",
+          "value": "Sing, goddess, the anger of Achilles"
+        },
+        {
+          "layer": "grammar",
+          "value": "μῆνιν is the accusative object of ἄειδε"
+        }
+      ]
+    },
+    {
+      "client_id": "line-2",
+      "kind": "line",
+      "ordinal": 1,
+      "text": "οὐλομένην, ἣ μυρί᾽ Ἀχαιοῖς ἄλγε᾽ ἔθηκε",
+      "cue": "destructive",
+      "annotations": [
+        {
+          "layer": "translation",
+          "value": "destructive, which placed countless pains upon the Achaeans"
+        }
+      ]
+    }
+  ]
+}
+

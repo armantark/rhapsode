@@ -1,0 +1,30 @@
+{
+  "title": "Aeneid 1.1",
+  "language_profile_id": "LANGUAGE_PROFILE_ID_LATIN",
+  "description": "Opening of the Aeneid",
+  "source_text": "Arma virumque cano, Troiae qui primus ab oris",
+  "hierarchy": {
+    "work": "Aeneid",
+    "book": 1
+  },
+  "segments": [
+    {
+      "client_id": "line-1",
+      "kind": "line",
+      "ordinal": 0,
+      "text": "Arma virumque cano, Troiae qui primus ab oris",
+      "cue": "Arma",
+      "annotations": [
+        {
+          "layer": "translation",
+          "value": "I sing of arms and the man, who first from the shores of Troy"
+        },
+        {
+          "layer": "meter",
+          "value": "dactylic hexameter"
+        }
+      ]
+    }
+  ]
+}
+

@@ -3,20 +3,22 @@ import { describe, expect, it, vi } from 'vitest';
 import GradeBar from './GradeBar.svelte';
 
 describe('GradeBar', () => {
-	it('exposes the four contract ratings as buttons', () => {
+	it('exposes the four Anki-style grades as buttons', () => {
 		render(GradeBar, { onGrade: vi.fn() });
-		for (const rating of ['clean', 'hesitant', 'incorrect', 'revealed']) {
-			expect(screen.getByRole('button', { name: new RegExp(rating) })).toBeInTheDocument();
+		for (const label of ['Again', 'Hard', 'Good', 'Easy']) {
+			expect(screen.getByRole('button', { name: new RegExp(label) })).toBeInTheDocument();
 		}
 	});
 
-	it('grades via number-key shortcuts', async () => {
+	it('grades via number-key shortcuts matching Anki order', async () => {
 		const onGrade = vi.fn();
 		render(GradeBar, { onGrade });
-		await fireEvent.keyDown(window, { key: '2' });
+		await fireEvent.keyDown(window, { key: '1' });
+		expect(onGrade).toHaveBeenCalledWith('revealed');
+		await fireEvent.keyDown(window, { key: '3' });
 		expect(onGrade).toHaveBeenCalledWith('hesitant');
 		await fireEvent.keyDown(window, { key: '4' });
-		expect(onGrade).toHaveBeenCalledWith('revealed');
+		expect(onGrade).toHaveBeenCalledWith('clean');
 	});
 
 	it('ignores shortcuts while typing in a form field', async () => {
@@ -37,6 +39,6 @@ describe('GradeBar', () => {
 		expect(onGrade).not.toHaveBeenCalled();
 		// jsdom dispatches clicks on disabled buttons, so assert the attribute
 		// browsers actually honor.
-		expect(screen.getByRole('button', { name: /clean/ })).toBeDisabled();
+		expect(screen.getByRole('button', { name: /Easy/ })).toBeDisabled();
 	});
 });

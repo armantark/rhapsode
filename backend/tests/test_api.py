@@ -46,6 +46,15 @@ def test_practiced_revision_is_immutable(
         headers=mutation(),
     )
     assert replaced.status_code == 409
+    # Immutability protects the recall target, not the support layers:
+    # annotations (meter, glosses) stay editable after practice begins.
+    segment_id = revision["segments"][0]["id"]
+    annotated = client.post(
+        "/api/v1/annotations",
+        json={"segment_id": segment_id, "layer": "meter", "value": "—◡◡"},
+        headers=mutation(),
+    )
+    assert annotated.status_code == 201
 
 
 def test_plugin_validation_and_settings(

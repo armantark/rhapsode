@@ -9,11 +9,11 @@
 		disabled?: boolean;
 	} = $props();
 
-	const GRADES: { rating: AttemptRating; key: string; hint: string }[] = [
-		{ rating: 'clean', key: '1', hint: 'Perfect recall' },
-		{ rating: 'hesitant', key: '2', hint: 'Recalled with pauses' },
-		{ rating: 'incorrect', key: '3', hint: 'Errors in recall' },
-		{ rating: 'revealed', key: '4', hint: 'Needed the text' }
+	const GRADES: { rating: AttemptRating; key: string; label: string; hint: string }[] = [
+		{ rating: 'revealed', key: '1', label: 'Again', hint: 'Needed the text' },
+		{ rating: 'incorrect', key: '2', label: 'Hard', hint: 'Errors in recall' },
+		{ rating: 'hesitant', key: '3', label: 'Good', hint: 'Recalled with pauses' },
+		{ rating: 'clean', key: '4', label: 'Easy', hint: 'Perfect recall' }
 	];
 
 	function onKeydown(event: KeyboardEvent) {
@@ -34,7 +34,7 @@
 	{#each GRADES as grade (grade.rating)}
 		<button class="grade {grade.rating}" {disabled} title={grade.hint} onclick={() => onGrade(grade.rating)}>
 			<kbd>{grade.key}</kbd>
-			<span>{grade.rating}</span>
+			<span>{grade.label}</span>
 		</button>
 	{/each}
 </div>

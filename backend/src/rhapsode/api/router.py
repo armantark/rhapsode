@@ -152,12 +152,13 @@ def replace_segments(
     "/annotations", response_model=schemas.AnnotationRead, status_code=201, tags=["passages"]
 )
 def create_annotation(payload: schemas.AnnotationCreate, db: Db) -> models.Annotation:
+    # Practiced-revision immutability deliberately does NOT apply here: it
+    # protects the recall target (the text), while annotations are support
+    # layers. Backfilling meter or glosses onto an in-progress passage must
+    # not require a new revision that would orphan review states.
     segment = db.get(models.Segment, payload.segment_id)
     if segment is None:
         raise not_found("Segment")
-    revision = db.get(models.PassageRevision, segment.revision_id)
-    if revision is not None and revision.practiced:
-        raise HTTPException(status_code=409, detail="Practiced revisions are immutable.")
     annotation = models.Annotation(**payload.model_dump())
     db.add(annotation)
     db.commit()
@@ -169,10 +170,6 @@ def delete_annotation(annotation_id: str, db: Db) -> dict[str, bool]:
     annotation = db.get(models.Annotation, annotation_id)
     if annotation is None:
         raise not_found("Annotation")
-    segment = db.get(models.Segment, annotation.segment_id)
-    revision = db.get(models.PassageRevision, segment.revision_id) if segment else None
-    if revision is not None and revision.practiced:
-        raise HTTPException(status_code=409, detail="Practiced revisions are immutable.")
     db.delete(annotation)
     db.commit()
     return {"deleted": True}

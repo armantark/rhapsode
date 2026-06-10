@@ -67,8 +67,6 @@
 		}
 		return [...groups.entries()];
 	});
-	const filteredWeak = $derived(weak);
-
 	async function applyWeakFilter() {
 		weak = await api.weakLinks(revisionFilter || undefined);
 	}
@@ -168,13 +166,13 @@
 			{/each}
 		</select>
 	</div>
-	{#if filteredWeak.length === 0}
+	{#if weak.length === 0}
 		<p class="muted">No weak links — or no difficult attempts yet.</p>
 	{:else}
 		<table>
 			<thead><tr><th>Segment</th><th>Difficulty</th><th>Hard / total</th></tr></thead>
 			<tbody>
-				{#each filteredWeak as link (link.segment_id)}
+				{#each weak as link (link.segment_id)}
 					<tr>
 						<td class="passage-text segment-cell">{link.text}</td>
 						<td>

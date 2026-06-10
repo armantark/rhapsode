@@ -120,6 +120,14 @@ class AnnotationCreate(AnnotationInput):
     segment_id: str
 
 
+class PrepSuggestInput(BaseModel):
+    layers: list[str] = Field(default_factory=lambda: ["cue", "gloss", "translation"])
+
+
+class PrepSuggestResult(BaseModel):
+    written: dict[str, int]
+
+
 class CuePoint(BaseModel):
     label: str = Field(min_length=1, max_length=120)
     time: float = Field(ge=0, allow_inf_nan=False)
@@ -157,10 +165,15 @@ class SessionCreate(BaseModel):
     # None means "smart": the planner picks a mode per segment from its
     # mastery stage instead of the caller prescribing a technique.
     modes: list[PracticeMode] | None = None
-    segment_kinds: list[str] = Field(default_factory=lambda: ["chunk", "line"])
+    # None means "auto grain": chunks if the revision has them, else lines,
+    # plus junctures. An explicit list is honored as-is.
+    segment_kinds: list[str] | None = None
     # Restrict the plan to segments whose review state is currently due,
     # closing the loop between the review tab and the practice launcher.
     due_only: bool = False
+    # Time budget: the planner converts minutes into an item count using the
+    # caller's own per-mode attempt latencies. None keeps the fixed item cap.
+    minutes: int | None = Field(default=None, ge=1, le=180)
 
 
 class PracticeItemRead(ORMModel):

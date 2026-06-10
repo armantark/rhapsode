@@ -33,15 +33,15 @@ test('full loop: create, render Unicode, practice, grade, review', async ({ page
 	await startManualSession(page);
 	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
 
-	// Item 1: grade clean via keyboard shortcut.
+	// Item 1: grade clean via the Anki-style "Easy" shortcut (4).
 	await expect(page.getByText('Sing, goddess')).toBeVisible();
-	await page.keyboard.press('1');
+	await page.keyboard.press('4');
 	await expect(page.getByText(/clean · mastery/)).toBeVisible();
 
 	// Item 2: revealing forces the "revealed" rating regardless of the key.
 	await page.getByRole('button', { name: /Reveal text/ }).click();
 	await expect(page.getByText(GREEK_LINE_2).first()).toBeVisible();
-	await page.keyboard.press('1');
+	await page.keyboard.press('4');
 
 	// Both items done → completion summary with the local tally.
 	await expect(page.getByText('Session complete')).toBeVisible();
@@ -64,7 +64,7 @@ test('an interrupted session resumes at the persisted cursor after reload', asyn
 	const sessionUrl = page.url();
 
 	await expect(page.getByText('Sing, goddess')).toBeVisible();
-	await page.keyboard.press('2'); // hesitant on item 1
+	await page.keyboard.press('3'); // "Good" → hesitant on item 1
 	await expect(page.getByText(/hesitant · mastery/)).toBeVisible();
 
 	// Simulate a crash: hard reload, then verify the same item cursor.
@@ -120,15 +120,21 @@ test('smart session scaffolds a fresh passage with progressive fading', async ({
 	await page.getByRole('button', { name: '✦ Smart session' }).click();
 	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
 
+	// Auto grain deals both lines plus the juncture between them.
+	await expect(page.getByText('0/3 items')).toBeVisible();
+
 	// Never-practiced segments get maximum support: the fading prompt with
 	// its stage controls, not a bare cue.
 	await expect(page.getByText('progressive fading')).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Fade further' })).toBeVisible();
 
-	// Grade both items clean to seed review state for later due drills.
-	await page.keyboard.press('1');
-	await expect(page.getByText(/clean · mastery/)).toBeVisible();
-	await page.keyboard.press('1');
+	// Grade all items clean ("Easy" = 4) to seed review state for later
+	// drills, waiting for each submission to land before the next keypress.
+	await page.keyboard.press('4');
+	await expect(page.getByText('1/3 items')).toBeVisible();
+	await page.keyboard.press('4');
+	await expect(page.getByText('2/3 items')).toBeVisible();
+	await page.keyboard.press('4');
 	await expect(page.getByText('Session complete')).toBeVisible();
 });
 
@@ -143,6 +149,10 @@ test('recordings stay browser-local until explicitly saved as best', async ({ pa
 			uploads.push(request.url());
 		}
 	});
+
+	// The recorder is opt-in: speaking aloud is the act, the mic is optional.
+	await expect(page.getByRole('button', { name: '● Record' })).not.toBeVisible();
+	await page.getByRole('button', { name: /enable recording/ }).click();
 
 	// Take one: record and discard — nothing may leave the browser.
 	await page.getByRole('button', { name: '● Record' }).click();

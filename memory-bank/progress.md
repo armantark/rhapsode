@@ -27,10 +27,21 @@
 - Coach features implemented end to end: smart sessions (mastery-driven mode
   selection per segment, 12-item cap with triage), due-only sessions launched
   from the review tab, and hesitation latency surfaced in weak links.
+- 2026-06-10 grill decisions implemented in one pass: time-budgeted smart
+  sessions (minutes → item count via personal per-mode latency), focus-paused
+  latency clock, consecutive-clean mastery with regression, difficulty decay,
+  auto-generated juncture segments (+ backfill script), one-grain planner,
+  opt-in mic, API-backed reference audio listing, scholar recitation import
+  (Chamberlain Iliad 1.1-100, CC-BY), startup/pre-migration DB snapshots, and
+  a Gemini 3.1 Pro prep assistant (cue/gloss/translation drafts, verified
+  live against the real passage).
+- Iliad meter annotations imported from Chamberlain's scansion data
+  (vendored CSVs, CC-BY) via `scripts/import_meter.py`.
+- All gates green: 33 backend tests, ruff, strict mypy, contract check,
+  47 frontend unit tests, svelte-check clean, 7/7 Playwright e2e.
 
 ## Remaining
 
-- Frontend should regenerate its API client and remove the media registry,
-  cue-point, and far-future mastery local workarounds.
-- Two Playwright microphone tests remain blocked by fake microphone permission
-  timeouts; the four non-microphone e2e workflows pass.
+- Point `RHAPSODE_BACKUP_DIR` at a synced (iCloud) folder when launching.
+- Extend the reference-audio URL map beyond Iliad 1.1-100 as practice grows.
+- Prose chunk drafting via LLM is deferred until a prose passage exists.

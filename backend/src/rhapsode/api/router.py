@@ -12,7 +12,7 @@ from rhapsode.api.deps import get_session
 from rhapsode.config import get_settings
 from rhapsode.services import media as media_service
 from rhapsode.services import passages as passage_service
-from rhapsode.services import planning, scheduling
+from rhapsode.services import planning, prep, scheduling
 
 router = APIRouter(prefix="/api/v1")
 Db = Annotated[Session, Depends(get_session)]
@@ -149,6 +149,28 @@ def replace_segments(
 
 
 @router.post(
+    "/revisions/{revision_id}/prep-suggestions",
+    response_model=schemas.PrepSuggestResult,
+    tags=["passages"],
+)
+def prep_suggestions(
+    revision_id: str, payload: schemas.PrepSuggestInput, db: Db
+) -> schemas.PrepSuggestResult:
+    try:
+        revision = passage_service.get_revision(db, revision_id)
+    except LookupError as error:
+        raise not_found("Revision") from error
+    unknown = set(payload.layers) - set(prep.PREP_LAYERS)
+    if unknown:
+        raise HTTPException(status_code=422, detail=f"Unknown prep layers: {sorted(unknown)}")
+    try:
+        written = prep.suggest_prep(db, revision, payload.layers)
+    except prep.PrepUnavailableError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    return schemas.PrepSuggestResult(written=written)
+
+
+@router.post(
     "/annotations", response_model=schemas.AnnotationRead, status_code=201, tags=["passages"]
 )
 def create_annotation(payload: schemas.AnnotationCreate, db: Db) -> models.Annotation:
@@ -277,7 +299,13 @@ def create_session(payload: schemas.SessionCreate, db: Db) -> models.PracticeSes
             raise HTTPException(status_code=422, detail="No segments are due for review.")
     if payload.modes is None:
         requested_modes: list[str] = []
-        plan = planning.build_smart_plan(db, revision, payload.segment_kinds, only_segment_ids)
+        plan = planning.build_smart_plan(
+            db,
+            revision,
+            payload.segment_kinds,
+            only_segment_ids,
+            minutes=payload.minutes,
+        )
     else:
         requested_modes = [mode.value for mode in payload.modes]
         plan = planning.build_plan(
@@ -292,6 +320,7 @@ def create_session(payload: schemas.SessionCreate, db: Db) -> models.PracticeSes
             "segment_kinds": payload.segment_kinds,
             "smart": payload.modes is None,
             "due_only": payload.due_only,
+            "minutes": payload.minutes,
         },
     )
     db.add(session)

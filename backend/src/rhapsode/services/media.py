@@ -1,6 +1,4 @@
 import os
-import shutil
-from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -32,15 +30,3 @@ def store_upload(upload: UploadFile, media_dir: Path) -> tuple[str, int]:
 
 def remove_asset(path: str) -> None:
     Path(path).unlink(missing_ok=True)
-
-
-def snapshot_sqlite(database_path: Path, backup_dir: Path) -> Path | None:
-    if not database_path.exists():
-        return None
-    backup_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
-    destination = (
-        backup_dir / f"{database_path.stem}-pre-migration-{timestamp}{database_path.suffix}"
-    )
-    shutil.copy2(database_path, destination)
-    return destination

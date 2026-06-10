@@ -90,6 +90,28 @@ describe('smart sessions', () => {
 		expect('modes' in body).toBe(false);
 		expect(body.due_only).toBe(true);
 	});
+
+	it('passes the time budget through unchanged', async () => {
+		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({}, 201));
+		await api.createSession({ revision_id: 'rev-1', minutes: 15 });
+		const body = JSON.parse(fetchMock.mock.calls[0][1]?.body as string);
+		expect(body.minutes).toBe(15);
+		// segment_kinds omitted → backend picks the passage's natural grain.
+		expect('segment_kinds' in body).toBe(false);
+	});
+});
+
+describe('prep assistant', () => {
+	it('posts to the revision-scoped endpoint with default layers', async () => {
+		const fetchMock = vi
+			.spyOn(globalThis, 'fetch')
+			.mockResolvedValue(jsonResponse({ written: { cue: 2, gloss: 2, translation: 2 } }));
+		const result = await api.suggestPrep('rev-1');
+		const url = String(fetchMock.mock.calls[0][0]);
+		expect(url).toContain('/api/v1/revisions/rev-1/prep-suggestions');
+		expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string)).toEqual({});
+		expect(result.written.cue).toBe(2);
+	});
 });
 
 describe('media upload', () => {

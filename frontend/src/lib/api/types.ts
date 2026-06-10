@@ -30,6 +30,7 @@ export type AttemptRating = components['schemas']['AttemptRating'];
 export type ReviewState = components['schemas']['ReviewStateRead'];
 export type WeakLink = components['schemas']['WeakLinkRead'];
 export type Setting = components['schemas']['SettingRead'];
+export type PrepSuggestResult = components['schemas']['PrepSuggestResult'];
 
 export type MediaCategory = 'reference' | 'saved_best';
 

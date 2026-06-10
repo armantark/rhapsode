@@ -280,6 +280,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/revisions/{revision_id}/prep-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Prep Suggestions */
+        post: operations["prep_suggestions_api_v1_revisions__revision_id__prep_suggestions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/revisions/{revision_id}/segments": {
         parameters: {
             query?: never;
@@ -723,6 +740,18 @@ export interface components {
          * @enum {string}
          */
         PracticeMode: "shadowing" | "progressive_fading" | "forward_chaining" | "backward_chaining" | "cue_recall" | "random_start" | "weak_link" | "full_passage";
+        /** PrepSuggestInput */
+        PrepSuggestInput: {
+            /** Layers */
+            layers?: string[];
+        };
+        /** PrepSuggestResult */
+        PrepSuggestResult: {
+            /** Written */
+            written: {
+                [key: string]: number;
+            };
+        };
         /** ReviewStateRead */
         ReviewStateRead: {
             /** Attempt Count */
@@ -825,12 +854,14 @@ export interface components {
              * @default false
              */
             due_only: boolean;
+            /** Minutes */
+            minutes?: number | null;
             /** Modes */
             modes?: components["schemas"]["PracticeMode"][] | null;
             /** Revision Id */
             revision_id: string;
             /** Segment Kinds */
-            segment_kinds?: string[];
+            segment_kinds?: string[] | null;
         };
         /** SessionRead */
         SessionRead: {
@@ -1487,6 +1518,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RevisionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    prep_suggestions_api_v1_revisions__revision_id__prep_suggestions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                revision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrepSuggestInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrepSuggestResult"];
                 };
             };
             /** @description Validation Error */

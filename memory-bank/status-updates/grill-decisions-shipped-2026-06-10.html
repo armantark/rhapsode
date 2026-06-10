@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grill Decisions — Shipped</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0c0e12; --surface: #161a21; --surface-2: #1e232c; --border: #2a3040;
+  --text: #e8ecf4; --text-dim: #8b95a8; --accent: #4f8cff;
+  --accent-glow: rgba(79,140,255,0.15); --red: #ff5c5c; --green: #4ade80;
+  --amber: #fbbf24; --purple: #a78bfa; --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; font-weight: 300; padding: 40px 20px 80px; }
+.wrap { max-width: 1080px; margin: 0 auto; }
+.badge { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--green); background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.3); padding: 5px 12px; border-radius: 999px; display: inline-block; }
+h1 { font-weight: 700; font-size: 2rem; margin: 14px 0 8px; }
+.sub { color: var(--text-dim); font-size: 0.95rem; max-width: 720px; }
+.gates { display: flex; gap: 10px; flex-wrap: wrap; margin: 22px 0 34px; }
+.gate { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 18px; text-align: center; flex: 1 1 120px; }
+.gate b { display: block; font-family: 'JetBrains Mono', monospace; font-size: 1.3rem; color: var(--green); font-weight: 600; }
+.gate span { font-size: 0.72rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: transform .15s, box-shadow .15s; }
+.card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
+.tag { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; letter-spacing: 0.1em; padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+.t-a { color: var(--accent); background: var(--accent-glow); }
+.t-b { color: var(--amber); background: rgba(251,191,36,0.1); }
+.t-c { color: var(--purple); background: rgba(167,139,250,0.12); }
+.t-d { color: var(--green); background: rgba(74,222,128,0.1); }
+.card h3 { font-weight: 500; font-size: 1.02rem; margin: 10px 0 6px; }
+.card p { font-size: 0.85rem; color: var(--text-dim); line-height: 1.5; }
+.files { margin-top: 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+.file { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-dim); padding: 3px 8px; border-radius: 4px; }
+.demo { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-top: 12px; font-size: 0.8rem; }
+.chips { display: flex; gap: 6px; }
+.chip { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; border: 1px solid var(--border); color: var(--text-dim); padding: 4px 10px; border-radius: 999px; cursor: pointer; background: none; }
+.chip.on { border-color: var(--amber); color: var(--amber); background: rgba(251,191,36,0.08); }
+.chip-out { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--green); margin-top: 8px; }
+.greek { font-size: 0.92rem; line-height: 1.7; }
+.junct { color: var(--purple); font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; background: rgba(167,139,250,0.08); border-left: 2px solid var(--purple); padding: 2px 8px; margin: 4px 0; }
+.gloss { color: var(--text-dim); font-size: 0.74rem; font-style: italic; }
+.cue-line { color: var(--amber); font-size: 0.76rem; }
+section.steps { margin-top: 36px; }
+section.steps h2 { font-weight: 500; font-size: 1.15rem; margin-bottom: 14px; }
+.step { display: flex; gap: 14px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.step:last-child { border-bottom: none; }
+.num { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 0.75rem; background: var(--accent-glow); color: var(--accent); border-radius: 6px; min-width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; }
+.step p { font-size: 0.86rem; color: var(--text-dim); }
+.step code { font-family: 'JetBrains Mono', monospace; font-size: 0.76rem; color: var(--text); background: var(--surface-2); padding: 1px 6px; border-radius: 4px; }
+.copybtn { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; background: var(--surface-2); color: var(--accent); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; cursor: pointer; margin-top: 8px; }
+.copybtn:hover { border-color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="badge">SHIPPED — ALL 13 GRILL DECISIONS</span>
+  <h1>The coach grew up: time budgets, junctures, decay, Gemini prep</h1>
+  <p class="sub">Everything ruled in the 2026-06-10 grill session is implemented, tested, and already applied to your live Iliad passage — backend and frontend in one pass, as ordered.</p>
+
+  <div class="gates">
+    <div class="gate"><b>33</b><span>BACKEND TESTS</span></div>
+    <div class="gate"><b>47</b><span>UNIT TESTS</span></div>
+    <div class="gate"><b>7/7</b><span>PLAYWRIGHT E2E</span></div>
+    <div class="gate"><b>0</b><span>MYPY / SVELTE-CHECK</span></div>
+    <div class="gate"><b>LIVE</b><span>GEMINI VERIFIED</span></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <span class="tag t-a">A · TIME BUDGETS</span>
+      <h3>"How long do I have?" is now a first-class input</h3>
+      <p>Pick a chip, and the planner converts minutes into items using <em>your own</em> mean per-mode latency (defaults until 5 samples per mode). The full-passage finisher is budgeted first once everything graduates. The latency clock pauses whenever the window blurs or the tab hides — alt-tab time no longer pollutes the signal.</p>
+      <div class="demo">
+        <div class="chips" id="chips">
+          <button class="chip on" data-n="cap">standard</button>
+          <button class="chip" data-n="5">≈5 min</button>
+          <button class="chip" data-n="15">≈15 min</button>
+          <button class="chip" data-n="30">≈30 min</button>
+        </div>
+        <div class="chip-out" id="chipout">→ 12-item cap, triaged</div>
+      </div>
+      <div class="files"><span class="file">planning.py</span><span class="file">schemas.py</span><span class="file">practice/[id]</span><span class="file">passages/[id]</span></div>
+    </div>
+
+    <div class="card">
+      <span class="tag t-b">B · JUNCTURES</span>
+      <h3>Line-to-line seams are now drilled on their own</h3>
+      <p>Every line boundary auto-generates a <code style="font-family:'JetBrains Mono',monospace;font-size:0.76rem">juncture</code> segment — tail of line N cues the head of line N+1 — with its own FSRS card. Your Iliad revision was backfilled (+4). They practice right before their landing line but never clutter the reading view or editor.</p>
+      <div class="demo greek">
+        <div>Μῆνιν ἄειδε, θεὰ̄, Πηληϊάδεω Ἀχιλῆος</div>
+        <div class="junct">… θεὰ̄, Πηληϊάδεω Ἀχιλῆος → οὐλομένην, ἣ μῡρί᾽ …</div>
+        <div>οὐλομένην, ἣ μῡρί᾽ Ἀχαιοῖς ἄλγε᾽ ἔθηκε,</div>
+      </div>
+      <div class="files"><span class="file">passages.py</span><span class="file">backfill_junctures.py</span></div>
+    </div>
+
+    <div class="card">
+      <span class="tag t-b">B · HONEST MASTERY</span>
+      <h3>Stages regress; difficulty flags decay</h3>
+      <p>Clean counts are now <em>consecutive</em>: "Again" wipes the streak, "Hard" demotes one step (durable→review), so a lapsed line gets its scaffolding back instead of coasting on history. Conversely, a segment exits the weak-link pool after 2 consecutive cleans — no permanent stigma.</p>
+      <div class="demo" style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;line-height:1.9">
+        <span style="color:var(--green)">clean ×5 → durable</span><br>
+        <span style="color:var(--amber)">hard → review (streak 2)</span><br>
+        <span style="color:var(--red)">again → learning (streak 0)</span>
+      </div>
+      <div class="files"><span class="file">scheduling.py</span><span class="file">planning.py</span></div>
+    </div>
+
+    <div class="card">
+      <span class="tag t-c">C · GEMINI PREP</span>
+      <h3>"✦ Draft prep" — verified live on your passage</h3>
+      <p>One button on the passage page asks Gemini 3.1 Pro (<code style="font-family:'JetBrains Mono',monospace;font-size:0.7rem">gemini-3.1-pro-preview</code> — the only API id it exposes) to draft cues, glosses, and translations for lines that lack them. Structured output via Pydantic schema, never overwrites your authoring, practice loop stays offline. It already filled all 5 Iliad lines:</p>
+      <div class="demo greek">
+        <div>πολλὰ̄ς δ᾽ ἰφθί̄μους ψῡχὰ̄ς Ἄϊδι προΐαψεν</div>
+        <div class="cue-line">cue: ἰφθί̄μους ψῡχὰ̄ς Ἄϊδι</div>
+        <div class="gloss">προΐαψεν — aorist of προϊάπτω, "hurled down prematurely"</div>
+        <div class="gloss">"and hurled many strong souls of heroes down to Hades"</div>
+      </div>
+      <div class="files"><span class="file">prep.py</span><span class="file">config.py</span><span class="file">router.py</span></div>
+    </div>
+
+    <div class="card">
+      <span class="tag t-d">D · DURABILITY</span>
+      <h3>Snapshots on startup, scholar audio for shadowing</h3>
+      <p>The DB snapshots itself at startup (gated to 24h, keeps 14) plus before every migration. The mic is demoted to an opt-in toggle, and David Chamberlain's CC-BY recitation of Iliad 1.1–100 is attached to your passage as reference audio — shadowing a fluent reconstructed-pronunciation reading beats hearing yourself.</p>
+      <div class="files"><span class="file">backup.py</span><span class="file">import_reference_audio.py</span><span class="file">cli.py</span></div>
+    </div>
+
+    <div class="card">
+      <span class="tag t-d">D · ONE GRAIN</span>
+      <h3>The planner stopped double-dealing</h3>
+      <p>Smart sessions now pick one practice grain per passage — chunks if authored, else lines — plus junctures, instead of dealing the same words twice under two review states. Reference audio listings moved from browser localStorage to the API, so script-imported media shows up everywhere.</p>
+      <div class="files"><span class="file">planning.py</span><span class="file">client.ts</span></div>
+    </div>
+  </div>
+
+  <section class="steps">
+    <h2>To start practicing for real</h2>
+    <div class="step"><span class="num">1</span><p>Open the Iliad passage → pick <code>≈15 min</code> → <code>✦ Smart session</code>. You'll see junctures dealt between lines, and the session sized to your pace.</p></div>
+    <div class="step"><span class="num">2</span><p>Review Gemini's drafted cues/glosses in the segment editor — edit anything that misses. Drafts never touch what you wrote.</p></div>
+    <div class="step"><span class="num">3</span><p>For off-machine safety, launch with <code>RHAPSODE_BACKUP_DIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/rhapsode-backups"</code>.</p></div>
+    <div class="step"><span class="num">4</span><p>When you extend past line 100: <code>uv run python scripts/import_reference_audio.py --passage Iliad --lines 101-200</code> after adding the archive.org URL to the map, and <code>scripts/import_meter.py</code> for scansion.</p></div>
+    <button class="copybtn" onclick="navigator.clipboard.writeText('RHAPSODE_BACKUP_DIR=&quot;$HOME/Library/Mobile Documents/com~apple~CloudDocs/rhapsode-backups&quot; uv run rhapsode')">⧉ copy iCloud-backup launch command</button>
+  </section>
+</div>
+<script>
+const out = { cap: '→ 12-item cap, triaged', 5: '→ ~4 items while learning (75s/item default), self-corrects to your pace', 15: '→ ~12 items, finisher budgeted first once graduated', 30: '→ whole short passages + maintenance' };
+document.querySelectorAll('#chips .chip').forEach(chip => chip.addEventListener('click', () => {
+  document.querySelectorAll('#chips .chip').forEach(c => c.classList.remove('on'));
+  chip.classList.add('on');
+  document.getElementById('chipout').textContent = out[chip.dataset.n];
+}));
+</script>
+</body>
+</html>

@@ -1,8 +1,10 @@
 from collections.abc import Callable
 
+import pytest
 from fastapi.testclient import TestClient
 
 from rhapsode.app import create_app
+from rhapsode.services import prep
 
 
 def test_end_to_end_recall_and_restart_recovery(
@@ -256,6 +258,75 @@ def test_cue_points_are_validated(
     assert invalid.status_code == 422
 
 
+def test_prep_suggestions_fill_gaps_without_overwriting(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def stub_generate(language_name: str, lines: list[str]) -> list[prep.LineSuggestion]:
+        assert language_name == "Ancient Greek"
+        return [
+            prep.LineSuggestion(
+                index=index,
+                cue=f"cue {index}",
+                gloss=f"gloss {index}",
+                translation=f"translation {index}",
+            )
+            for index in range(len(lines))
+        ]
+
+    monkeypatch.setattr(prep, "_generate", stub_generate)
+    revision = passage["active_revision"]
+    response = client.post(
+        f"/api/v1/revisions/{revision['id']}/prep-suggestions",
+        json={},
+        headers=mutation(),
+    )
+    assert response.status_code == 200
+    # Both lines already had authored cues; line 1 already had a translation.
+    assert response.json()["written"] == {"cue": 0, "gloss": 2, "translation": 1}
+
+    refreshed = client.get(f"/api/v1/revisions/{revision['id']}").json()
+    lines = sorted(
+        (segment for segment in refreshed["segments"] if segment["kind"] == "line"),
+        key=lambda segment: segment["ordinal"],
+    )
+    # Authored content survives; drafts only fill the gaps.
+    assert lines[0]["cue"] == "Sing, goddess"
+    layers0 = {a["layer"]: a["value"] for a in lines[0]["annotations"]}
+    assert layers0["translation"] == "Sing, goddess, the anger of Achilles"
+    assert layers0["gloss"] == "gloss 0"
+    layers1 = {a["layer"]: a["value"] for a in lines[1]["annotations"]}
+    assert layers1["translation"] == "translation 1"
+
+    unknown = client.post(
+        f"/api/v1/revisions/{revision['id']}/prep-suggestions",
+        json={"layers": ["meter"]},
+        headers=mutation(),
+    )
+    assert unknown.status_code == 422
+
+
+def test_prep_suggestions_unavailable_without_key(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def raising(language_name: str, lines: list[str]) -> list[prep.LineSuggestion]:
+        raise prep.PrepUnavailableError("GEMINI_API_KEY is not configured.")
+
+    monkeypatch.setattr(prep, "_generate", raising)
+    revision = passage["active_revision"]
+    response = client.post(
+        f"/api/v1/revisions/{revision['id']}/prep-suggestions",
+        json={},
+        headers=mutation(),
+    )
+    assert response.status_code == 503
+
+
 def test_mastery_index_is_paginated(
     client: TestClient,
     mutation: Callable[..., dict[str, str]],
@@ -277,7 +348,8 @@ def test_mastery_index_is_paginated(
 
     first_page = client.get("/api/v1/analytics/mastery?limit=1&offset=0")
     assert first_page.status_code == 200
-    assert first_page.json()["total"] == 2
+    # Two lines plus the auto-generated juncture between them.
+    assert first_page.json()["total"] == 3
     assert len(first_page.json()["items"]) == 1
     assert first_page.json()["limit"] == 1
     assert first_page.json()["offset"] == 0

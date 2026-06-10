@@ -8,11 +8,65 @@ class PracticedRevisionError(ValueError):
     pass
 
 
+# Words of context on each side of a line boundary (grill B3). Three words is
+# enough to recognize the landing site without re-drilling the whole line.
+JUNCTURE_SPAN = 3
+
+
+def _tail(text: str) -> str:
+    words = text.split()
+    return ("… " if len(words) > JUNCTURE_SPAN else "") + " ".join(words[-JUNCTURE_SPAN:])
+
+
+def _head(text: str) -> str:
+    words = text.split()
+    return " ".join(words[:JUNCTURE_SPAN]) + (" …" if len(words) > JUNCTURE_SPAN else "")
+
+
+def add_junctures(
+    db: Session, revision_id: str, segments: list[models.Segment]
+) -> list[models.Segment]:
+    """Generate juncture segments between consecutive lines: cue is the tail
+    of line N, target is the head of line N+1. The between-lines transition is
+    the classic oral-verse failure point and deserves its own review state.
+    Idempotent so it can also backfill already-practiced revisions."""
+    lines = sorted(
+        (segment for segment in segments if segment.kind == "line"),
+        key=lambda segment: segment.ordinal,
+    )
+    existing = {
+        (segment.metadata_json or {}).get("juncture_after")
+        for segment in segments
+        if segment.kind == "juncture"
+    }
+    created: list[models.Segment] = []
+    for previous, following in zip(lines, lines[1:], strict=False):
+        if previous.ordinal in existing:
+            continue
+        juncture = models.Segment(
+            revision_id=revision_id,
+            kind="juncture",
+            # Same ordinal as the line it leads into; the planner breaks the
+            # tie so the transition drills right before its landing line.
+            ordinal=following.ordinal,
+            text=_head(following.text),
+            cue=_tail(previous.text),
+            metadata_json={"juncture_after": previous.ordinal},
+        )
+        db.add(juncture)
+        created.append(juncture)
+    db.flush()
+    return created
+
+
 def add_segments(
     db: Session, revision: models.PassageRevision, inputs: list[schemas.SegmentInput]
 ) -> list[models.Segment]:
     client_map: dict[str, str] = {}
     created: list[models.Segment] = []
+    # Junctures are always derived, never authored: dropping inbound ones
+    # keeps revision forks from duplicating them.
+    inputs = [item for item in inputs if item.kind != "juncture"]
     for item in sorted(inputs, key=lambda value: value.ordinal):
         parent_id = client_map.get(item.parent_client_id or "")
         segment = models.Segment(
@@ -38,6 +92,7 @@ def add_segments(
                 )
             )
         created.append(segment)
+    created.extend(add_junctures(db, revision.id, created))
     return created
 
 

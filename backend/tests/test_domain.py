@@ -1,10 +1,17 @@
-from datetime import UTC, datetime
+import os
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from rhapsode import models
-from rhapsode.services.media import snapshot_sqlite
+from rhapsode import models, schemas
+from rhapsode.services.backup import (
+    SNAPSHOT_RETENTION,
+    snapshot_sqlite,
+    startup_snapshot,
+)
+from rhapsode.services.passages import create_revision
 from rhapsode.services.planning import (
     BUILT_IN_MODES,
+    _difficult_segment_ids,
     build_plan,
     build_smart_plan,
     progressive_masks,
@@ -12,7 +19,7 @@ from rhapsode.services.planning import (
     register_practice_mode,
     smart_mode_for,
 )
-from rhapsode.services.scheduling import mastery_stage
+from rhapsode.services.scheduling import _next_clean_streak, mastery_stage
 
 
 def test_progressive_masks_remove_support() -> None:
@@ -131,6 +138,142 @@ def test_smart_plan_caps_session_size_and_triages(session_factory: object) -> No
         assert planned_ordinals == sorted(planned_ordinals)
 
 
+def test_clean_streak_regresses_mastery() -> None:
+    # Again wipes the streak; Hard demotes one threshold step (grill B2).
+    assert _next_clean_streak(5, "clean") == 6
+    assert _next_clean_streak(5, "hesitant") == 5
+    assert _next_clean_streak(5, "incorrect") == 2  # durable → review
+    assert _next_clean_streak(3, "incorrect") == 0  # review → learning
+    assert _next_clean_streak(7, "revealed") == 0
+
+
+def test_difficulty_decays_after_two_consecutive_cleans(session_factory: object) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="latin-decay", name="Latin")
+        passage = models.Passage(title="Aeneid", language_profile=language)
+        revision = models.PassageRevision(
+            passage=passage, revision_number=1, source_text="..."
+        )
+        revision.segments = [
+            models.Segment(kind="line", ordinal=index, text=f"line {index}")
+            for index in range(3)
+        ]
+        db.add(passage)
+        db.commit()
+        repaired, recovering, relapsed = revision.segments
+        session = models.PracticeSession(revision_id=revision.id, plan={})
+        db.add(session)
+        db.flush()
+        item = models.PracticeItem(
+            session_id=session.id, position=0, mode="cue_recall", prompt={}
+        )
+        db.add(item)
+        db.flush()
+
+        def attempt(segment: models.Segment, rating: str) -> None:
+            db.add(
+                models.Attempt(
+                    session_id=session.id,
+                    item_id=item.id,
+                    segment_id=segment.id,
+                    mode="cue_recall",
+                    rating=rating,
+                )
+            )
+            db.flush()
+
+        attempt(repaired, "incorrect")
+        attempt(repaired, "clean")
+        attempt(repaired, "clean")
+        attempt(recovering, "revealed")
+        attempt(recovering, "clean")
+        attempt(relapsed, "incorrect")
+        attempt(relapsed, "clean")
+        attempt(relapsed, "clean")
+        attempt(relapsed, "revealed")
+        db.commit()
+
+        difficult = _difficult_segment_ids(db)
+        assert repaired.id not in difficult
+        assert recovering.id in difficult
+        assert relapsed.id in difficult
+
+
+def test_junctures_generated_between_lines(session_factory: object) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="greek-junctures", name="Ancient Greek")
+        passage = models.Passage(title="Iliad", language_profile=language)
+        db.add(passage)
+        db.flush()
+        revision = create_revision(
+            db,
+            passage,
+            schemas.RevisionInput(
+                source_text="...",
+                segments=[
+                    schemas.SegmentInput(
+                        kind="line", ordinal=0, text="Μῆνιν ἄειδε θεὰ Πηληϊάδεω Ἀχιλῆος"
+                    ),
+                    schemas.SegmentInput(
+                        kind="line", ordinal=1, text="οὐλομένην ἣ μυρί Ἀχαιοῖς ἄλγε ἔθηκε"
+                    ),
+                ],
+            ),
+        )
+        junctures = [s for s in revision.segments if s.kind == "juncture"]
+        assert len(junctures) == 1
+        # Cue is the tail of line N, target the head of line N+1.
+        assert junctures[0].cue == "… θεὰ Πηληϊάδεω Ἀχιλῆος"
+        assert junctures[0].text == "οὐλομένην ἣ μυρί …"
+
+        # Auto grain deals lines + junctures, transition before landing line.
+        plan = build_smart_plan(db, revision, None)
+        kinds = {s.id: s.kind for s in revision.segments}
+        planned = [kinds[item["segment_id"]] for item in plan]
+        assert planned == ["line", "juncture", "line"]
+
+
+def test_minutes_budget_sizes_session_and_prioritizes_finisher(
+    session_factory: object,
+) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="latin-budget", name="Latin")
+        passage = models.Passage(title="Aeneid", language_profile=language)
+        revision = models.PassageRevision(
+            passage=passage, revision_number=1, source_text="..."
+        )
+        revision.segments = [
+            models.Segment(kind="line", ordinal=index, text=f"line {index}")
+            for index in range(20)
+        ]
+        db.add(passage)
+        db.commit()
+
+        # Fresh passage, 5-minute budget, no latency history: defaults say
+        # progressive_fading ≈ 75s, so 300s buys 4 items.
+        plan = build_smart_plan(db, revision, ["line"], minutes=5)
+        assert len(plan) == 4
+
+        for segment in revision.segments:
+            db.add(
+                models.ReviewState(
+                    segment_id=segment.id,
+                    fsrs_card_json="{}",
+                    due_at=datetime.now(UTC),
+                    mastery_stage="durable",
+                    clean_count=5,
+                    attempt_count=6,
+                )
+            )
+        db.commit()
+
+        # Fully graduated: the finisher is budgeted first (120s default),
+        # leaving 180s for random_start (30s) maintenance → 6 items + finisher.
+        plan = build_smart_plan(db, revision, ["line"], minutes=5)
+        assert plan[-1]["mode"] == "full_passage"
+        assert len(plan) == 7
+
+
 def test_mastery_stages() -> None:
     state = models.ReviewState(
         segment_id="segment",
@@ -158,9 +301,31 @@ def test_plugin_practice_mode_can_extend_prompts() -> None:
 def test_snapshot_sqlite_copies_existing_database(tmp_path: Path) -> None:
     source = tmp_path / "rhapsode.db"
     source.write_bytes(b"sqlite")
-    destination = snapshot_sqlite(source, tmp_path / "backups")
+    destination = snapshot_sqlite(source, tmp_path / "backups", "pre-migration")
     assert destination is not None
     assert destination.read_bytes() == b"sqlite"
+
+
+def test_startup_snapshot_gates_on_age_and_prunes(tmp_path: Path) -> None:
+    source = tmp_path / "rhapsode.db"
+    source.write_bytes(b"sqlite")
+    backups = tmp_path / "backups"
+
+    first = startup_snapshot(source, backups)
+    assert first is not None
+    # A fresh snapshot exists, so a second startup within 24h is a no-op.
+    assert startup_snapshot(source, backups) is None
+
+    # Age the existing snapshot past the gate; startup snapshots resume.
+    stale_mtime = (datetime.now(UTC) - timedelta(hours=25)).timestamp()
+    os.utime(first, (stale_mtime, stale_mtime))
+    assert startup_snapshot(source, backups) is not None
+
+    # Retention keeps the newest N snapshots regardless of label.
+    for index in range(SNAPSHOT_RETENTION + 3):
+        extra = snapshot_sqlite(source, backups, f"label{index}")
+        assert extra is not None
+    assert len(list(backups.glob("rhapsode-*.db"))) == SNAPSHOT_RETENTION
 
 
 def test_sqlite_uses_wal_mode(session_factory: object) -> None:

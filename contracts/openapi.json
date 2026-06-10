@@ -873,6 +873,35 @@
         "title": "PracticeMode",
         "type": "string"
       },
+      "PrepSuggestInput": {
+        "properties": {
+          "layers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Layers",
+            "type": "array"
+          }
+        },
+        "title": "PrepSuggestInput",
+        "type": "object"
+      },
+      "PrepSuggestResult": {
+        "properties": {
+          "written": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Written",
+            "type": "object"
+          }
+        },
+        "required": [
+          "written"
+        ],
+        "title": "PrepSuggestResult",
+        "type": "object"
+      },
       "ReviewStateRead": {
         "properties": {
           "attempt_count": {
@@ -1139,6 +1168,19 @@
             "title": "Due Only",
             "type": "boolean"
           },
+          "minutes": {
+            "anyOf": [
+              {
+                "maximum": 180.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minutes"
+          },
           "modes": {
             "anyOf": [
               {
@@ -1158,11 +1200,18 @@
             "type": "string"
           },
           "segment_kinds": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Segment Kinds",
-            "type": "array"
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment Kinds"
           }
         },
         "required": [
@@ -2187,6 +2236,58 @@
           }
         },
         "summary": "Get Revision",
+        "tags": [
+          "passages"
+        ]
+      }
+    },
+    "/api/v1/revisions/{revision_id}/prep-suggestions": {
+      "post": {
+        "operationId": "prep_suggestions_api_v1_revisions__revision_id__prep_suggestions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revision_id",
+            "required": true,
+            "schema": {
+              "title": "Revision Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrepSuggestInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrepSuggestResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Prep Suggestions",
         "tags": [
           "passages"
         ]

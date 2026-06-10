@@ -6,15 +6,9 @@
 	import SegmentEditor from '$lib/components/SegmentEditor.svelte';
 	import SegmentText from '$lib/components/SegmentText.svelte';
 	import { api, isConflict } from '$lib/api/client';
-	import type { LanguageProfile, PassageDetail, PracticeMode, Revision } from '$lib/api/types';
+	import type { LanguageProfile, Media, PassageDetail, PracticeMode, Revision } from '$lib/api/types';
 	import { PRACTICE_MODES } from '$lib/api/types';
 	import { profileLayers, supportsRuby, supportsVertical } from '$lib/utils/language';
-	import {
-		mediaForRevision,
-		forgetMedia,
-		registerMedia,
-		type MediaRecord
-	} from '$lib/utils/mediaRegistry';
 	import { rememberActiveSession } from '$lib/utils/recovery';
 	import {
 		buildSegmentTree,
@@ -43,17 +37,31 @@
 	let conflict = $state(false);
 	let forkSourceText = $state('');
 
-	// audio
-	let referenceMedia: MediaRecord[] = $state([]);
+	// audio — listed from the backend so reference tracks imported outside
+	// this browser (e.g. the scholar-recitation import script) still appear.
+	let referenceMedia: Media[] = $state([]);
 	let uploading = $state(false);
 
 	// practice launcher
 	let chosenModes: PracticeMode[] = $state(['cue_recall']);
 	let chosenKinds: string[] = $state(['line']);
 	let startingSession = $state(false);
+	// Time budget chips (grill A3): null = the planner's fixed item cap.
+	const MINUTES_KEY = 'rhapsode.sessionMinutes';
+	const MINUTE_CHOICES = [5, 15, 30];
+	let minutesChoice: number | null = $state(null);
 
-	const tree = $derived.by(() => (revision ? buildSegmentTree(revision.segments ?? []) : []));
-	const kinds = $derived.by(() => (revision ? presentKinds(revision.segments ?? []) : []));
+	// prep assistant
+	let suggesting = $state(false);
+	let prepSummary = $state('');
+
+	// Junctures are derived drill targets, not text: they practice but never
+	// display or edit.
+	const visibleSegments = $derived.by(() =>
+		(revision?.segments ?? []).filter((segment) => segment.kind !== 'juncture')
+	);
+	const tree = $derived.by(() => buildSegmentTree(visibleSegments));
+	const kinds = $derived.by(() => presentKinds(visibleSegments));
 	const layerChoices = $derived.by(() => {
 		const declared = profileLayers(profile).map((entry) => entry.layer);
 		const present = new Set(
@@ -64,7 +72,11 @@
 		return [...new Set([...declared, ...present])];
 	});
 
-	onMount(load);
+	onMount(() => {
+		const stored = Number(localStorage.getItem(MINUTES_KEY));
+		minutesChoice = MINUTE_CHOICES.includes(stored) ? stored : null;
+		void load();
+	});
 
 	async function load() {
 		loading = true;
@@ -76,9 +88,9 @@
 			profile = languages.find((candidate) => candidate.id === passage?.language_profile_id) ?? null;
 			enabledLayers = [];
 			if (revision) {
-				drafts = segmentsToDrafts(revision.segments ?? []);
+				drafts = segmentsToDrafts(visibleSegments);
 				forkSourceText = revision.source_text;
-				referenceMedia = mediaForRevision(revision.id, 'reference');
+				referenceMedia = await api.listMedia(revision.id, 'reference');
 				if (!chosenKinds.every((kind) => kinds.includes(kind)) && kinds.length) {
 					chosenKinds = [kinds.includes('line') ? 'line' : kinds[0]];
 				}
@@ -140,20 +152,11 @@
 		uploading = true;
 		error = '';
 		try {
-			const media = await api.uploadMedia(file, 'reference', {
+			await api.uploadMedia(file, 'reference', {
 				revisionId: revision.id,
 				filename: file.name
 			});
-			registerMedia({
-				id: media.id,
-				category: 'reference',
-				revisionId: revision.id,
-				segmentId: null,
-				name: media.original_name,
-				mimeType: media.mime_type,
-				createdAt: media.created_at
-			});
-			referenceMedia = mediaForRevision(revision.id, 'reference');
+			referenceMedia = await api.listMedia(revision.id, 'reference');
 		} catch (cause) {
 			error = `Could not upload audio: ${cause instanceof Error ? cause.message : cause}`;
 		} finally {
@@ -164,8 +167,31 @@
 
 	async function removeReference(mediaId: string) {
 		await api.deleteMedia(mediaId);
-		forgetMedia(mediaId);
-		if (revision) referenceMedia = mediaForRevision(revision.id, 'reference');
+		if (revision) referenceMedia = await api.listMedia(revision.id, 'reference');
+	}
+
+	function pickMinutes(value: number | null) {
+		minutesChoice = value;
+		if (value === null) localStorage.removeItem(MINUTES_KEY);
+		else localStorage.setItem(MINUTES_KEY, String(value));
+	}
+
+	async function suggestPrep() {
+		if (!revision) return;
+		suggesting = true;
+		error = '';
+		prepSummary = '';
+		try {
+			const result = await api.suggestPrep(revision.id);
+			prepSummary = Object.entries(result.written)
+				.map(([layer, count]) => `${count} ${layer}${count === 1 ? '' : 's'}`)
+				.join(', ');
+			await load();
+		} catch (cause) {
+			error = `Could not draft prep: ${cause instanceof Error ? cause.message : cause}`;
+		} finally {
+			suggesting = false;
+		}
 	}
 
 	async function startSession(smart = false) {
@@ -174,11 +200,13 @@
 		error = '';
 		try {
 			// Omitting modes asks the backend coach to pick one per segment
-			// from its mastery stage.
+			// from its mastery stage; omitting segment_kinds lets it pick the
+			// passage's natural grain (plus junctures).
 			const session = await api.createSession({
 				revision_id: revision.id,
-				...(smart ? {} : { modes: chosenModes }),
-				segment_kinds: chosenKinds
+				...(smart
+					? { ...(minutesChoice !== null ? { minutes: minutesChoice } : {}) }
+					: { modes: chosenModes, segment_kinds: chosenKinds })
 			});
 			rememberActiveSession({
 				sessionId: session.id,
@@ -244,7 +272,7 @@
 				</label>
 				{#each referenceMedia as media (media.id)}
 					<div class="media">
-						<AudioPlayer src={api.mediaUrl(media.id)} title={media.name} storageKey={media.id} />
+						<AudioPlayer src={api.mediaUrl(media.id)} title={media.original_name} storageKey={media.id} />
 						<button class="danger" onclick={() => removeReference(media.id)}>Delete</button>
 					</div>
 				{:else}
@@ -254,14 +282,29 @@
 
 			<section class="card">
 				<span class="eyebrow">Practice</span>
+				<div class="choices" role="group" aria-label="Session length">
+					<button
+						class:active={minutesChoice === null}
+						aria-pressed={minutesChoice === null}
+						onclick={() => pickMinutes(null)}
+					>standard</button>
+					{#each MINUTE_CHOICES as minutes (minutes)}
+						<button
+							class:active={minutesChoice === minutes}
+							aria-pressed={minutesChoice === minutes}
+							onclick={() => pickMinutes(minutes)}
+						>≈{minutes} min</button>
+					{/each}
+				</div>
 				<button
 					class="primary start"
-					disabled={startingSession || chosenKinds.length === 0}
+					disabled={startingSession}
 					onclick={() => startSession(true)}
 				>{startingSession ? 'Starting…' : '✦ Smart session'}</button>
 				<p class="muted small">
 					The coach picks a mode per segment from its mastery: scaffold new lines, cue
-					learning ones, cold-start mastered ones, drill weak links.
+					learning ones, cold-start mastered ones, drill weak links and line junctures.
+					Session length comes from your own pace in past attempts.
 				</p>
 				<details>
 					<summary class="muted small">Choose modes manually</summary>
@@ -296,12 +339,18 @@
 			<div class="toolbar">
 				<span class="eyebrow">Segments &amp; annotations</span>
 				<button onclick={() => (editing = !editing)}>{editing ? 'Close editor' : 'Edit'}</button>
+				<button disabled={suggesting} onclick={suggestPrep} title="Gemini drafts cues, glosses, and translations for lines that don't have them yet. Nothing you wrote is touched.">
+					{suggesting ? 'Drafting…' : '✦ Draft prep'}
+				</button>
 				{#if editing}
 					<button class="primary" disabled={saving} onclick={saveSegments}>
 						{saving ? 'Saving…' : 'Save segments'}
 					</button>
 				{/if}
 			</div>
+			{#if prepSummary}
+				<p class="muted small">Drafted: {prepSummary}. Edit or delete anything that misses.</p>
+			{/if}
 			{#if revision.practiced && editing}
 				<p class="muted small">
 					This revision has been practiced and is immutable — saving will offer to fork a new revision.

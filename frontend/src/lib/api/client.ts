@@ -11,6 +11,7 @@ import type {
 	PassageDetail,
 	PassageInput,
 	PracticeSession,
+	PrepSuggestResult,
 	Revision,
 	RevisionInput,
 	ReviewState,
@@ -105,6 +106,11 @@ export const api = {
 
 	createAnnotation: (input: AnnotationCreate, key?: string) =>
 		send<Annotation>('POST', '/annotations', { body: input, key }),
+	suggestPrep: (revisionId: string, layers?: string[], key?: string) =>
+		send<PrepSuggestResult>('POST', `/revisions/${revisionId}/prep-suggestions`, {
+			body: layers ? { layers } : {},
+			key
+		}),
 	deleteAnnotation: (annotationId: string, key?: string) =>
 		send<Record<string, boolean>>('DELETE', `/annotations/${annotationId}`, { key }),
 
@@ -123,6 +129,8 @@ export const api = {
 	},
 	deleteMedia: (mediaId: string, key?: string) =>
 		send<Record<string, boolean>>('DELETE', `/media/${mediaId}`, { key }),
+	listMedia: (revisionId?: string, category?: MediaCategory) =>
+		send<Media[]>('GET', '/media', { query: { revision_id: revisionId, category } }),
 	mediaUrl: (mediaId: string) => `${BASE}/media/${mediaId}/content`,
 
 	listSessions: (status?: string) =>

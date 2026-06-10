@@ -5,7 +5,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from rhapsode import models
@@ -68,26 +68,56 @@ def prompt_for(mode: str, target: models.Segment, context: list[models.Segment])
             raise ValueError(f"Unknown practice mode: {mode}")
 
 
+def _practice_kinds(
+    revision: models.PassageRevision, segment_kinds: list[str] | None
+) -> list[str]:
+    """One grain per passage (grill B4): chunks if the revision has them,
+    else lines — mixing both would deal the same words twice under two
+    review states. Junctures always ride along; they cover the boundaries,
+    not the same material."""
+    if segment_kinds is not None:
+        return segment_kinds
+    kinds_present = {segment.kind for segment in revision.segments}
+    grain = "chunk" if "chunk" in kinds_present else "line"
+    return [grain, "juncture"]
+
+
 def _ordered_segments(
-    revision: models.PassageRevision, segment_kinds: list[str]
+    revision: models.PassageRevision, segment_kinds: list[str] | None
 ) -> list[models.Segment]:
+    kinds = _practice_kinds(revision, segment_kinds)
     segments = sorted(
-        [segment for segment in revision.segments if segment.kind in segment_kinds],
-        key=lambda segment: segment.ordinal,
+        [segment for segment in revision.segments if segment.kind in kinds],
+        # A juncture shares its ordinal with the line it leads into and must
+        # drill first: prime the transition, then recall the landing line.
+        key=lambda segment: (segment.ordinal, segment.kind != "juncture"),
     )
     if not segments:
         segments = sorted(revision.segments, key=lambda segment: segment.ordinal)
     return segments
 
 
+# A weak link counts as repaired after this many consecutive cleans since the
+# last difficult attempt (grill B1): once could be luck, twice is demonstrated.
+REPAIR_STREAK = 2
+
+
 def _difficult_segment_ids(db: Session) -> set[str]:
+    rows = db.execute(
+        select(models.Attempt.segment_id, models.Attempt.rating)
+        .where(models.Attempt.segment_id.is_not(None))
+        .order_by(models.Attempt.created_at)
+    )
+    cleans_since_difficult: dict[str, int] = {}
+    for segment_id, rating in rows:
+        if rating in ("incorrect", "revealed"):
+            cleans_since_difficult[segment_id] = 0
+        elif rating == "clean" and segment_id in cleans_since_difficult:
+            cleans_since_difficult[segment_id] += 1
     return {
-        row[0]
-        for row in db.execute(
-            select(models.Attempt.segment_id)
-            .where(models.Attempt.rating.in_(["incorrect", "revealed"]))
-            .where(models.Attempt.segment_id.is_not(None))
-        )
+        segment_id
+        for segment_id, cleans in cleans_since_difficult.items()
+        if cleans < REPAIR_STREAK
     }
 
 
@@ -121,6 +151,40 @@ def smart_mode_for(stage: str | None, difficult: bool) -> str:
 # a capped session is one the user actually completes and comes back from.
 SMART_SESSION_CAP = 12
 
+# Cold-start seconds-per-item until personal latency history exists (grill
+# A1). Wrong for at most a few sessions; the per-mode means take over once a
+# mode has enough samples.
+DEFAULT_MODE_SECONDS: dict[str, float] = {
+    "shadowing": 30,
+    "progressive_fading": 75,
+    "forward_chaining": 45,
+    "backward_chaining": 45,
+    "cue_recall": 20,
+    "random_start": 30,
+    "weak_link": 35,
+    "full_passage": 120,
+}
+FALLBACK_MODE_SECONDS = 30.0
+MIN_MODE_SAMPLES = 5
+
+
+def _mode_seconds(db: Session) -> dict[str, float]:
+    """Personal seconds-per-item by mode, from focused-time attempt latencies."""
+    rows = db.execute(
+        select(
+            models.Attempt.mode,
+            func.avg(models.Attempt.latency_ms),
+            func.count(models.Attempt.id),
+        )
+        .where(models.Attempt.latency_ms.is_not(None))
+        .group_by(models.Attempt.mode)
+    )
+    estimates = dict(DEFAULT_MODE_SECONDS)
+    for mode, mean_latency_ms, samples in rows:
+        if samples >= MIN_MODE_SAMPLES and mean_latency_ms:
+            estimates[mode] = float(mean_latency_ms) / 1000.0
+    return estimates
+
 
 def _triage_rank(stage: str | None, difficult: bool) -> int:
     """When the cap bites, spend the session where it pays most: repair weak
@@ -138,8 +202,9 @@ def _triage_rank(stage: str | None, difficult: bool) -> int:
 def build_smart_plan(
     db: Session,
     revision: models.PassageRevision,
-    segment_kinds: list[str],
+    segment_kinds: list[str] | None,
     only_segment_ids: set[str] | None = None,
+    minutes: int | None = None,
 ) -> list[dict[str, Any]]:
     segments = _ordered_segments(revision, segment_kinds)
     if only_segment_ids is not None:
@@ -155,20 +220,53 @@ def build_smart_plan(
         )
     }
     difficult_ids = _difficult_segment_ids(db)
-    if len(segments) > SMART_SESSION_CAP:
-        chosen = sorted(
-            segments,
-            key=lambda segment: (
-                _triage_rank(stages.get(segment.id), segment.id in difficult_ids),
-                segment.ordinal,
-            ),
-        )[:SMART_SESSION_CAP]
-        # Present the survivors in passage order: verse is memorized in
-        # sequence even when triage picked the targets.
-        segments = sorted(chosen, key=lambda segment: segment.ordinal)
+    modes = {
+        segment.id: smart_mode_for(stages.get(segment.id), segment.id in difficult_ids)
+        for segment in segments
+    }
+    # The finisher is appended once every targeted segment graduates —
+    # per-segment drilling alone never exercises flow.
+    all_graduated = len(segments) > 1 and all(
+        stages.get(segment.id) in {"review", "durable"} for segment in segments
+    )
+
+    triaged = sorted(
+        segments,
+        key=lambda segment: (
+            _triage_rank(stages.get(segment.id), segment.id in difficult_ids),
+            segment.ordinal,
+        ),
+    )
+    if minutes is not None:
+        seconds = _mode_seconds(db)
+        budget = minutes * 60.0
+        # For a fully graduated passage the holistic recitation is the
+        # highest-value use of the minutes: budget it FIRST and let per-line
+        # maintenance fill the remainder (grill A4).
+        if all_graduated:
+            budget -= seconds.get(
+                PracticeMode.full_passage.value, FALLBACK_MODE_SECONDS
+            )
+        chosen: list[models.Segment] = []
+        for segment in triaged:
+            cost = seconds.get(modes[segment.id], FALLBACK_MODE_SECONDS)
+            if chosen and budget - cost < 0:
+                break
+            budget -= cost
+            chosen.append(segment)
+        segments = chosen
+    elif len(segments) > SMART_SESSION_CAP:
+        segments = triaged[:SMART_SESSION_CAP]
+    # Present the survivors in passage order: verse is memorized in sequence
+    # even when triage picked the targets. A juncture shares its ordinal with
+    # its landing line and drills first.
+    segments = sorted(
+        segments, key=lambda segment: (segment.ordinal, segment.kind != "juncture")
+    )
+
     items: list[dict[str, Any]] = []
     for index, target in enumerate(segments):
-        mode = smart_mode_for(stages.get(target.id), target.id in difficult_ids)
+        mode = modes[target.id]
         items.append(
             {
                 "segment_id": target.id,
@@ -176,12 +274,7 @@ def build_smart_plan(
                 "prompt": prompt_for(mode, target, segments[index:]),
             }
         )
-    # Once every targeted segment has graduated past learning, close with one
-    # holistic recitation — per-segment drilling alone never exercises flow.
-    all_graduated = len(segments) > 1 and all(
-        stages.get(segment.id) in {"review", "durable"} for segment in segments
-    )
-    if all_graduated:
+    if all_graduated and segments:
         mode = PracticeMode.full_passage.value
         items.append(
             {
@@ -197,7 +290,7 @@ def build_plan(
     db: Session,
     revision: models.PassageRevision,
     modes: list[str],
-    segment_kinds: list[str],
+    segment_kinds: list[str] | None,
     only_segment_ids: set[str] | None = None,
 ) -> list[dict[str, Any]]:
     segments = _ordered_segments(revision, segment_kinds)

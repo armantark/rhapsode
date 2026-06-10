@@ -9,12 +9,13 @@
 	import type {
 		AttemptRating,
 		LanguageProfile,
+		Media,
 		PracticeItem,
 		PracticeSession,
 		Revision
 	} from '$lib/api/types';
 	import type { AttemptRecording } from '$lib/audio/recorder';
-	import { mediaForRevision, registerMedia } from '$lib/utils/mediaRegistry';
+	import { registerMedia } from '$lib/utils/mediaRegistry';
 	import { clearActiveSession, rememberActiveSession } from '$lib/utils/recovery';
 
 	let session: PracticeSession | null = $state(null);
@@ -25,12 +26,42 @@
 	let loading = $state(true);
 
 	let revealed = $state(false);
-	let itemShownAt = $state(0);
 	let submitting = $state(false);
 	let savingBest = $state(false);
 	let pendingMediaId: string | null = $state(null);
 	let lastFeedback = $state('');
 	let tally: Record<AttemptRating, number> = $state({ clean: 0, hesitant: 0, incorrect: 0, revealed: 0 });
+	// Recording is deliberately opt-in (grill D2): speaking aloud is the
+	// learning act; the mic is for occasionally capturing a best take.
+	const MIC_KEY = 'rhapsode.micEnabled';
+	let micEnabled = $state(false);
+
+	// Latency measures focused time only (grill A2): the clock pauses while
+	// the window is blurred or the tab hidden, so alt-tabbing doesn't inflate
+	// the hesitation signal or the session-length estimator.
+	let focusedMs = $state(0);
+	let runningSince: number | null = $state(null);
+
+	function clockActive(): boolean {
+		return !document.hidden && document.hasFocus();
+	}
+
+	function pauseClock() {
+		if (runningSince !== null) {
+			focusedMs += performance.now() - runningSince;
+			runningSince = null;
+		}
+	}
+
+	function resumeClock() {
+		if (runningSince === null && clockActive()) {
+			runningSince = performance.now();
+		}
+	}
+
+	function elapsedFocusedMs(): number {
+		return focusedMs + (runningSince !== null ? performance.now() - runningSince : 0);
+	}
 
 	const items = $derived.by(() =>
 		[...(session?.items ?? [])].sort((a, b) => a.position - b.position)
@@ -46,9 +77,8 @@
 	const segmentById = $derived.by(
 		() => new Map((revision?.segments ?? []).map((segment) => [segment.id, segment]))
 	);
-	const referenceMedia = $derived.by(() =>
-		revision ? mediaForRevision(revision.id, 'reference') : []
-	);
+	// Listed from the backend so imported scholar recitations appear too.
+	let referenceMedia: Media[] = $state([]);
 	const revealText = $derived.by(() => {
 		if (!currentItem) return null;
 		const prompt = currentItem.prompt as Record<string, unknown>;
@@ -61,18 +91,22 @@
 		// restart the latency clock and reveal state per item
 		void currentItem?.id;
 		revealed = false;
-		itemShownAt = performance.now();
+		focusedMs = 0;
+		runningSince = clockActive() ? performance.now() : null;
 		pendingMediaId = null;
 	});
 
 	onMount(async () => {
+		micEnabled = localStorage.getItem(MIC_KEY) === 'true';
 		try {
 			session = await api.getSession(page.params.id ?? '');
 			revision = await api.getRevision(session.revision_id);
-			const [languages, passage] = await Promise.all([
+			const [languages, passage, reference] = await Promise.all([
 				api.listLanguages(),
-				api.getPassage(revision.passage_id)
+				api.getPassage(revision.passage_id),
+				api.listMedia(revision.id, 'reference')
 			]);
+			referenceMedia = reference;
 			passageTitle = passage.title;
 			profile = languages.find((candidate) => candidate.id === passage.language_profile_id) ?? null;
 			if (session.status === 'active') {
@@ -97,7 +131,7 @@
 			const result = await api.submitAttempt(session.id, {
 				item_id: currentItem.id,
 				rating: revealed ? 'revealed' : rating,
-				latency_ms: Math.max(0, Math.round(performance.now() - itemShownAt)),
+				latency_ms: Math.max(0, Math.round(elapsedFocusedMs())),
 				media_asset_id: pendingMediaId
 			});
 			tally = { ...tally, [result.attempt.rating as AttemptRating]: tally[result.attempt.rating as AttemptRating] + 1 };
@@ -117,6 +151,11 @@
 		if (!session) return;
 		if (session.status === 'active') session = await api.completeSession(session.id);
 		clearActiveSession(session.id);
+	}
+
+	function toggleMic() {
+		micEnabled = !micEnabled;
+		localStorage.setItem(MIC_KEY, String(micEnabled));
 	}
 
 	async function saveBest(recording: AttemptRecording) {
@@ -145,6 +184,9 @@
 		}
 	}
 </script>
+
+<svelte:window onblur={pauseClock} onfocus={resumeClock} />
+<svelte:document onvisibilitychange={() => (document.hidden ? pauseClock() : resumeClock())} />
 
 {#if loading}
 	<p class="muted">Loading…</p>
@@ -185,9 +227,14 @@
 			<AudioPlayer src={api.mediaUrl(referenceMedia[0].id)} title="Reference audio" storageKey={referenceMedia[0].id} />
 		{/if}
 
-		{#key currentItem.id}
-			<AttemptRecorder onSaveBest={saveBest} saving={savingBest} />
-		{/key}
+		{#if micEnabled}
+			{#key currentItem.id}
+				<AttemptRecorder onSaveBest={saveBest} saving={savingBest} />
+			{/key}
+		{/if}
+		<button class="mic-toggle" onclick={toggleMic} aria-pressed={micEnabled}>
+			{micEnabled ? '🎙 recording enabled' : '🎙 enable recording'}
+		</button>
 
 		<GradeBar onGrade={grade} disabled={submitting} />
 		{#if revealed}
@@ -264,6 +311,16 @@
 
 	.small {
 		font-size: 0.82rem;
+	}
+
+	.mic-toggle {
+		font-size: 0.78rem;
+		color: var(--muted, #8b95a8);
+		background: none;
+		border: none;
+		padding: 2px 0;
+		margin-bottom: 10px;
+		cursor: pointer;
 	}
 
 	.feedback {

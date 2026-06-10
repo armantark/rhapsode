@@ -82,8 +82,14 @@
 		error = '';
 		try {
 			// No modes: the smart planner picks per segment; due_only narrows
-			// the plan to what the scheduler says needs work now.
-			const session = await api.createSession({ revision_id: revisionId, due_only: true });
+			// the plan to what the scheduler says needs work now. The time
+			// budget reuses the last choice made on the passage page.
+			const storedMinutes = Number(localStorage.getItem('rhapsode.sessionMinutes'));
+			const session = await api.createSession({
+				revision_id: revisionId,
+				due_only: true,
+				...(storedMinutes > 0 ? { minutes: storedMinutes } : {})
+			});
 			await goto(`/practice/${session.id}`);
 		} catch (cause) {
 			error = `Could not start a due-review session: ${cause instanceof Error ? cause.message : cause}`;

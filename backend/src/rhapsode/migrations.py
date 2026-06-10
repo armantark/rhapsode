@@ -17,6 +17,7 @@ def main() -> None:
     if path:
         snapshot_sqlite(path, settings.backup_dir)
     config = Config("alembic.ini")
+    config.attributes["database_url"] = settings.database_url
     config.set_main_option("sqlalchemy.url", settings.database_url)
     command.upgrade(config, "head")
 

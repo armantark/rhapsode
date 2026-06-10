@@ -16,7 +16,12 @@ export type AnnotationInput = components['schemas']['AnnotationInput'];
 export type AnnotationCreate = components['schemas']['AnnotationCreate'];
 export type Media = components['schemas']['MediaRead'];
 export type PracticeSession = components['schemas']['SessionRead'];
-export type SessionCreate = components['schemas']['SessionCreate'];
+// openapi-typescript marks fields with literal defaults as required
+// (defaultNonNullable), but due_only genuinely is optional on the wire —
+// the backend defaults it to false.
+export type SessionCreate = Omit<components['schemas']['SessionCreate'], 'due_only'> & {
+	due_only?: boolean;
+};
 export type PracticeItem = components['schemas']['PracticeItemRead'];
 export type PracticeMode = components['schemas']['PracticeMode'];
 export type AttemptCreate = components['schemas']['AttemptCreate'];

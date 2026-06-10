@@ -82,6 +82,16 @@ describe('error handling', () => {
 	});
 });
 
+describe('smart sessions', () => {
+	it('omits modes entirely so the backend planner stays in charge', async () => {
+		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({}, 201));
+		await api.createSession({ revision_id: 'rev-1', due_only: true });
+		const body = JSON.parse(fetchMock.mock.calls[0][1]?.body as string);
+		expect('modes' in body).toBe(false);
+		expect(body.due_only).toBe(true);
+	});
+});
+
 describe('media upload', () => {
 	it('sends multipart form fields the contract expects', async () => {
 		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({}, 201));

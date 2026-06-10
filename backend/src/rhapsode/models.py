@@ -120,6 +120,9 @@ class MediaAsset(Base, TimestampMixin):
     original_name: Mapped[str] = mapped_column(String)
     storage_path: Mapped[str] = mapped_column(String, unique=True)
     size_bytes: Mapped[int] = mapped_column(Integer)
+    cue_points: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, default=list, server_default="[]"
+    )
 
 
 class ReviewState(Base, TimestampMixin):

@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session, selectinload
@@ -205,10 +205,27 @@ def upload_media(
         original_name=upload.filename or "recording",
         storage_path=storage_path,
         size_bytes=size,
+        cue_points=[],
     )
     db.add(asset)
     db.commit()
     return asset
+
+
+@router.get("/media", response_model=list[schemas.MediaRead], tags=["media"])
+def list_media(
+    db: Db, revision_id: str | None = None, category: str | None = None
+) -> list[models.MediaAsset]:
+    if category is not None and category not in media_service.ALLOWED_CATEGORIES:
+        raise HTTPException(status_code=422, detail="Unsupported media category.")
+    query = select(models.MediaAsset)
+    if revision_id is not None:
+        query = query.where(models.MediaAsset.revision_id == revision_id)
+    if category is not None:
+        query = query.where(models.MediaAsset.category == category)
+    return list(
+        db.scalars(query.order_by(models.MediaAsset.created_at.desc(), models.MediaAsset.id))
+    )
 
 
 @router.get("/media/{media_id}/content", tags=["media"])
@@ -221,6 +238,20 @@ def stream_media(media_id: str, db: Db) -> FileResponse:
     return FileResponse(
         asset.storage_path, media_type=asset.mime_type, filename=asset.original_name
     )
+
+
+@router.put("/media/{media_id}/cues", response_model=schemas.MediaRead, tags=["media"])
+def replace_media_cues(
+    media_id: str, payload: schemas.CuePointsUpdate, db: Db
+) -> models.MediaAsset:
+    asset = db.get(models.MediaAsset, media_id)
+    if asset is None:
+        raise not_found("Media")
+    asset.cue_points = [
+        cue.model_dump() for cue in sorted(payload.cue_points, key=lambda cue: cue.time)
+    ]
+    db.commit()
+    return asset
 
 
 @router.delete("/media/{media_id}", tags=["media"])
@@ -240,13 +271,31 @@ def create_session(payload: schemas.SessionCreate, db: Db) -> models.PracticeSes
         revision = passage_service.get_revision(db, payload.revision_id)
     except LookupError as error:
         raise not_found("Revision") from error
-    requested_modes = [mode.value for mode in payload.modes]
-    plan = planning.build_plan(db, revision, requested_modes, payload.segment_kinds)
+    only_segment_ids = None
+    if payload.due_only:
+        only_segment_ids = planning.due_segment_ids(
+            db, [segment.id for segment in revision.segments]
+        )
+        if not only_segment_ids:
+            raise HTTPException(status_code=422, detail="No segments are due for review.")
+    if payload.modes is None:
+        requested_modes: list[str] = []
+        plan = planning.build_smart_plan(db, revision, payload.segment_kinds, only_segment_ids)
+    else:
+        requested_modes = [mode.value for mode in payload.modes]
+        plan = planning.build_plan(
+            db, revision, requested_modes, payload.segment_kinds, only_segment_ids
+        )
     if not plan:
         raise HTTPException(status_code=422, detail="Revision has no practiceable segments.")
     session = models.PracticeSession(
         revision_id=revision.id,
-        plan={"modes": requested_modes, "segment_kinds": payload.segment_kinds},
+        plan={
+            "modes": requested_modes,
+            "segment_kinds": payload.segment_kinds,
+            "smart": payload.modes is None,
+            "due_only": payload.due_only,
+        },
     )
     db.add(session)
     db.flush()
@@ -372,6 +421,24 @@ def due_reviews(db: Db, before: datetime | None = None) -> list[models.ReviewSta
     )
 
 
+@router.get("/analytics/mastery", response_model=schemas.MasteryPage, tags=["analytics"])
+def mastery(
+    db: Db,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> schemas.MasteryPage:
+    total = db.scalar(select(func.count(models.ReviewState.id))) or 0
+    items = list(
+        db.scalars(
+            select(models.ReviewState)
+            .order_by(models.ReviewState.updated_at.desc(), models.ReviewState.id)
+            .limit(limit)
+            .offset(offset)
+        )
+    )
+    return schemas.MasteryPage(items=items, total=total, limit=limit, offset=offset)
+
+
 @router.get("/analytics/weak-links", response_model=list[schemas.WeakLinkRead], tags=["analytics"])
 def weak_links(db: Db, revision_id: str | None = None) -> list[schemas.WeakLinkRead]:
     difficult = case((models.Attempt.rating.in_(["incorrect", "revealed"]), 1), else_=0)
@@ -381,6 +448,7 @@ def weak_links(db: Db, revision_id: str | None = None) -> list[schemas.WeakLinkR
             models.Segment.text,
             func.count(models.Attempt.id),
             func.sum(difficult),
+            func.avg(models.Attempt.latency_ms),
         )
         .join(models.Attempt, models.Attempt.segment_id == models.Segment.id)
         .group_by(models.Segment.id)
@@ -388,7 +456,7 @@ def weak_links(db: Db, revision_id: str | None = None) -> list[schemas.WeakLinkR
     if revision_id:
         query = query.where(models.Segment.revision_id == revision_id)
     results = []
-    for segment_id, text, attempts, difficult_attempts in db.execute(query):
+    for segment_id, text, attempts, difficult_attempts, mean_latency in db.execute(query):
         difficult_count = int(difficult_attempts or 0)
         results.append(
             schemas.WeakLinkRead(
@@ -397,9 +465,16 @@ def weak_links(db: Db, revision_id: str | None = None) -> list[schemas.WeakLinkR
                 attempts=attempts,
                 difficult_attempts=difficult_count,
                 difficulty_rate=difficult_count / attempts,
+                mean_latency_ms=round(mean_latency) if mean_latency is not None else None,
             )
         )
-    return sorted(results, key=lambda result: result.difficulty_rate, reverse=True)
+    # Latency breaks ties: between equally error-prone segments, the one the
+    # user hesitates longest on is the weaker link.
+    return sorted(
+        results,
+        key=lambda result: (result.difficulty_rate, result.mean_latency_ms or 0),
+        reverse=True,
+    )
 
 
 @router.get("/settings", response_model=list[schemas.SettingRead], tags=["settings"])

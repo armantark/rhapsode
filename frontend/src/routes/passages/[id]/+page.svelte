@@ -168,14 +168,16 @@
 		if (revision) referenceMedia = mediaForRevision(revision.id, 'reference');
 	}
 
-	async function startSession() {
+	async function startSession(smart = false) {
 		if (!revision || !passage) return;
 		startingSession = true;
 		error = '';
 		try {
+			// Omitting modes asks the backend coach to pick one per segment
+			// from its mastery stage.
 			const session = await api.createSession({
 				revision_id: revision.id,
-				modes: chosenModes,
+				...(smart ? {} : { modes: chosenModes }),
 				segment_kinds: chosenKinds
 			});
 			rememberActiveSession({
@@ -252,7 +254,17 @@
 
 			<section class="card">
 				<span class="eyebrow">Practice</span>
-				<p class="muted small">Pick modes and targets, then drill aloud.</p>
+				<button
+					class="primary start"
+					disabled={startingSession || chosenKinds.length === 0}
+					onclick={() => startSession(true)}
+				>{startingSession ? 'Starting…' : '✦ Smart session'}</button>
+				<p class="muted small">
+					The coach picks a mode per segment from its mastery: scaffold new lines, cue
+					learning ones, cold-start mastered ones, drill weak links.
+				</p>
+				<details>
+					<summary class="muted small">Choose modes manually</summary>
 				<div class="choices">
 					{#each PRACTICE_MODES as mode (mode)}
 						<button
@@ -272,10 +284,11 @@
 					{/each}
 				</div>
 				<button
-					class="primary start"
+					class="start"
 					disabled={startingSession || chosenModes.length === 0 || chosenKinds.length === 0}
-					onclick={startSession}
-				>{startingSession ? 'Starting…' : '▶ Start session'}</button>
+					onclick={() => startSession()}
+				>{startingSession ? 'Starting…' : '▶ Start manual session'}</button>
+				</details>
 			</section>
 		</div>
 
@@ -399,6 +412,12 @@
 	.start {
 		width: 100%;
 		padding: 12px;
+		margin-top: 8px;
+	}
+
+	details summary {
+		cursor: pointer;
+		margin-top: 10px;
 	}
 
 	.conflict {

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Backend Contract Additions</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#0c0e12;--surface:#161a21;--surface-2:#1e232c;--border:#2a3040;--text:#e8ecf4;--text-dim:#8b95a8;--accent:#4f8cff;--accent-glow:rgba(79,140,255,.15);--red:#ff5c5c;--green:#4ade80;--amber:#fbbf24;--purple:#a78bfa;--radius:12px}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 8% 10%,#24304c 0,transparent 34%),var(--bg);color:var(--text);font-family:Outfit,sans-serif}main{max-width:1050px;margin:auto;padding:60px 24px}.badge,.label,.route{font-family:"JetBrains Mono",monospace}.badge{display:inline-block;color:var(--accent);border:1px solid var(--accent);background:var(--accent-glow);border-radius:999px;padding:7px 11px;font-size:.68rem;letter-spacing:.09em;text-transform:uppercase}h1{font-size:clamp(2.4rem,7vw,5rem);line-height:.95;margin:24px 0 15px;max-width:760px}.lead{color:var(--text-dim);font-size:1.07rem;line-height:1.65;max-width:720px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:38px}.card{background:linear-gradient(145deg,var(--surface),#11151b);border:1px solid var(--border);border-radius:var(--radius);padding:22px}.label{font-size:.62rem;color:var(--amber);letter-spacing:.09em;text-transform:uppercase}.route{font-size:.68rem;color:var(--green);background:var(--surface-2);padding:7px 8px;border-radius:7px;display:inline-block;margin:8px 0}.card p{color:var(--text-dim);line-height:1.55}.flow{margin-top:18px;padding:18px;border-left:3px solid var(--purple);background:rgba(167,139,250,.08);color:var(--text-dim)}@media(max-width:760px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body><main>
+  <span class="badge">Backend follow-up plan</span>
+  <h1>Remove the frontend’s localStorage workarounds.</h1>
+  <p class="lead">Three additive contract changes make media discovery, audio cue points, and mastery browsing durable backend concerns without changing existing workflows.</p>
+  <section class="grid">
+    <article class="card"><span class="label">Media index</span><h2>Discover uploads</h2><span class="route">GET /api/v1/media</span><p>Filter by revision and category, ordered newest first.</p></article>
+    <article class="card"><span class="label">Audio cues</span><h2>Persist playback markers</h2><span class="route">PUT /api/v1/media/{id}/cues</span><p>Validated ordered label/time pairs live with the media asset.</p></article>
+    <article class="card"><span class="label">Mastery</span><h2>Page all review states</h2><span class="route">GET /api/v1/analytics/mastery</span><p>Limit/offset pagination replaces the far-future due-date workaround.</p></article>
+  </section>
+  <div class="flow">Migration → models and schemas → routes → API tests → OpenAPI regeneration → frontend handoff update</div>
+</main></body></html>

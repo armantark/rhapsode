@@ -28,6 +28,10 @@ is available at `http://127.0.0.1:8000/docs`.
 - Persist browser recordings only by uploading them as `saved_best`.
   Unsubmitted attempts remain browser-local and ephemeral.
 - `reference` and `saved_best` are the only accepted media categories.
+- Discover persisted media through `GET /api/v1/media`, with optional
+  `revision_id` and `category` filters. The local media registry can be removed.
+- Persist audio cue points through `PUT /api/v1/media/{id}/cues`. Cue points are
+  returned in `MediaRead` and sorted by time by the backend.
 - Resume interrupted practice by fetching the session id and honoring
   `current_index`, item order, and each item's `completed` field.
 - Render prompt behavior from `PracticeItem.mode` and `PracticeItem.prompt`.
@@ -42,8 +46,19 @@ is available at `http://127.0.0.1:8000/docs`.
 5. Start a guided practice plan through `POST /api/v1/sessions`.
 6. Render each persisted practice item and submit one of `clean`, `hesitant`,
    `incorrect`, or `revealed` through `POST /api/v1/sessions/{id}/attempts`.
-7. Use `/api/v1/analytics/due` and `/api/v1/analytics/weak-links` for review
-   and mastery views.
+7. Use `/api/v1/analytics/due` for due reviews,
+   `/api/v1/analytics/mastery?limit=50&offset=0` for paginated mastery, and
+   `/api/v1/analytics/weak-links` for difficult segments.
+
+## Contract Additions Implemented
+
+- `GET /api/v1/media?revision_id={id}&category={reference|saved_best}`
+  returns persisted media newest-first.
+- `MediaRead.cue_points` contains ordered `{ label, time }` records.
+- `PUT /api/v1/media/{media_id}/cues` replaces the asset's cue points and
+  requires `Idempotency-Key`.
+- `GET /api/v1/analytics/mastery?limit={1..200}&offset={n}` returns
+  `{ items, total, limit, offset }`.
 
 ## Frontend Handoff Prompt
 
@@ -66,4 +81,3 @@ Generate the TypeScript client from `contracts/openapi.json`. Develop against th
 
 Add frontend unit, integration, and end-to-end tests. Perform manual browser testing with Pinchtab for microphone permissions, Unicode rendering, keyboard navigation, session recovery, and responsive layouts. Leave a frontend-to-backend handoff note for any integration issues.
 ```
-

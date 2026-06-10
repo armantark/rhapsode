@@ -296,6 +296,41 @@
         "title": "Body_upload_media_api_v1_media_post",
         "type": "object"
       },
+      "CuePoint": {
+        "properties": {
+          "label": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "time": {
+            "minimum": 0.0,
+            "title": "Time",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "time"
+        ],
+        "title": "CuePoint",
+        "type": "object"
+      },
+      "CuePointsUpdate": {
+        "properties": {
+          "cue_points": {
+            "items": {
+              "$ref": "#/components/schemas/CuePoint"
+            },
+            "maxItems": 500,
+            "title": "Cue Points",
+            "type": "array"
+          }
+        },
+        "title": "CuePointsUpdate",
+        "type": "object"
+      },
       "Direction": {
         "enum": [
           "ltr",
@@ -440,6 +475,37 @@
         "title": "LanguageProfileRead",
         "type": "object"
       },
+      "MasteryPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewStateRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "MasteryPage",
+        "type": "object"
+      },
       "MediaRead": {
         "properties": {
           "category": {
@@ -450,6 +516,13 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "cue_points": {
+            "items": {
+              "$ref": "#/components/schemas/CuePoint"
+            },
+            "title": "Cue Points",
+            "type": "array"
           },
           "id": {
             "title": "Id",
@@ -1061,12 +1134,24 @@
       },
       "SessionCreate": {
         "properties": {
+          "due_only": {
+            "default": false,
+            "title": "Due Only",
+            "type": "boolean"
+          },
           "modes": {
-            "items": {
-              "$ref": "#/components/schemas/PracticeMode"
-            },
-            "title": "Modes",
-            "type": "array"
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PracticeMode"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modes"
           },
           "revision_id": {
             "title": "Revision Id",
@@ -1223,6 +1308,17 @@
             "title": "Difficulty Rate",
             "type": "number"
           },
+          "mean_latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Latency Ms"
+          },
           "segment_id": {
             "title": "Segment Id",
             "type": "string"
@@ -1300,6 +1396,62 @@
           }
         },
         "summary": "Due Reviews",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/mastery": {
+      "get": {
+        "operationId": "mastery_api_v1_analytics_mastery_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MasteryPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mastery",
         "tags": [
           "analytics"
         ]
@@ -1531,6 +1683,73 @@
       }
     },
     "/api/v1/media": {
+      "get": {
+        "operationId": "list_media_api_v1_media_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "revision_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Revision Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MediaRead"
+                  },
+                  "title": "Response List Media Api V1 Media Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Media",
+        "tags": [
+          "media"
+        ]
+      },
       "post": {
         "operationId": "upload_media_api_v1_media_post",
         "requestBody": {
@@ -1652,6 +1871,58 @@
           }
         },
         "summary": "Stream Media",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/{media_id}/cues": {
+      "put": {
+        "operationId": "replace_media_cues_api_v1_media__media_id__cues_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CuePointsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Replace Media Cues",
         "tags": [
           "media"
         ]

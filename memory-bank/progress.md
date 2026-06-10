@@ -19,9 +19,18 @@
   completion, and analytics all work through the Vite dev proxy.
 - Frontend-to-backend handoff note created with requested contract additions.
 - Manual browser testing via Pinchtab completed.
+- Added filtered media listing, durable audio cue points, and paginated mastery
+  endpoints.
+- Added a cue-point migration that preserves existing media rows.
+- Regenerated OpenAPI and verified the completed frontend remains compatible.
+
+- Coach features implemented end to end: smart sessions (mastery-driven mode
+  selection per segment, 12-item cap with triage), due-only sessions launched
+  from the review tab, and hesitation latency surfaced in weak links.
 
 ## Remaining
 
-- E2e Playwright tests require a dedicated backend instance on port 8643.
-- Requested contract additions (media listing endpoint, cue-point persistence,
-  mastery index) remain for backend implementation.
+- Frontend should regenerate its API client and remove the media registry,
+  cue-point, and far-future mastery local workarounds.
+- Two Playwright microphone tests remain blocked by fake microphone permission
+  timeouts; the four non-microphone e2e workflows pass.

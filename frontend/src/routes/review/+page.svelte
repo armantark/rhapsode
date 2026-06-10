@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import AudioPlayer from '$lib/components/AudioPlayer.svelte';
 	import { api } from '$lib/api/client';
@@ -15,9 +16,10 @@
 	let passages: Passage[] = $state([]);
 	let revisionFilter = $state('');
 	let revisionTitles: Map<string, string> = $state(new Map());
-	let segmentContext: Map<string, { text: string; passageId: string; title: string }> = $state(new Map());
+	let segmentContext: Map<string, { text: string; passageId: string; revisionId: string; title: string }> = $state(new Map());
 	let loading = $state(true);
 	let error = $state('');
+	let startingDue = $state('');
 
 	// Far-future cutoff turns the due endpoint into a full mastery listing;
 	// the contract has no dedicated review-state index (noted in the handoff).
@@ -48,6 +50,7 @@
 						{
 							text: segment.text,
 							passageId: revision.passage_id,
+							revisionId: revision.id,
 							title: titleByPassage.get(revision.passage_id) ?? ''
 						}
 					])
@@ -59,6 +62,35 @@
 			loading = false;
 		}
 	});
+
+	// Due segments grouped by revision so each passage gets its own
+	// one-click "drill the due stuff" session.
+	const dueByRevision = $derived.by(() => {
+		const groups = new Map<string, { title: string; count: number }>();
+		for (const state of due) {
+			const context = segmentContext.get(state.segment_id);
+			if (!context) continue;
+			const entry = groups.get(context.revisionId) ?? { title: context.title, count: 0 };
+			entry.count += 1;
+			groups.set(context.revisionId, entry);
+		}
+		return [...groups.entries()];
+	});
+
+	async function practiceDue(revisionId: string) {
+		startingDue = revisionId;
+		error = '';
+		try {
+			// No modes: the smart planner picks per segment; due_only narrows
+			// the plan to what the scheduler says needs work now.
+			const session = await api.createSession({ revision_id: revisionId, due_only: true });
+			await goto(`/practice/${session.id}`);
+		} catch (cause) {
+			error = `Could not start a due-review session: ${cause instanceof Error ? cause.message : cause}`;
+		} finally {
+			startingDue = '';
+		}
+	}
 
 	const masteryGroups = $derived.by(() => {
 		const groups = new Map<string, ReviewState[]>();
@@ -116,6 +148,15 @@
 	{#if due.length === 0}
 		<p class="muted">Nothing due. Recite something for pleasure instead.</p>
 	{:else}
+		<div class="due-actions">
+			{#each dueByRevision as [revisionId, group] (revisionId)}
+				<button
+					class="primary"
+					disabled={startingDue !== ''}
+					onclick={() => practiceDue(revisionId)}
+				>{startingDue === revisionId ? 'Starting…' : `▶ Practice ${group.count} due — ${group.title}`}</button>
+			{/each}
+		</div>
 		<table>
 			<thead><tr><th>Segment</th><th>Stage</th><th>Due</th><th>Clean / attempts</th></tr></thead>
 			<tbody>
@@ -170,7 +211,7 @@
 		<p class="muted">No weak links — or no difficult attempts yet.</p>
 	{:else}
 		<table>
-			<thead><tr><th>Segment</th><th>Difficulty</th><th>Hard / total</th></tr></thead>
+			<thead><tr><th>Segment</th><th>Difficulty</th><th>Hard / total</th><th>Hesitation</th></tr></thead>
 			<tbody>
 				{#each weak as link (link.segment_id)}
 					<tr>
@@ -180,6 +221,7 @@
 							{Math.round(link.difficulty_rate * 100)}%
 						</td>
 						<td class="muted">{link.difficult_attempts} / {link.attempts}</td>
+						<td class="muted">{link.mean_latency_ms != null ? `${(link.mean_latency_ms / 1000).toFixed(1)}s` : '—'}</td>
 					</tr>
 				{/each}
 			</tbody>
@@ -280,6 +322,13 @@
 	.filter {
 		margin-bottom: 14px;
 		max-width: 320px;
+	}
+
+	.due-actions {
+		display: flex;
+		gap: 10px;
+		flex-wrap: wrap;
+		margin-bottom: 16px;
 	}
 
 	.best-grid {

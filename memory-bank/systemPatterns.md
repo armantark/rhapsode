@@ -12,3 +12,7 @@
   `rhapsode.speech_providers` entry-point groups; practice renderers share a
   stable `mode_id` with backend prompt builders.
 - Media writes use temporary files followed by atomic rename.
+- Media metadata is backend-discoverable; cue points are stored as validated,
+  time-sorted JSON on the media asset.
+- Collection endpoints that can grow substantially return explicit limit/offset
+  page metadata; due reviews remain a separate scheduling query.

@@ -18,9 +18,11 @@ def test_openapi_exposes_required_api_groups() -> None:
         "/api/v1/revisions/{revision_id}/segments",
         "/api/v1/annotations",
         "/api/v1/media",
+        "/api/v1/media/{media_id}/cues",
         "/api/v1/sessions",
         "/api/v1/sessions/{session_id}/attempts",
         "/api/v1/analytics/due",
+        "/api/v1/analytics/mastery",
         "/api/v1/analytics/weak-links",
         "/api/v1/settings/{key}",
     }

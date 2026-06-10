@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analytics/mastery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mastery */
+        get: operations["mastery_api_v1_analytics_mastery_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/weak-links": {
         parameters: {
             query?: never;
@@ -114,7 +131,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Media */
+        get: operations["list_media_api_v1_media_get"];
         put?: never;
         /** Upload Media */
         post: operations["upload_media_api_v1_media_post"];
@@ -151,6 +169,23 @@ export interface paths {
         /** Stream Media */
         get: operations["stream_media_api_v1_media__media_id__content_get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/{media_id}/cues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace Media Cues */
+        put: operations["replace_media_cues_api_v1_media__media_id__cues_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -469,6 +504,18 @@ export interface components {
             /** Upload */
             upload: string;
         };
+        /** CuePoint */
+        CuePoint: {
+            /** Label */
+            label: string;
+            /** Time */
+            time: number;
+        };
+        /** CuePointsUpdate */
+        CuePointsUpdate: {
+            /** Cue Points */
+            cue_points?: components["schemas"]["CuePoint"][];
+        };
         /**
          * Direction
          * @enum {string}
@@ -534,6 +581,17 @@ export interface components {
             /** Slug */
             slug: string;
         };
+        /** MasteryPage */
+        MasteryPage: {
+            /** Items */
+            items: components["schemas"]["ReviewStateRead"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
         /** MediaRead */
         MediaRead: {
             /** Category */
@@ -543,6 +601,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Cue Points */
+            cue_points?: components["schemas"]["CuePoint"][];
             /** Id */
             id: string;
             /** Mime Type */
@@ -760,8 +820,13 @@ export interface components {
         };
         /** SessionCreate */
         SessionCreate: {
+            /**
+             * Due Only
+             * @default false
+             */
+            due_only: boolean;
             /** Modes */
-            modes?: components["schemas"]["PracticeMode"][];
+            modes?: components["schemas"]["PracticeMode"][] | null;
             /** Revision Id */
             revision_id: string;
             /** Segment Kinds */
@@ -819,6 +884,8 @@ export interface components {
             difficult_attempts: number;
             /** Difficulty Rate */
             difficulty_rate: number;
+            /** Mean Latency Ms */
+            mean_latency_ms?: number | null;
             /** Segment Id */
             segment_id: string;
             /** Text */
@@ -851,6 +918,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReviewStateRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mastery_api_v1_analytics_mastery_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MasteryPage"];
                 };
             };
             /** @description Validation Error */
@@ -1034,6 +1133,38 @@ export interface operations {
             };
         };
     };
+    list_media_api_v1_media_get: {
+        parameters: {
+            query?: {
+                revision_id?: string | null;
+                category?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     upload_media_api_v1_media_post: {
         parameters: {
             query?: never;
@@ -1118,6 +1249,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replace_media_cues_api_v1_media__media_id__cues_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CuePointsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaRead"];
                 };
             };
             /** @description Validation Error */

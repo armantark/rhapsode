@@ -15,6 +15,12 @@ async function createGreekPassage(page: Page, title: string): Promise<void> {
 	await expect(page).toHaveURL(/\/passages\/[\w-]+/);
 }
 
+/** Manual mode selection lives behind a disclosure now that smart is the default. */
+async function startManualSession(page: Page): Promise<void> {
+	await page.getByText('Choose modes manually').click();
+	await page.getByRole('button', { name: '▶ Start manual session' }).click();
+}
+
 test('full loop: create, render Unicode, practice, grade, review', async ({ page }) => {
 	const title = `Iliad e2e ${Date.now()}`;
 	await createGreekPassage(page, title);
@@ -24,7 +30,7 @@ test('full loop: create, render Unicode, practice, grade, review', async ({ page
 	await expect(page.getByText(GREEK_LINE_2).first()).toBeVisible();
 
 	// cue_recall over line segments is the launcher default.
-	await page.getByRole('button', { name: '▶ Start session' }).click();
+	await startManualSession(page);
 	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
 
 	// Item 1: grade clean via keyboard shortcut.
@@ -53,7 +59,7 @@ test('full loop: create, render Unicode, practice, grade, review', async ({ page
 test('an interrupted session resumes at the persisted cursor after reload', async ({ page }) => {
 	const title = `Recovery e2e ${Date.now()}`;
 	await createGreekPassage(page, title);
-	await page.getByRole('button', { name: '▶ Start session' }).click();
+	await startManualSession(page);
 	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
 	const sessionUrl = page.url();
 
@@ -84,7 +90,7 @@ test('creating without generating segments still yields practiceable lines', asy
 	// Deliberately skip "Generate line segments".
 	await page.getByRole('button', { name: 'Create passage' }).click();
 	await expect(page).toHaveURL(/\/passages\/[\w-]+/);
-	await page.getByRole('button', { name: '▶ Start session' }).click();
+	await startManualSession(page);
 	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
 	await expect(page.getByText('0/1 items')).toBeVisible();
 });
@@ -107,10 +113,29 @@ test('desktop two-column layout stacks on a phone viewport', async ({ page }) =>
 	expect(phoneCols).toBe(1);
 });
 
+test('smart session scaffolds a fresh passage with progressive fading', async ({ page }) => {
+	const title = `Smart e2e ${Date.now()}`;
+	await createGreekPassage(page, title);
+
+	await page.getByRole('button', { name: '✦ Smart session' }).click();
+	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
+
+	// Never-practiced segments get maximum support: the fading prompt with
+	// its stage controls, not a bare cue.
+	await expect(page.getByText('progressive fading')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Fade further' })).toBeVisible();
+
+	// Grade both items clean to seed review state for later due drills.
+	await page.keyboard.press('1');
+	await expect(page.getByText(/clean · mastery/)).toBeVisible();
+	await page.keyboard.press('1');
+	await expect(page.getByText('Session complete')).toBeVisible();
+});
+
 test('recordings stay browser-local until explicitly saved as best', async ({ page }) => {
 	const title = `Recording e2e ${Date.now()}`;
 	await createGreekPassage(page, title);
-	await page.getByRole('button', { name: '▶ Start session' }).click();
+	await startManualSession(page);
 
 	const uploads: string[] = [];
 	page.on('request', (request) => {

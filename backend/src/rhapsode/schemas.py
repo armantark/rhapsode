@@ -120,6 +120,15 @@ class AnnotationCreate(AnnotationInput):
     segment_id: str
 
 
+class CuePoint(BaseModel):
+    label: str = Field(min_length=1, max_length=120)
+    time: float = Field(ge=0, allow_inf_nan=False)
+
+
+class CuePointsUpdate(BaseModel):
+    cue_points: list[CuePoint] = Field(default_factory=list, max_length=500)
+
+
 class MediaRead(ORMModel):
     id: str
     revision_id: str | None
@@ -128,6 +137,7 @@ class MediaRead(ORMModel):
     mime_type: str
     original_name: str
     size_bytes: int
+    cue_points: list[CuePoint] = Field(default_factory=list)
     created_at: datetime
 
 
@@ -144,8 +154,13 @@ class PracticeMode(StrEnum):
 
 class SessionCreate(BaseModel):
     revision_id: str
-    modes: list[PracticeMode] = Field(default_factory=lambda: [PracticeMode.progressive_fading])
+    # None means "smart": the planner picks a mode per segment from its
+    # mastery stage instead of the caller prescribing a technique.
+    modes: list[PracticeMode] | None = None
     segment_kinds: list[str] = Field(default_factory=lambda: ["chunk", "line"])
+    # Restrict the plan to segments whose review state is currently due,
+    # closing the loop between the review tab and the practice launcher.
+    due_only: bool = False
 
 
 class PracticeItemRead(ORMModel):
@@ -210,12 +225,22 @@ class ReviewStateRead(ORMModel):
     attempt_count: int
 
 
+class MasteryPage(BaseModel):
+    items: list[ReviewStateRead]
+    total: int
+    limit: int
+    offset: int
+
+
 class WeakLinkRead(BaseModel):
     segment_id: str
     text: str
     attempts: int
     difficult_attempts: int
     difficulty_rate: float
+    # Hesitation latency is an involuntary difficulty signal the user cannot
+    # game by optimistic self-grading.
+    mean_latency_ms: int | None = None
 
 
 class PluginInput(BaseModel):

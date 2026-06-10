@@ -42,21 +42,30 @@ The Vite dev server proxies `/api` to the backend at `http://127.0.0.1:8000`.
 
 ### Requested contract additions
 
+All three requested additions are implemented on
+`feat/rhapsode-contract-additions`.
+
 1. **Media listing endpoint.** The contract has `POST /media` (upload),
    `DELETE /media/{id}`, and `GET /media/{id}/content` but no index. The
    frontend works around this with a `localStorage` registry
    (`src/lib/utils/mediaRegistry.ts`), but a `GET /api/v1/media` endpoint
    (with optional `revision_id` and `category` query filters) would eliminate
    the client-side registry and make media survive browser data clears.
+   **Implemented:** `GET /api/v1/media` with optional `revision_id` and
+   `category` filters.
 
 2. **Cue-point persistence.** Audio cue points are browser-local
    (`localStorage`). A `cue_points` field on the media model or a separate
    `/api/v1/media/{id}/cues` sub-resource would make them durable.
+   **Implemented:** `MediaRead.cue_points` plus idempotent
+   `PUT /api/v1/media/{id}/cues`.
 
 3. **Review-state index.** The frontend fetches all mastery data by calling
    `GET /api/v1/analytics/due?before=2999-01-01T00:00:00Z`. A dedicated
    `GET /api/v1/analytics/mastery` with pagination would be cleaner for large
    corpora.
+   **Implemented:** `GET /api/v1/analytics/mastery` with limit/offset
+   pagination and `{ items, total, limit, offset }` response metadata.
 
 ### Edge cases noted
 

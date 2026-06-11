@@ -125,6 +125,9 @@ class Segment(Base, TimestampMixin):
     annotations: Mapped[list[Annotation]] = relationship(
         back_populates="segment", cascade="all, delete-orphan"
     )
+    personal_note: Mapped[PersonalNote | None] = relationship(
+        back_populates="segment", cascade="all, delete-orphan", uselist=False
+    )
 
 
 class Annotation(Base, TimestampMixin):
@@ -136,6 +139,19 @@ class Annotation(Base, TimestampMixin):
     value: Mapped[str] = mapped_column(Text)
     data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     segment: Mapped[Segment] = relationship(back_populates="annotations")
+
+
+class PersonalNote(Base):
+    __tablename__ = "personal_notes"
+
+    segment_id: Mapped[str] = mapped_column(
+        ForeignKey("segments.id", ondelete="CASCADE"), primary_key=True
+    )
+    text: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+    segment: Mapped[Segment] = relationship(back_populates="personal_note")
 
 
 class MediaAsset(Base, TimestampMixin):

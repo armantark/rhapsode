@@ -1,470 +1,1802 @@
 {
-  "openapi": "3.1.0",
+  "components": {
+    "schemas": {
+      "AnnotationCreate": {
+        "properties": {
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          },
+          "layer": {
+            "title": "Layer",
+            "type": "string"
+          },
+          "segment_id": {
+            "title": "Segment Id",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "layer",
+          "value",
+          "segment_id"
+        ],
+        "title": "AnnotationCreate",
+        "type": "object"
+      },
+      "AnnotationInput": {
+        "properties": {
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          },
+          "layer": {
+            "title": "Layer",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "layer",
+          "value"
+        ],
+        "title": "AnnotationInput",
+        "type": "object"
+      },
+      "AnnotationRead": {
+        "properties": {
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "layer": {
+            "title": "Layer",
+            "type": "string"
+          },
+          "segment_id": {
+            "title": "Segment Id",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "segment_id",
+          "layer",
+          "value",
+          "data"
+        ],
+        "title": "AnnotationRead",
+        "type": "object"
+      },
+      "AttemptCreate": {
+        "properties": {
+          "item_id": {
+            "title": "Item Id",
+            "type": "string"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "media_asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Asset Id"
+          },
+          "rating": {
+            "$ref": "#/components/schemas/AttemptRating"
+          },
+          "revealed": {
+            "default": false,
+            "title": "Revealed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "item_id",
+          "rating"
+        ],
+        "title": "AttemptCreate",
+        "type": "object"
+      },
+      "AttemptRating": {
+        "enum": [
+          "clean",
+          "hesitant",
+          "incorrect",
+          "revealed"
+        ],
+        "title": "AttemptRating",
+        "type": "string"
+      },
+      "AttemptRead": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "string"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "media_asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Asset Id"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "rating": {
+            "title": "Rating",
+            "type": "string"
+          },
+          "revealed": {
+            "title": "Revealed",
+            "type": "boolean"
+          },
+          "segment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment Id"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "session_id",
+          "item_id",
+          "segment_id",
+          "media_asset_id",
+          "mode",
+          "rating",
+          "latency_ms",
+          "revealed",
+          "created_at"
+        ],
+        "title": "AttemptRead",
+        "type": "object"
+      },
+      "AttemptResult": {
+        "properties": {
+          "attempt": {
+            "$ref": "#/components/schemas/AttemptRead"
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At"
+          },
+          "mastery_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mastery Stage"
+          },
+          "session": {
+            "$ref": "#/components/schemas/SessionRead"
+          }
+        },
+        "required": [
+          "attempt",
+          "session"
+        ],
+        "title": "AttemptResult",
+        "type": "object"
+      },
+      "Body_upload_media_api_v1_media_post": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "revision_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Id"
+          },
+          "segment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment Id"
+          },
+          "upload": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Upload",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "upload"
+        ],
+        "title": "Body_upload_media_api_v1_media_post",
+        "type": "object"
+      },
+      "CollectionCreate": {
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CollectionCreate",
+        "type": "object"
+      },
+      "CollectionMemberAdd": {
+        "properties": {
+          "passage_id": {
+            "title": "Passage Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "passage_id"
+        ],
+        "title": "CollectionMemberAdd",
+        "type": "object"
+      },
+      "CollectionMemberRead": {
+        "properties": {
+          "passage": {
+            "$ref": "#/components/schemas/PassageRead"
+          },
+          "passage_id": {
+            "title": "Passage Id",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "passage_id",
+          "position",
+          "passage"
+        ],
+        "title": "CollectionMemberRead",
+        "type": "object"
+      },
+      "CollectionMembersReorder": {
+        "properties": {
+          "passage_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Passage Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "passage_ids"
+        ],
+        "title": "CollectionMembersReorder",
+        "type": "object"
+      },
+      "CollectionRead": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/CollectionMemberRead"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rollup": {
+            "$ref": "#/components/schemas/CollectionRollup"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "created_at",
+          "members",
+          "rollup"
+        ],
+        "title": "CollectionRead",
+        "type": "object"
+      },
+      "CollectionRollup": {
+        "properties": {
+          "due": {
+            "title": "Due",
+            "type": "integer"
+          },
+          "learning": {
+            "title": "Learning",
+            "type": "integer"
+          },
+          "new": {
+            "title": "New",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "due",
+          "learning",
+          "new"
+        ],
+        "title": "CollectionRollup",
+        "type": "object"
+      },
+      "CuePoint": {
+        "properties": {
+          "end": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "label": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "segment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment Id"
+          },
+          "time": {
+            "minimum": 0.0,
+            "title": "Time",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "time"
+        ],
+        "title": "CuePoint",
+        "type": "object"
+      },
+      "CuePointsUpdate": {
+        "properties": {
+          "cue_points": {
+            "items": {
+              "$ref": "#/components/schemas/CuePoint"
+            },
+            "maxItems": 500,
+            "title": "Cue Points",
+            "type": "array"
+          }
+        },
+        "title": "CuePointsUpdate",
+        "type": "object"
+      },
+      "Direction": {
+        "enum": [
+          "ltr",
+          "rtl",
+          "vertical"
+        ],
+        "title": "Direction",
+        "type": "string"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthRead": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "version"
+        ],
+        "title": "HealthRead",
+        "type": "object"
+      },
+      "LanguageProfileInput": {
+        "properties": {
+          "annotation_schemas": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Annotation Schemas",
+            "type": "array"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/Direction",
+            "default": "ltr"
+          },
+          "display_options": {
+            "additionalProperties": true,
+            "title": "Display Options",
+            "type": "object"
+          },
+          "fonts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fonts",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "segmentation_defaults": {
+            "additionalProperties": true,
+            "title": "Segmentation Defaults",
+            "type": "object"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name"
+        ],
+        "title": "LanguageProfileInput",
+        "type": "object"
+      },
+      "LanguageProfileRead": {
+        "properties": {
+          "annotation_schemas": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Annotation Schemas",
+            "type": "array"
+          },
+          "direction": {
+            "title": "Direction",
+            "type": "string"
+          },
+          "display_options": {
+            "additionalProperties": true,
+            "title": "Display Options",
+            "type": "object"
+          },
+          "fonts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fonts",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "segmentation_defaults": {
+            "additionalProperties": true,
+            "title": "Segmentation Defaults",
+            "type": "object"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "direction",
+          "fonts",
+          "annotation_schemas",
+          "segmentation_defaults",
+          "display_options"
+        ],
+        "title": "LanguageProfileRead",
+        "type": "object"
+      },
+      "MasteryPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewStateRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "MasteryPage",
+        "type": "object"
+      },
+      "MediaRead": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "cue_points": {
+            "items": {
+              "$ref": "#/components/schemas/CuePoint"
+            },
+            "title": "Cue Points",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "mime_type": {
+            "title": "Mime Type",
+            "type": "string"
+          },
+          "original_name": {
+            "title": "Original Name",
+            "type": "string"
+          },
+          "revision_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Id"
+          },
+          "segment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment Id"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "revision_id",
+          "segment_id",
+          "category",
+          "mime_type",
+          "original_name",
+          "size_bytes",
+          "created_at"
+        ],
+        "title": "MediaRead",
+        "type": "object"
+      },
+      "PassageDetail": {
+        "properties": {
+          "active_revision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RevisionRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "active_revision_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Revision Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "language_profile_id": {
+            "title": "Language Profile Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "language_profile_id",
+          "description",
+          "active_revision_id"
+        ],
+        "title": "PassageDetail",
+        "type": "object"
+      },
+      "PassageInput": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "hierarchy": {
+            "additionalProperties": true,
+            "title": "Hierarchy",
+            "type": "object"
+          },
+          "language_profile_id": {
+            "title": "Language Profile Id",
+            "type": "string"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/SegmentInput"
+            },
+            "title": "Segments",
+            "type": "array"
+          },
+          "source_text": {
+            "title": "Source Text",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "language_profile_id",
+          "source_text"
+        ],
+        "title": "PassageInput",
+        "type": "object"
+      },
+      "PassageRead": {
+        "properties": {
+          "active_revision_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Revision Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "language_profile_id": {
+            "title": "Language Profile Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "language_profile_id",
+          "description",
+          "active_revision_id"
+        ],
+        "title": "PassageRead",
+        "type": "object"
+      },
+      "PersonalNotePut": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "PersonalNotePut",
+        "type": "object"
+      },
+      "PersonalNoteRead": {
+        "properties": {
+          "segment_id": {
+            "title": "Segment Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "segment_id",
+          "text",
+          "updated_at"
+        ],
+        "title": "PersonalNoteRead",
+        "type": "object"
+      },
+      "PluginInput": {
+        "properties": {
+          "config": {
+            "additionalProperties": true,
+            "title": "Config",
+            "type": "object"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "plugin_id": {
+            "title": "Plugin Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plugin_id",
+          "kind",
+          "name",
+          "version"
+        ],
+        "title": "PluginInput",
+        "type": "object"
+      },
+      "PluginRead": {
+        "properties": {
+          "config": {
+            "additionalProperties": true,
+            "title": "Config",
+            "type": "object"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "plugin_id": {
+            "title": "Plugin Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "plugin_id",
+          "kind",
+          "name",
+          "version",
+          "enabled",
+          "config"
+        ],
+        "title": "PluginRead",
+        "type": "object"
+      },
+      "PracticeItemRead": {
+        "properties": {
+          "completed": {
+            "title": "Completed",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "prompt": {
+            "additionalProperties": true,
+            "title": "Prompt",
+            "type": "object"
+          },
+          "revision_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Id"
+          },
+          "segment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment Id"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "session_id",
+          "revision_id",
+          "segment_id",
+          "position",
+          "mode",
+          "prompt",
+          "completed"
+        ],
+        "title": "PracticeItemRead",
+        "type": "object"
+      },
+      "PracticeMode": {
+        "enum": [
+          "shadowing",
+          "progressive_fading",
+          "forward_chaining",
+          "backward_chaining",
+          "cue_recall",
+          "random_start",
+          "weak_link",
+          "full_passage"
+        ],
+        "title": "PracticeMode",
+        "type": "string"
+      },
+      "PrepSuggestInput": {
+        "properties": {
+          "layers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Layers",
+            "type": "array"
+          }
+        },
+        "title": "PrepSuggestInput",
+        "type": "object"
+      },
+      "PrepSuggestResult": {
+        "properties": {
+          "written": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Written",
+            "type": "object"
+          }
+        },
+        "required": [
+          "written"
+        ],
+        "title": "PrepSuggestResult",
+        "type": "object"
+      },
+      "ReviewStateRead": {
+        "properties": {
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "clean_count": {
+            "title": "Clean Count",
+            "type": "integer"
+          },
+          "due_at": {
+            "format": "date-time",
+            "title": "Due At",
+            "type": "string"
+          },
+          "mastery_stage": {
+            "title": "Mastery Stage",
+            "type": "string"
+          },
+          "segment_id": {
+            "title": "Segment Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "segment_id",
+          "due_at",
+          "mastery_stage",
+          "clean_count",
+          "attempt_count"
+        ],
+        "title": "ReviewStateRead",
+        "type": "object"
+      },
+      "RevisionInput": {
+        "properties": {
+          "hierarchy": {
+            "additionalProperties": true,
+            "title": "Hierarchy",
+            "type": "object"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/SegmentInput"
+            },
+            "title": "Segments",
+            "type": "array"
+          },
+          "source_text": {
+            "title": "Source Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_text"
+        ],
+        "title": "RevisionInput",
+        "type": "object"
+      },
+      "RevisionRead": {
+        "properties": {
+          "hierarchy": {
+            "additionalProperties": true,
+            "title": "Hierarchy",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "passage_id": {
+            "title": "Passage Id",
+            "type": "string"
+          },
+          "practiced": {
+            "title": "Practiced",
+            "type": "boolean"
+          },
+          "revision_number": {
+            "title": "Revision Number",
+            "type": "integer"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/SegmentRead"
+            },
+            "title": "Segments",
+            "type": "array"
+          },
+          "source_text": {
+            "title": "Source Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "passage_id",
+          "revision_number",
+          "source_text",
+          "hierarchy",
+          "practiced"
+        ],
+        "title": "RevisionRead",
+        "type": "object"
+      },
+      "SegmentInput": {
+        "properties": {
+          "annotations": {
+            "items": {
+              "$ref": "#/components/schemas/AnnotationInput"
+            },
+            "title": "Annotations",
+            "type": "array"
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "cue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cue"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "metadata_json": {
+            "additionalProperties": true,
+            "title": "Metadata Json",
+            "type": "object"
+          },
+          "ordinal": {
+            "title": "Ordinal",
+            "type": "integer"
+          },
+          "parent_client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Client Id"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "ordinal",
+          "text"
+        ],
+        "title": "SegmentInput",
+        "type": "object"
+      },
+      "SegmentRead": {
+        "properties": {
+          "annotations": {
+            "items": {
+              "$ref": "#/components/schemas/AnnotationRead"
+            },
+            "title": "Annotations",
+            "type": "array"
+          },
+          "cue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cue"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "metadata_json": {
+            "additionalProperties": true,
+            "title": "Metadata Json",
+            "type": "object"
+          },
+          "ordinal": {
+            "title": "Ordinal",
+            "type": "integer"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "revision_id": {
+            "title": "Revision Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "revision_id",
+          "parent_id",
+          "kind",
+          "ordinal",
+          "text",
+          "cue",
+          "metadata_json"
+        ],
+        "title": "SegmentRead",
+        "type": "object"
+      },
+      "SegmentsReplaceInput": {
+        "properties": {
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/SegmentInput"
+            },
+            "title": "Segments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "segments"
+        ],
+        "title": "SegmentsReplaceInput",
+        "type": "object"
+      },
+      "SessionCreate": {
+        "properties": {
+          "collection_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collection Id"
+          },
+          "due_only": {
+            "default": false,
+            "title": "Due Only",
+            "type": "boolean"
+          },
+          "minutes": {
+            "anyOf": [
+              {
+                "maximum": 180.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minutes"
+          },
+          "modes": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PracticeMode"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modes"
+          },
+          "revision_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Id"
+          },
+          "segment_kinds": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment Kinds"
+          }
+        },
+        "title": "SessionCreate",
+        "type": "object"
+      },
+      "SessionRead": {
+        "properties": {
+          "collection_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collection Id"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "current_index": {
+            "title": "Current Index",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PracticeItemRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "plan": {
+            "additionalProperties": true,
+            "title": "Plan",
+            "type": "object"
+          },
+          "revision_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "revision_id",
+          "collection_id",
+          "status",
+          "plan",
+          "current_index",
+          "completed_at"
+        ],
+        "title": "SessionRead",
+        "type": "object"
+      },
+      "SettingInput": {
+        "properties": {
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "SettingInput",
+        "type": "object"
+      },
+      "SettingRead": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
+        "title": "SettingRead",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "WeakLinkRead": {
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "difficult_attempts": {
+            "title": "Difficult Attempts",
+            "type": "integer"
+          },
+          "difficulty_rate": {
+            "title": "Difficulty Rate",
+            "type": "number"
+          },
+          "mean_latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Latency Ms"
+          },
+          "segment_id": {
+            "title": "Segment Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "segment_id",
+          "text",
+          "attempts",
+          "difficult_attempts",
+          "difficulty_rate"
+        ],
+        "title": "WeakLinkRead",
+        "type": "object"
+      }
+    }
+  },
   "info": {
-    "title": "Rhapsode API",
     "description": "Local-first API for structured oral memorization.",
+    "title": "Rhapsode API",
     "version": "0.1.0"
   },
+  "openapi": "3.1.0",
   "paths": {
-    "/api/v1/health": {
+    "/api/v1/analytics/due": {
       "get": {
-        "tags": [
-          "system"
-        ],
-        "summary": "Health",
-        "operationId": "health_api_v1_health_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthRead"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/languages": {
-      "get": {
-        "tags": [
-          "languages"
-        ],
-        "summary": "List Languages",
-        "operationId": "list_languages_api_v1_languages_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/LanguageProfileRead"
-                  },
-                  "type": "array",
-                  "title": "Response List Languages Api V1 Languages Get"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "languages"
-        ],
-        "summary": "Create Language",
-        "operationId": "create_language_api_v1_languages_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LanguageProfileInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LanguageProfileRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/plugins": {
-      "get": {
-        "tags": [
-          "plugins"
-        ],
-        "summary": "List Plugins",
-        "operationId": "list_plugins_api_v1_plugins_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/PluginRead"
-                  },
-                  "type": "array",
-                  "title": "Response List Plugins Api V1 Plugins Get"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "plugins"
-        ],
-        "summary": "Register Plugin",
-        "operationId": "register_plugin_api_v1_plugins_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PluginInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PluginRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/passages": {
-      "get": {
-        "tags": [
-          "passages"
-        ],
-        "summary": "List Passages",
-        "operationId": "list_passages_api_v1_passages_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/PassageRead"
-                  },
-                  "type": "array",
-                  "title": "Response List Passages Api V1 Passages Get"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "passages"
-        ],
-        "summary": "Create Passage",
-        "operationId": "create_passage_api_v1_passages_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PassageInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PassageDetail"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/passages/{passage_id}": {
-      "get": {
-        "tags": [
-          "passages"
-        ],
-        "summary": "Get Passage",
-        "operationId": "get_passage_api_v1_passages__passage_id__get",
+        "operationId": "due_reviews_api_v1_analytics_due_get",
         "parameters": [
           {
-            "name": "passage_id",
-            "in": "path",
-            "required": true,
+            "in": "query",
+            "name": "before",
+            "required": false,
             "schema": {
-              "type": "string",
-              "title": "Passage Id"
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PassageDetail"
+                  "items": {
+                    "$ref": "#/components/schemas/ReviewStateRead"
+                  },
+                  "title": "Response Due Reviews Api V1 Analytics Due Get",
+                  "type": "array"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/passages/{passage_id}/revisions": {
-      "post": {
-        "tags": [
-          "passages"
-        ],
-        "summary": "Create Revision",
-        "operationId": "create_revision_api_v1_passages__passage_id__revisions_post",
-        "parameters": [
-          {
-            "name": "passage_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Passage Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RevisionInput"
-              }
-            }
+            },
+            "description": "Validation Error"
           }
         },
+        "summary": "Due Reviews",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/mastery": {
+      "get": {
+        "operationId": "mastery_api_v1_analytics_mastery_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
-          "201": {
-            "description": "Successful Response",
+          "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RevisionRead"
+                  "$ref": "#/components/schemas/MasteryPage"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
+            },
+            "description": "Validation Error"
           }
-        }
+        },
+        "summary": "Mastery",
+        "tags": [
+          "analytics"
+        ]
       }
     },
-    "/api/v1/revisions/{revision_id}": {
+    "/api/v1/analytics/weak-links": {
       "get": {
-        "tags": [
-          "passages"
-        ],
-        "summary": "Get Revision",
-        "operationId": "get_revision_api_v1_revisions__revision_id__get",
+        "operationId": "weak_links_api_v1_analytics_weak_links_get",
         "parameters": [
           {
+            "in": "query",
             "name": "revision_id",
-            "in": "path",
-            "required": true,
+            "required": false,
             "schema": {
-              "type": "string",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
               "title": "Revision Id"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RevisionRead"
+                  "items": {
+                    "$ref": "#/components/schemas/WeakLinkRead"
+                  },
+                  "title": "Response Weak Links Api V1 Analytics Weak Links Get",
+                  "type": "array"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/revisions/{revision_id}/segments": {
-      "put": {
-        "tags": [
-          "passages"
-        ],
-        "summary": "Replace Segments",
-        "operationId": "replace_segments_api_v1_revisions__revision_id__segments_put",
-        "parameters": [
-          {
-            "name": "revision_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Revision Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SegmentsReplaceInput"
-              }
-            }
+            },
+            "description": "Validation Error"
           }
         },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RevisionRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/revisions/{revision_id}/prep-suggestions": {
-      "post": {
+        "summary": "Weak Links",
         "tags": [
-          "passages"
-        ],
-        "summary": "Prep Suggestions",
-        "operationId": "prep_suggestions_api_v1_revisions__revision_id__prep_suggestions_post",
-        "parameters": [
-          {
-            "name": "revision_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Revision Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PrepSuggestInput"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PrepSuggestResult"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
+          "analytics"
+        ]
       }
     },
     "/api/v1/annotations": {
       "post": {
-        "tags": [
-          "passages"
-        ],
-        "summary": "Create Annotation",
         "operationId": "create_annotation_api_v1_annotations_post",
         "requestBody": {
           "content": {
@@ -478,124 +1810,523 @@
         },
         "responses": {
           "201": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AnnotationRead"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
+            },
+            "description": "Validation Error"
           }
-        }
+        },
+        "summary": "Create Annotation",
+        "tags": [
+          "passages"
+        ]
       }
     },
     "/api/v1/annotations/{annotation_id}": {
       "delete": {
-        "tags": [
-          "passages"
-        ],
-        "summary": "Delete Annotation",
         "operationId": "delete_annotation_api_v1_annotations__annotation_id__delete",
         "parameters": [
           {
-            "name": "annotation_id",
             "in": "path",
+            "name": "annotation_id",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Annotation Id"
+              "title": "Annotation Id",
+              "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
                   "additionalProperties": {
                     "type": "boolean"
                   },
-                  "title": "Response Delete Annotation Api V1 Annotations  Annotation Id  Delete"
+                  "title": "Response Delete Annotation Api V1 Annotations  Annotation Id  Delete",
+                  "type": "object"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
+            },
+            "description": "Validation Error"
           }
-        }
+        },
+        "summary": "Delete Annotation",
+        "tags": [
+          "passages"
+        ]
       }
     },
-    "/api/v1/media": {
-      "post": {
+    "/api/v1/collections": {
+      "get": {
+        "operationId": "list_collections_api_v1_collections_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CollectionRead"
+                  },
+                  "title": "Response List Collections Api V1 Collections Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Collections",
         "tags": [
-          "media"
-        ],
-        "summary": "Upload Media",
-        "operationId": "upload_media_api_v1_media_post",
+          "collections"
+        ]
+      },
+      "post": {
+        "operationId": "create_collection_api_v1_collections_post",
         "requestBody": {
-          "required": true,
           "content": {
-            "multipart/form-data": {
+            "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_upload_media_api_v1_media_post"
+                "$ref": "#/components/schemas/CollectionCreate"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "201": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MediaRead"
+                  "$ref": "#/components/schemas/CollectionRead"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Collection",
+        "tags": [
+          "collections"
+        ]
+      }
+    },
+    "/api/v1/collections/{collection_id}": {
+      "delete": {
+        "operationId": "delete_collection_api_v1_collections__collection_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "collection_id",
+            "required": true,
+            "schema": {
+              "title": "Collection Id",
+              "type": "string"
             }
           }
-        }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Delete Collection Api V1 Collections  Collection Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Collection",
+        "tags": [
+          "collections"
+        ]
       },
       "get": {
-        "tags": [
-          "media"
+        "operationId": "get_collection_api_v1_collections__collection_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "collection_id",
+            "required": true,
+            "schema": {
+              "title": "Collection Id",
+              "type": "string"
+            }
+          }
         ],
-        "summary": "List Media",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Collection",
+        "tags": [
+          "collections"
+        ]
+      },
+      "put": {
+        "operationId": "update_collection_api_v1_collections__collection_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "collection_id",
+            "required": true,
+            "schema": {
+              "title": "Collection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CollectionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Collection",
+        "tags": [
+          "collections"
+        ]
+      }
+    },
+    "/api/v1/collections/{collection_id}/members": {
+      "post": {
+        "operationId": "add_collection_member_api_v1_collections__collection_id__members_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "collection_id",
+            "required": true,
+            "schema": {
+              "title": "Collection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CollectionMemberAdd"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Collection Member",
+        "tags": [
+          "collections"
+        ]
+      },
+      "put": {
+        "operationId": "reorder_collection_members_api_v1_collections__collection_id__members_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "collection_id",
+            "required": true,
+            "schema": {
+              "title": "Collection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CollectionMembersReorder"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reorder Collection Members",
+        "tags": [
+          "collections"
+        ]
+      }
+    },
+    "/api/v1/collections/{collection_id}/members/{passage_id}": {
+      "delete": {
+        "operationId": "remove_collection_member_api_v1_collections__collection_id__members__passage_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "collection_id",
+            "required": true,
+            "schema": {
+              "title": "Collection Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "passage_id",
+            "required": true,
+            "schema": {
+              "title": "Passage Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Collection Member",
+        "tags": [
+          "collections"
+        ]
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "operationId": "health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/languages": {
+      "get": {
+        "operationId": "list_languages_api_v1_languages_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LanguageProfileRead"
+                  },
+                  "title": "Response List Languages Api V1 Languages Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Languages",
+        "tags": [
+          "languages"
+        ]
+      },
+      "post": {
+        "operationId": "create_language_api_v1_languages_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LanguageProfileInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LanguageProfileRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Language",
+        "tags": [
+          "languages"
+        ]
+      }
+    },
+    "/api/v1/media": {
+      "get": {
         "operationId": "list_media_api_v1_media_get",
         "parameters": [
           {
-            "name": "revision_id",
             "in": "query",
+            "name": "revision_id",
             "required": false,
             "schema": {
               "anyOf": [
@@ -610,8 +2341,8 @@
             }
           },
           {
-            "name": "category",
             "in": "query",
+            "name": "category",
             "required": false,
             "schema": {
               "anyOf": [
@@ -628,220 +2359,680 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/MediaRead"
                   },
-                  "title": "Response List Media Api V1 Media Get"
+                  "title": "Response List Media Api V1 Media Get",
+                  "type": "array"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/media/{media_id}/content": {
-      "get": {
-        "tags": [
-          "media"
-        ],
-        "summary": "Stream Media",
-        "operationId": "stream_media_api_v1_media__media_id__content_get",
-        "parameters": [
-          {
-            "name": "media_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Media Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/media/{media_id}/cues": {
-      "put": {
-        "tags": [
-          "media"
-        ],
-        "summary": "Replace Media Cues",
-        "operationId": "replace_media_cues_api_v1_media__media_id__cues_put",
-        "parameters": [
-          {
-            "name": "media_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Media Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CuePointsUpdate"
-              }
-            }
+            },
+            "description": "Validation Error"
           }
         },
+        "summary": "List Media",
+        "tags": [
+          "media"
+        ]
+      },
+      "post": {
+        "operationId": "upload_media_api_v1_media_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_media_api_v1_media_post"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
-          "200": {
-            "description": "Successful Response",
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MediaRead"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
+            },
+            "description": "Validation Error"
           }
-        }
+        },
+        "summary": "Upload Media",
+        "tags": [
+          "media"
+        ]
       }
     },
     "/api/v1/media/{media_id}": {
       "delete": {
-        "tags": [
-          "media"
-        ],
-        "summary": "Delete Media",
         "operationId": "delete_media_api_v1_media__media_id__delete",
         "parameters": [
           {
-            "name": "media_id",
             "in": "path",
+            "name": "media_id",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Media Id"
+              "title": "Media Id",
+              "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
                   "additionalProperties": {
                     "type": "boolean"
                   },
-                  "title": "Response Delete Media Api V1 Media  Media Id  Delete"
+                  "title": "Response Delete Media Api V1 Media  Media Id  Delete",
+                  "type": "object"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
+            },
+            "description": "Validation Error"
           }
-        }
+        },
+        "summary": "Delete Media",
+        "tags": [
+          "media"
+        ]
       }
     },
-    "/api/v1/sessions": {
-      "post": {
-        "tags": [
-          "practice"
+    "/api/v1/media/{media_id}/content": {
+      "get": {
+        "operationId": "stream_media_api_v1_media__media_id__content_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
         ],
-        "summary": "Create Session",
-        "operationId": "create_session_api_v1_sessions_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Media",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/{media_id}/cues": {
+      "put": {
+        "operationId": "replace_media_cues_api_v1_media__media_id__cues_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SessionCreate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SessionRead"
-                }
+                "$ref": "#/components/schemas/CuePointsUpdate"
               }
             }
           },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Replace Media Cues",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/passages": {
+      "get": {
+        "operationId": "list_passages_api_v1_passages_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PassageRead"
+                  },
+                  "title": "Response List Passages Api V1 Passages Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Passages",
+        "tags": [
+          "passages"
+        ]
+      },
+      "post": {
+        "operationId": "create_passage_api_v1_passages_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PassageInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassageDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Passage",
+        "tags": [
+          "passages"
+        ]
+      }
+    },
+    "/api/v1/passages/{passage_id}": {
+      "get": {
+        "operationId": "get_passage_api_v1_passages__passage_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "passage_id",
+            "required": true,
+            "schema": {
+              "title": "Passage Id",
+              "type": "string"
             }
           }
-        }
-      },
-      "get": {
-        "tags": [
-          "practice"
         ],
-        "summary": "List Sessions",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassageDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Passage",
+        "tags": [
+          "passages"
+        ]
+      }
+    },
+    "/api/v1/passages/{passage_id}/revisions": {
+      "post": {
+        "operationId": "create_revision_api_v1_passages__passage_id__revisions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "passage_id",
+            "required": true,
+            "schema": {
+              "title": "Passage Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevisionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Revision",
+        "tags": [
+          "passages"
+        ]
+      }
+    },
+    "/api/v1/plugins": {
+      "get": {
+        "operationId": "list_plugins_api_v1_plugins_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PluginRead"
+                  },
+                  "title": "Response List Plugins Api V1 Plugins Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Plugins",
+        "tags": [
+          "plugins"
+        ]
+      },
+      "post": {
+        "operationId": "register_plugin_api_v1_plugins_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PluginInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PluginRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register Plugin",
+        "tags": [
+          "plugins"
+        ]
+      }
+    },
+    "/api/v1/revisions/{revision_id}": {
+      "get": {
+        "operationId": "get_revision_api_v1_revisions__revision_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revision_id",
+            "required": true,
+            "schema": {
+              "title": "Revision Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Revision",
+        "tags": [
+          "passages"
+        ]
+      }
+    },
+    "/api/v1/revisions/{revision_id}/prep-suggestions": {
+      "post": {
+        "operationId": "prep_suggestions_api_v1_revisions__revision_id__prep_suggestions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revision_id",
+            "required": true,
+            "schema": {
+              "title": "Revision Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrepSuggestInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrepSuggestResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Prep Suggestions",
+        "tags": [
+          "passages"
+        ]
+      }
+    },
+    "/api/v1/revisions/{revision_id}/segments": {
+      "put": {
+        "operationId": "replace_segments_api_v1_revisions__revision_id__segments_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revision_id",
+            "required": true,
+            "schema": {
+              "title": "Revision Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SegmentsReplaceInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Replace Segments",
+        "tags": [
+          "passages"
+        ]
+      }
+    },
+    "/api/v1/segments/{segment_id}/note": {
+      "get": {
+        "operationId": "get_personal_note_api_v1_segments__segment_id__note_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "segment_id",
+            "required": true,
+            "schema": {
+              "title": "Segment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalNoteRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Personal Note",
+        "tags": [
+          "passages"
+        ]
+      },
+      "put": {
+        "operationId": "put_personal_note_api_v1_segments__segment_id__note_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "segment_id",
+            "required": true,
+            "schema": {
+              "title": "Segment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonalNotePut"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalNoteRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Personal Note",
+        "tags": [
+          "passages"
+        ]
+      }
+    },
+    "/api/v1/sessions": {
+      "get": {
         "operationId": "list_sessions_api_v1_sessions_get",
         "parameters": [
           {
-            "name": "status",
             "in": "query",
+            "name": "status",
             "required": false,
             "schema": {
               "anyOf": [
@@ -858,1866 +3049,328 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/SessionRead"
                   },
-                  "title": "Response List Sessions Api V1 Sessions Get"
+                  "title": "Response List Sessions Api V1 Sessions Get",
+                  "type": "array"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
+            },
+            "description": "Validation Error"
           }
-        }
-      }
-    },
-    "/api/v1/sessions/{session_id}": {
-      "get": {
+        },
+        "summary": "List Sessions",
         "tags": [
           "practice"
-        ],
-        "summary": "Get Session Detail",
-        "operationId": "get_session_detail_api_v1_sessions__session_id__get",
-        "parameters": [
-          {
-            "name": "session_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Session Id"
+        ]
+      },
+      "post": {
+        "operationId": "create_session_api_v1_sessions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionCreate"
+              }
             }
-          }
-        ],
+          },
+          "required": true
+        },
         "responses": {
-          "200": {
-            "description": "Successful Response",
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionRead"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Session",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
+    "/api/v1/sessions/{session_id}": {
+      "get": {
+        "operationId": "get_session_detail_api_v1_sessions__session_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
             }
           }
-        }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Session Detail",
+        "tags": [
+          "practice"
+        ]
       }
     },
     "/api/v1/sessions/{session_id}/attempts": {
       "post": {
-        "tags": [
-          "practice"
-        ],
-        "summary": "Submit Attempt",
         "operationId": "submit_attempt_api_v1_sessions__session_id__attempts_post",
         "parameters": [
           {
-            "name": "session_id",
             "in": "path",
+            "name": "session_id",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Session Id"
+              "title": "Session Id",
+              "type": "string"
             }
           }
         ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AttemptCreate"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "201": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AttemptResult"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
+            },
+            "description": "Validation Error"
           }
-        }
-      }
-    },
-    "/api/v1/sessions/{session_id}/undo": {
-      "post": {
+        },
+        "summary": "Submit Attempt",
         "tags": [
           "practice"
-        ],
-        "summary": "Undo Attempt",
-        "operationId": "undo_attempt_api_v1_sessions__session_id__undo_post",
-        "parameters": [
-          {
-            "name": "session_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Session Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SessionRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
+        ]
       }
     },
     "/api/v1/sessions/{session_id}/complete": {
       "post": {
-        "tags": [
-          "practice"
-        ],
-        "summary": "Complete Session",
         "operationId": "complete_session_api_v1_sessions__session_id__complete_post",
         "parameters": [
           {
-            "name": "session_id",
             "in": "path",
+            "name": "session_id",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Session Id"
+              "title": "Session Id",
+              "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionRead"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
+            },
+            "description": "Validation Error"
           }
-        }
+        },
+        "summary": "Complete Session",
+        "tags": [
+          "practice"
+        ]
       }
     },
-    "/api/v1/analytics/due": {
-      "get": {
-        "tags": [
-          "analytics"
-        ],
-        "summary": "Due Reviews",
-        "operationId": "due_reviews_api_v1_analytics_due_get",
+    "/api/v1/sessions/{session_id}/undo": {
+      "post": {
+        "operationId": "undo_attempt_api_v1_sessions__session_id__undo_post",
         "parameters": [
           {
-            "name": "before",
-            "in": "query",
-            "required": false,
+            "in": "path",
+            "name": "session_id",
+            "required": true,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "format": "date-time"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Before"
+              "title": "Session Id",
+              "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ReviewStateRead"
-                  },
-                  "title": "Response Due Reviews Api V1 Analytics Due Get"
+                  "$ref": "#/components/schemas/SessionRead"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
+            },
+            "description": "Validation Error"
           }
-        }
-      }
-    },
-    "/api/v1/analytics/mastery": {
-      "get": {
+        },
+        "summary": "Undo Attempt",
         "tags": [
-          "analytics"
-        ],
-        "summary": "Mastery",
-        "operationId": "mastery_api_v1_analytics_mastery_get",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 200,
-              "minimum": 1,
-              "default": 50,
-              "title": "Limit"
-            }
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "default": 0,
-              "title": "Offset"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MasteryPage"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/analytics/weak-links": {
-      "get": {
-        "tags": [
-          "analytics"
-        ],
-        "summary": "Weak Links",
-        "operationId": "weak_links_api_v1_analytics_weak_links_get",
-        "parameters": [
-          {
-            "name": "revision_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Revision Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/WeakLinkRead"
-                  },
-                  "title": "Response Weak Links Api V1 Analytics Weak Links Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
+          "practice"
+        ]
       }
     },
     "/api/v1/settings": {
       "get": {
-        "tags": [
-          "settings"
-        ],
-        "summary": "List Settings",
         "operationId": "list_settings_api_v1_settings_get",
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
                   "items": {
                     "$ref": "#/components/schemas/SettingRead"
                   },
-                  "type": "array",
-                  "title": "Response List Settings Api V1 Settings Get"
+                  "title": "Response List Settings Api V1 Settings Get",
+                  "type": "array"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           }
-        }
+        },
+        "summary": "List Settings",
+        "tags": [
+          "settings"
+        ]
       }
     },
     "/api/v1/settings/{key}": {
       "put": {
-        "tags": [
-          "settings"
-        ],
-        "summary": "Put Setting",
         "operationId": "put_setting_api_v1_settings__key__put",
         "parameters": [
           {
-            "name": "key",
             "in": "path",
+            "name": "key",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Key"
+              "title": "Key",
+              "type": "string"
             }
           }
         ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SettingInput"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SettingRead"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
-          }
-        }
-      }
-    }
-  },
-  "components": {
-    "schemas": {
-      "AnnotationCreate": {
-        "properties": {
-          "layer": {
-            "type": "string",
-            "title": "Layer"
-          },
-          "value": {
-            "type": "string",
-            "title": "Value"
-          },
-          "data": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Data"
-          },
-          "segment_id": {
-            "type": "string",
-            "title": "Segment Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "layer",
-          "value",
-          "segment_id"
-        ],
-        "title": "AnnotationCreate"
-      },
-      "AnnotationInput": {
-        "properties": {
-          "layer": {
-            "type": "string",
-            "title": "Layer"
-          },
-          "value": {
-            "type": "string",
-            "title": "Value"
-          },
-          "data": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Data"
-          }
-        },
-        "type": "object",
-        "required": [
-          "layer",
-          "value"
-        ],
-        "title": "AnnotationInput"
-      },
-      "AnnotationRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "segment_id": {
-            "type": "string",
-            "title": "Segment Id"
-          },
-          "layer": {
-            "type": "string",
-            "title": "Layer"
-          },
-          "value": {
-            "type": "string",
-            "title": "Value"
-          },
-          "data": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Data"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "segment_id",
-          "layer",
-          "value",
-          "data"
-        ],
-        "title": "AnnotationRead"
-      },
-      "AttemptCreate": {
-        "properties": {
-          "item_id": {
-            "type": "string",
-            "title": "Item Id"
-          },
-          "rating": {
-            "$ref": "#/components/schemas/AttemptRating"
-          },
-          "latency_ms": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latency Ms"
-          },
-          "media_asset_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Media Asset Id"
-          },
-          "revealed": {
-            "type": "boolean",
-            "title": "Revealed",
-            "default": false
-          }
-        },
-        "type": "object",
-        "required": [
-          "item_id",
-          "rating"
-        ],
-        "title": "AttemptCreate"
-      },
-      "AttemptRating": {
-        "type": "string",
-        "enum": [
-          "clean",
-          "hesitant",
-          "incorrect",
-          "revealed"
-        ],
-        "title": "AttemptRating"
-      },
-      "AttemptRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "session_id": {
-            "type": "string",
-            "title": "Session Id"
-          },
-          "item_id": {
-            "type": "string",
-            "title": "Item Id"
-          },
-          "segment_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Segment Id"
-          },
-          "media_asset_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Media Asset Id"
-          },
-          "mode": {
-            "type": "string",
-            "title": "Mode"
-          },
-          "rating": {
-            "type": "string",
-            "title": "Rating"
-          },
-          "latency_ms": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latency Ms"
-          },
-          "revealed": {
-            "type": "boolean",
-            "title": "Revealed"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "session_id",
-          "item_id",
-          "segment_id",
-          "media_asset_id",
-          "mode",
-          "rating",
-          "latency_ms",
-          "revealed",
-          "created_at"
-        ],
-        "title": "AttemptRead"
-      },
-      "AttemptResult": {
-        "properties": {
-          "attempt": {
-            "$ref": "#/components/schemas/AttemptRead"
-          },
-          "session": {
-            "$ref": "#/components/schemas/SessionRead"
-          },
-          "due_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Due At"
-          },
-          "mastery_stage": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mastery Stage"
-          }
-        },
-        "type": "object",
-        "required": [
-          "attempt",
-          "session"
-        ],
-        "title": "AttemptResult"
-      },
-      "Body_upload_media_api_v1_media_post": {
-        "properties": {
-          "category": {
-            "type": "string",
-            "title": "Category"
-          },
-          "upload": {
-            "type": "string",
-            "contentMediaType": "application/octet-stream",
-            "title": "Upload"
-          },
-          "revision_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Revision Id"
-          },
-          "segment_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Segment Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "category",
-          "upload"
-        ],
-        "title": "Body_upload_media_api_v1_media_post"
-      },
-      "CuePoint": {
-        "properties": {
-          "label": {
-            "type": "string",
-            "maxLength": 120,
-            "minLength": 1,
-            "title": "Label"
-          },
-          "time": {
-            "type": "number",
-            "minimum": 0.0,
-            "title": "Time"
-          },
-          "segment_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Segment Id"
-          },
-          "end": {
-            "anyOf": [
-              {
-                "type": "number",
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "End"
-          }
-        },
-        "type": "object",
-        "required": [
-          "label",
-          "time"
-        ],
-        "title": "CuePoint"
-      },
-      "CuePointsUpdate": {
-        "properties": {
-          "cue_points": {
-            "items": {
-              "$ref": "#/components/schemas/CuePoint"
             },
-            "type": "array",
-            "maxItems": 500,
-            "title": "Cue Points"
+            "description": "Validation Error"
           }
         },
-        "type": "object",
-        "title": "CuePointsUpdate"
-      },
-      "Direction": {
-        "type": "string",
-        "enum": [
-          "ltr",
-          "rtl",
-          "vertical"
-        ],
-        "title": "Direction"
-      },
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "type": "array",
-            "title": "Detail"
-          }
-        },
-        "type": "object",
-        "title": "HTTPValidationError"
-      },
-      "HealthRead": {
-        "properties": {
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "version": {
-            "type": "string",
-            "title": "Version"
-          }
-        },
-        "type": "object",
-        "required": [
-          "status",
-          "version"
-        ],
-        "title": "HealthRead"
-      },
-      "LanguageProfileInput": {
-        "properties": {
-          "slug": {
-            "type": "string",
-            "title": "Slug"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "direction": {
-            "$ref": "#/components/schemas/Direction",
-            "default": "ltr"
-          },
-          "fonts": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Fonts"
-          },
-          "annotation_schemas": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "type": "array",
-            "title": "Annotation Schemas"
-          },
-          "segmentation_defaults": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Segmentation Defaults"
-          },
-          "display_options": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Display Options"
-          }
-        },
-        "type": "object",
-        "required": [
-          "slug",
-          "name"
-        ],
-        "title": "LanguageProfileInput"
-      },
-      "LanguageProfileRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "slug": {
-            "type": "string",
-            "title": "Slug"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "direction": {
-            "type": "string",
-            "title": "Direction"
-          },
-          "fonts": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Fonts"
-          },
-          "annotation_schemas": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "type": "array",
-            "title": "Annotation Schemas"
-          },
-          "segmentation_defaults": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Segmentation Defaults"
-          },
-          "display_options": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Display Options"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "slug",
-          "name",
-          "direction",
-          "fonts",
-          "annotation_schemas",
-          "segmentation_defaults",
-          "display_options"
-        ],
-        "title": "LanguageProfileRead"
-      },
-      "MasteryPage": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/ReviewStateRead"
-            },
-            "type": "array",
-            "title": "Items"
-          },
-          "total": {
-            "type": "integer",
-            "title": "Total"
-          },
-          "limit": {
-            "type": "integer",
-            "title": "Limit"
-          },
-          "offset": {
-            "type": "integer",
-            "title": "Offset"
-          }
-        },
-        "type": "object",
-        "required": [
-          "items",
-          "total",
-          "limit",
-          "offset"
-        ],
-        "title": "MasteryPage"
-      },
-      "MediaRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "revision_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Revision Id"
-          },
-          "segment_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Segment Id"
-          },
-          "category": {
-            "type": "string",
-            "title": "Category"
-          },
-          "mime_type": {
-            "type": "string",
-            "title": "Mime Type"
-          },
-          "original_name": {
-            "type": "string",
-            "title": "Original Name"
-          },
-          "size_bytes": {
-            "type": "integer",
-            "title": "Size Bytes"
-          },
-          "cue_points": {
-            "items": {
-              "$ref": "#/components/schemas/CuePoint"
-            },
-            "type": "array",
-            "title": "Cue Points"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "revision_id",
-          "segment_id",
-          "category",
-          "mime_type",
-          "original_name",
-          "size_bytes",
-          "created_at"
-        ],
-        "title": "MediaRead"
-      },
-      "PassageDetail": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "title": {
-            "type": "string",
-            "title": "Title"
-          },
-          "language_profile_id": {
-            "type": "string",
-            "title": "Language Profile Id"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "active_revision_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Active Revision Id"
-          },
-          "active_revision": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RevisionRead"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "title",
-          "language_profile_id",
-          "description",
-          "active_revision_id"
-        ],
-        "title": "PassageDetail"
-      },
-      "PassageInput": {
-        "properties": {
-          "title": {
-            "type": "string",
-            "title": "Title"
-          },
-          "language_profile_id": {
-            "type": "string",
-            "title": "Language Profile Id"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "source_text": {
-            "type": "string",
-            "title": "Source Text"
-          },
-          "hierarchy": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Hierarchy"
-          },
-          "segments": {
-            "items": {
-              "$ref": "#/components/schemas/SegmentInput"
-            },
-            "type": "array",
-            "title": "Segments"
-          }
-        },
-        "type": "object",
-        "required": [
-          "title",
-          "language_profile_id",
-          "source_text"
-        ],
-        "title": "PassageInput"
-      },
-      "PassageRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "title": {
-            "type": "string",
-            "title": "Title"
-          },
-          "language_profile_id": {
-            "type": "string",
-            "title": "Language Profile Id"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "active_revision_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Active Revision Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "title",
-          "language_profile_id",
-          "description",
-          "active_revision_id"
-        ],
-        "title": "PassageRead"
-      },
-      "PluginInput": {
-        "properties": {
-          "plugin_id": {
-            "type": "string",
-            "title": "Plugin Id"
-          },
-          "kind": {
-            "type": "string",
-            "title": "Kind"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "version": {
-            "type": "string",
-            "title": "Version"
-          },
-          "enabled": {
-            "type": "boolean",
-            "title": "Enabled",
-            "default": true
-          },
-          "config": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Config"
-          }
-        },
-        "type": "object",
-        "required": [
-          "plugin_id",
-          "kind",
-          "name",
-          "version"
-        ],
-        "title": "PluginInput"
-      },
-      "PluginRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "plugin_id": {
-            "type": "string",
-            "title": "Plugin Id"
-          },
-          "kind": {
-            "type": "string",
-            "title": "Kind"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "version": {
-            "type": "string",
-            "title": "Version"
-          },
-          "enabled": {
-            "type": "boolean",
-            "title": "Enabled"
-          },
-          "config": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Config"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "plugin_id",
-          "kind",
-          "name",
-          "version",
-          "enabled",
-          "config"
-        ],
-        "title": "PluginRead"
-      },
-      "PracticeItemRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "session_id": {
-            "type": "string",
-            "title": "Session Id"
-          },
-          "segment_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Segment Id"
-          },
-          "position": {
-            "type": "integer",
-            "title": "Position"
-          },
-          "mode": {
-            "type": "string",
-            "title": "Mode"
-          },
-          "prompt": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Prompt"
-          },
-          "completed": {
-            "type": "boolean",
-            "title": "Completed"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "session_id",
-          "segment_id",
-          "position",
-          "mode",
-          "prompt",
-          "completed"
-        ],
-        "title": "PracticeItemRead"
-      },
-      "PracticeMode": {
-        "type": "string",
-        "enum": [
-          "shadowing",
-          "progressive_fading",
-          "forward_chaining",
-          "backward_chaining",
-          "cue_recall",
-          "random_start",
-          "weak_link",
-          "full_passage"
-        ],
-        "title": "PracticeMode"
-      },
-      "PrepSuggestInput": {
-        "properties": {
-          "layers": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Layers"
-          }
-        },
-        "type": "object",
-        "title": "PrepSuggestInput"
-      },
-      "PrepSuggestResult": {
-        "properties": {
-          "written": {
-            "additionalProperties": {
-              "type": "integer"
-            },
-            "type": "object",
-            "title": "Written"
-          }
-        },
-        "type": "object",
-        "required": [
-          "written"
-        ],
-        "title": "PrepSuggestResult"
-      },
-      "ReviewStateRead": {
-        "properties": {
-          "segment_id": {
-            "type": "string",
-            "title": "Segment Id"
-          },
-          "due_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Due At"
-          },
-          "mastery_stage": {
-            "type": "string",
-            "title": "Mastery Stage"
-          },
-          "clean_count": {
-            "type": "integer",
-            "title": "Clean Count"
-          },
-          "attempt_count": {
-            "type": "integer",
-            "title": "Attempt Count"
-          }
-        },
-        "type": "object",
-        "required": [
-          "segment_id",
-          "due_at",
-          "mastery_stage",
-          "clean_count",
-          "attempt_count"
-        ],
-        "title": "ReviewStateRead"
-      },
-      "RevisionInput": {
-        "properties": {
-          "source_text": {
-            "type": "string",
-            "title": "Source Text"
-          },
-          "hierarchy": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Hierarchy"
-          },
-          "segments": {
-            "items": {
-              "$ref": "#/components/schemas/SegmentInput"
-            },
-            "type": "array",
-            "title": "Segments"
-          }
-        },
-        "type": "object",
-        "required": [
-          "source_text"
-        ],
-        "title": "RevisionInput"
-      },
-      "RevisionRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "passage_id": {
-            "type": "string",
-            "title": "Passage Id"
-          },
-          "revision_number": {
-            "type": "integer",
-            "title": "Revision Number"
-          },
-          "source_text": {
-            "type": "string",
-            "title": "Source Text"
-          },
-          "hierarchy": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Hierarchy"
-          },
-          "practiced": {
-            "type": "boolean",
-            "title": "Practiced"
-          },
-          "segments": {
-            "items": {
-              "$ref": "#/components/schemas/SegmentRead"
-            },
-            "type": "array",
-            "title": "Segments"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "passage_id",
-          "revision_number",
-          "source_text",
-          "hierarchy",
-          "practiced"
-        ],
-        "title": "RevisionRead"
-      },
-      "SegmentInput": {
-        "properties": {
-          "client_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Client Id"
-          },
-          "parent_client_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parent Client Id"
-          },
-          "kind": {
-            "type": "string",
-            "title": "Kind"
-          },
-          "ordinal": {
-            "type": "integer",
-            "title": "Ordinal"
-          },
-          "text": {
-            "type": "string",
-            "title": "Text"
-          },
-          "cue": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cue"
-          },
-          "metadata_json": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Metadata Json"
-          },
-          "annotations": {
-            "items": {
-              "$ref": "#/components/schemas/AnnotationInput"
-            },
-            "type": "array",
-            "title": "Annotations"
-          }
-        },
-        "type": "object",
-        "required": [
-          "kind",
-          "ordinal",
-          "text"
-        ],
-        "title": "SegmentInput"
-      },
-      "SegmentRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "revision_id": {
-            "type": "string",
-            "title": "Revision Id"
-          },
-          "parent_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parent Id"
-          },
-          "kind": {
-            "type": "string",
-            "title": "Kind"
-          },
-          "ordinal": {
-            "type": "integer",
-            "title": "Ordinal"
-          },
-          "text": {
-            "type": "string",
-            "title": "Text"
-          },
-          "cue": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cue"
-          },
-          "metadata_json": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Metadata Json"
-          },
-          "annotations": {
-            "items": {
-              "$ref": "#/components/schemas/AnnotationRead"
-            },
-            "type": "array",
-            "title": "Annotations"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "revision_id",
-          "parent_id",
-          "kind",
-          "ordinal",
-          "text",
-          "cue",
-          "metadata_json"
-        ],
-        "title": "SegmentRead"
-      },
-      "SegmentsReplaceInput": {
-        "properties": {
-          "segments": {
-            "items": {
-              "$ref": "#/components/schemas/SegmentInput"
-            },
-            "type": "array",
-            "title": "Segments"
-          }
-        },
-        "type": "object",
-        "required": [
-          "segments"
-        ],
-        "title": "SegmentsReplaceInput"
-      },
-      "SessionCreate": {
-        "properties": {
-          "revision_id": {
-            "type": "string",
-            "title": "Revision Id"
-          },
-          "modes": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/PracticeMode"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Modes"
-          },
-          "segment_kinds": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Segment Kinds"
-          },
-          "due_only": {
-            "type": "boolean",
-            "title": "Due Only",
-            "default": false
-          },
-          "minutes": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "maximum": 180.0,
-                "minimum": 1.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Minutes"
-          }
-        },
-        "type": "object",
-        "required": [
-          "revision_id"
-        ],
-        "title": "SessionCreate"
-      },
-      "SessionRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "revision_id": {
-            "type": "string",
-            "title": "Revision Id"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "plan": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Plan"
-          },
-          "current_index": {
-            "type": "integer",
-            "title": "Current Index"
-          },
-          "completed_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Completed At"
-          },
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/PracticeItemRead"
-            },
-            "type": "array",
-            "title": "Items"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "revision_id",
-          "status",
-          "plan",
-          "current_index",
-          "completed_at"
-        ],
-        "title": "SessionRead"
-      },
-      "SettingInput": {
-        "properties": {
-          "value": {
-            "title": "Value"
-          }
-        },
-        "type": "object",
-        "required": [
-          "value"
-        ],
-        "title": "SettingInput"
-      },
-      "SettingRead": {
-        "properties": {
-          "key": {
-            "type": "string",
-            "title": "Key"
-          },
-          "value": {
-            "title": "Value"
-          }
-        },
-        "type": "object",
-        "required": [
-          "key",
-          "value"
-        ],
-        "title": "SettingRead"
-      },
-      "ValidationError": {
-        "properties": {
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "type": "array",
-            "title": "Location"
-          },
-          "msg": {
-            "type": "string",
-            "title": "Message"
-          },
-          "type": {
-            "type": "string",
-            "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
-          }
-        },
-        "type": "object",
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError"
-      },
-      "WeakLinkRead": {
-        "properties": {
-          "segment_id": {
-            "type": "string",
-            "title": "Segment Id"
-          },
-          "text": {
-            "type": "string",
-            "title": "Text"
-          },
-          "attempts": {
-            "type": "integer",
-            "title": "Attempts"
-          },
-          "difficult_attempts": {
-            "type": "integer",
-            "title": "Difficult Attempts"
-          },
-          "difficulty_rate": {
-            "type": "number",
-            "title": "Difficulty Rate"
-          },
-          "mean_latency_ms": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mean Latency Ms"
-          }
-        },
-        "type": "object",
-        "required": [
-          "segment_id",
-          "text",
-          "attempts",
-          "difficult_attempts",
-          "difficulty_rate"
-        ],
-        "title": "WeakLinkRead"
+        "summary": "Put Setting",
+        "tags": [
+          "settings"
+        ]
       }
     }
   }

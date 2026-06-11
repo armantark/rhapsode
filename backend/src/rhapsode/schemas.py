@@ -31,6 +31,16 @@ class AnnotationRead(ORMModel):
     data: dict[str, Any]
 
 
+class PersonalNotePut(BaseModel):
+    text: str
+
+
+class PersonalNoteRead(ORMModel):
+    segment_id: str
+    text: str
+    updated_at: datetime
+
+
 class SegmentInput(BaseModel):
     client_id: str | None = None
     parent_client_id: str | None = None

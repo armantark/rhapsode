@@ -15,6 +15,7 @@ from rhapsode.services.planning import (
     _difficult_segment_ids,
     build_plan,
     build_smart_plan,
+    build_smart_plan_for_revisions,
     progressive_masks,
     prompt_for,
     register_practice_mode,
@@ -137,6 +138,33 @@ def test_smart_plan_caps_session_size_and_triages(session_factory: object) -> No
         assert set(planned_ordinals) >= {15, 16, 17, 18, 19}
         # ...and the session still flows in passage order.
         assert planned_ordinals == sorted(planned_ordinals)
+
+
+def test_collection_smart_plan_shares_one_cap_across_revisions(session_factory: object) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="latin-collection-cap", name="Latin")
+        passages = [
+            models.Passage(title="Aeneid I", language_profile=language),
+            models.Passage(title="Aeneid II", language_profile=language),
+        ]
+        revisions = [
+            models.PassageRevision(passage=passage, revision_number=1, source_text="...")
+            for passage in passages
+        ]
+        for revision in revisions:
+            revision.segments = [
+                models.Segment(kind="line", ordinal=index, text=f"line {index}")
+                for index in range(8)
+            ]
+        db.add_all(passages)
+        db.commit()
+
+        plan = build_smart_plan_for_revisions(db, revisions, ["line"])
+        assert len(plan) == 12
+        assert {item["revision_id"] for item in plan} == {
+            revisions[0].id,
+            revisions[1].id,
+        }
 
 
 def test_clean_streak_regresses_mastery() -> None:
@@ -449,6 +477,31 @@ def test_recall_prompt_uses_verbatim_lead_in() -> None:
     seam = prompt_for("cue_recall", juncture, [juncture])
     assert seam["lead_in"] == "… θεὰ Πηληϊάδεω Ἀχιλῆος"
     assert seam["target_text"] == "οὐλομένην, ἣ μῡρί᾽ …"
+
+
+def test_practice_plan_prefers_personal_note_over_revision_cue(session_factory: object) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="greek-personal-note", name="Ancient Greek")
+        passage = models.Passage(title="Iliad", language_profile=language)
+        revision = models.PassageRevision(
+            passage=passage, revision_number=1, source_text="Διὸς δ᾽ ἐτελείετο βουλή"
+        )
+        line = models.Segment(
+            kind="line",
+            ordinal=0,
+            text="Διὸς δ᾽ ἐτελείετο βουλή",
+            cue="the will of Zeus",
+        )
+        revision.segments = [line]
+        db.add(passage)
+        db.commit()
+        db.add(models.PersonalNote(segment_id=line.id, text="boulē → tabouleh"))
+        db.commit()
+
+        plan = build_plan(db, revision, ["cue_recall"], ["line"])
+
+        assert plan[0]["prompt"]["hint"] == "boulē → tabouleh"
+        assert line.cue == "the will of Zeus"
 
 
 def test_plugin_practice_mode_can_extend_prompts() -> None:

@@ -2,9 +2,10 @@
 
 ## Current Focus
 
-The 2026-06-10 grill decisions (see `decisions-grill-2026-06-10.md`) are fully
-implemented across backend and frontend in one pass, per Arman's "do it all at
-once" ruling. The app is now ready for real daily Iliad practice.
+The collections backend is implemented on top of the 2026-06-10 practice
+system. Existing passages can now be grouped in an ordered collection, viewed
+with an Anki-style rollup, and launched as one practice target. The frontend
+collection/deck tree remains the next handoff.
 
 ## Active Decisions
 
@@ -51,6 +52,11 @@ once" ruling. The app is now ready for real daily Iliad practice.
   learner reveals with "Need a hint?". Rationale: an LLM can't author a learner's
   personal cross-language associations ("boulē → tabouleh"); only the
   deterministic opening is safe to automate.
+- Personal notes now provide that learner-owned mnemonic layer without forking
+  a practiced revision. `GET/PUT /segments/{id}/note` reads or upserts the
+  mutable overlay, and newly built recall/weak-link prompts prefer its text over
+  the revision-owned drafted cue. The note model and endpoints do not touch the
+  prep LLM, scheduling, or grading.
 - Flashcard annotation layers: the practice page renders the practised segment's
   subtree via `SegmentText` (reusing the reading view), so translation/gloss/meter
   show interlinearly WHEN the answer is revealed (recall integrity preserved).
@@ -64,10 +70,14 @@ once" ruling. The app is now ready for real daily Iliad practice.
   3.1 Pro), key from repo-root `.env` as `GEMINI_API_KEY`. Prep-only: drafts
   cue/gloss/translation, never overwrites authored content, practice loop has
   no LLM dependency.
+- Collections group existing passages without owning revisions. Reads and
+  session launches resolve member passages' active revisions; collection
+  sessions persist that revision snapshot and apply one shared smart cap or
+  minutes budget across the union.
 
 ## Verified Results
 
-- Backend: 33 pytest, ruff, strict mypy, contract `--check` all green.
+- Backend: 45 pytest, ruff, strict mypy, contract `--check` all green.
 - Frontend: 47 vitest, svelte-check 0/0, 7/7 Playwright e2e green.
 - Live Gemini call drafted 5 cues + 5 glosses + 5 translations onto the real
   Iliad passage; quality checked by hand (accurate glosses, natural
@@ -78,17 +88,13 @@ once" ruling. The app is now ready for real daily Iliad practice.
 
 ## Next Work
 
-- DECK GROUPING (needs Arman's decision; see
-  `status-updates/cues-annotations-grouping-roadmap-2026-06-10.html`). Recommended
-  option A: a "collection" model grouping existing passages (Iliad 1.1–5 + 1.6–10)
-  with an Anki-style due/learning/new rollup, and a session that can target a
-  whole collection or one passage. Backend slice first (new model + endpoints +
-  `session.collection_id`), then a frontend deck tree. Hand-off prompt is in the
-  artifact.
+- Build the frontend deck tree and collection launcher against the collection
+  contract documented in `handoffs/backend-to-frontend.md`.
 - First-letter fade cue mode (initials only) as a lighter trigger than the full
   lead-in; pairs with progressive fading.
-- Inline "edit hint" on the flashcard so a mnemonic invented mid-practice sticks
-  to the line immediately (today the hint is editable only in the editor).
+- Wire the personal-note endpoints into an inline practice-card note editor.
+  Prefer the latest fetched note over the persisted prompt hint so edits also
+  appear immediately in an already-created session.
 - Verify the manual aligner end-to-end on the teacher's real recording and
   confirm shadowing auto-jumps to each saved line span.
 - Set `RHAPSODE_BACKUP_DIR` to an iCloud-synced path in the launch command.

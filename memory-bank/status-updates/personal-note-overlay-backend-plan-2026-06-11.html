@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Personal Note Overlay Backend Plan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0e12; --surface: #161a21; --surface-2: #1e232c; --border: #2a3040;
+      --text: #e8ecf4; --text-dim: #8b95a8; --accent: #4f8cff;
+      --accent-glow: rgba(79, 140, 255, 0.15); --red: #ff5c5c; --green: #4ade80;
+      --amber: #fbbf24; --purple: #a78bfa; --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: radial-gradient(circle at 15% 0%, #18233a 0, var(--bg) 38%); color: var(--text); font-family: Outfit, sans-serif; }
+    main { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 54px 0 64px; }
+    .badge, .label, code, .tag { font-family: "JetBrains Mono", monospace; }
+    .badge { display: inline-block; color: var(--accent); background: var(--accent-glow); border: 1px solid #315b9d; border-radius: 999px; padding: 7px 11px; font-size: .7rem; letter-spacing: .1em; }
+    h1 { margin: 18px 0 8px; font-size: clamp(2rem, 5vw, 3.6rem); line-height: .98; max-width: 780px; }
+    .lead { color: var(--text-dim); max-width: 760px; font-size: 1.02rem; line-height: 1.55; }
+    .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 12px; align-items: center; margin: 34px 0; }
+    .node { padding: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); min-height: 118px; }
+    .node strong { display: block; color: var(--text); font-size: 1.05rem; }
+    .node p { color: var(--text-dim); margin: 8px 0 0; line-height: 1.4; }
+    .arrow { color: var(--accent); font-size: 1.5rem; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: transform .2s, box-shadow .2s; }
+    .card:hover { transform: translateY(-3px); box-shadow: 0 14px 40px #0006; }
+    .label { color: var(--amber); font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; }
+    h2 { font-size: 1.25rem; margin: 8px 0; }
+    .card p { color: var(--text-dim); line-height: 1.45; margin: 0 0 14px; }
+    .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .pane { background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 12px; }
+    .pane .label { color: var(--text-dim); }
+    .hint { margin-top: 9px; padding: 9px; border-left: 2px solid var(--purple); background: #a78bfa12; color: #d9ceff; font-size: .84rem; }
+    .tags { display: flex; flex-wrap: wrap; gap: 7px; }
+    .tag { background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 5px 8px; color: #b8c2d6; font-size: .62rem; }
+    .steps { margin-top: 28px; display: grid; gap: 10px; }
+    .step { display: flex; gap: 14px; align-items: center; padding: 13px 15px; border: 1px solid var(--border); background: #11151c; border-radius: 10px; }
+    .num { display: grid; place-items: center; min-width: 28px; height: 28px; border-radius: 7px; background: var(--accent); color: white; font-family: "JetBrains Mono"; font-size: .75rem; font-weight: 600; }
+    .step span:last-child { color: var(--text-dim); }
+    @media (max-width: 850px) { .grid, .compare { grid-template-columns: 1fr; } .flow { grid-template-columns: 1fr; } .arrow { transform: rotate(90deg); justify-self: center; } }
+  </style>
+</head>
+<body>
+<main>
+  <span class="badge">PRE-IMPLEMENTATION PLAN · BACKEND</span>
+  <h1>A private mnemonic without rewriting history.</h1>
+  <p class="lead">Personal notes become mutable learner-owned overlays on immutable segments. Practice cards snapshot the best available hint when a session is created, preferring the learner's note over the prep assistant's drafted cue.</p>
+
+  <section class="flow" aria-label="Data flow">
+    <div class="node"><strong>Immutable Segment</strong><p>Text and drafted cue remain revision-owned and unchanged after practice.</p></div>
+    <div class="arrow">→</div>
+    <div class="node"><strong>PersonalNote overlay</strong><p><code>segment_id</code> primary key, editable text, and update timestamp.</p></div>
+    <div class="arrow">→</div>
+    <div class="node"><strong>Persisted practice hint</strong><p>Recall cards use note text first, then fall back to the segment cue.</p></div>
+  </section>
+
+  <section class="grid">
+    <article class="card">
+      <span class="label">Behavior</span>
+      <h2>Hint precedence</h2>
+      <div class="compare">
+        <div class="pane"><span class="label">Before</span><div class="hint">Sing, goddess</div></div>
+        <div class="pane"><span class="label">After</span><div class="hint">boulē → tabouleh</div></div>
+      </div>
+    </article>
+    <article class="card">
+      <span class="label">Contract</span>
+      <h2>Two narrow endpoints</h2>
+      <p><code>GET /api/v1/segments/{id}/note</code> reads the overlay. <code>PUT</code> creates or replaces it without forking a practiced revision.</p>
+      <div class="tags"><span class="tag">PersonalNoteRead</span><span class="tag">PersonalNotePut</span><span class="tag">Idempotency-Key</span></div>
+    </article>
+    <article class="card">
+      <span class="label">Persistence</span>
+      <h2>One-to-one and cascade-safe</h2>
+      <p>The note key is also a foreign key to the segment. Removing a discarded, unpracticed revision removes its overlays; note edits never mutate revision content.</p>
+      <div class="tags"><span class="tag">models.py</span><span class="tag">alembic</span><span class="tag">services/notes.py</span></div>
+    </article>
+    <article class="card">
+      <span class="label">Guardrails</span>
+      <h2>LLM and grading stay fixed</h2>
+      <p>The prep assistant, Gemini model selection, FSRS state, grading labels, and attempt processing are outside this change.</p>
+      <div class="tags"><span class="tag">no LLM changes</span><span class="tag">no grading changes</span><span class="tag">prompt snapshot preserved</span></div>
+    </article>
+  </section>
+
+  <section class="steps" aria-label="Implementation steps">
+    <div class="step"><span class="num">1</span><span>Add the PersonalNote model, migration, schemas, service, and GET/PUT routes.</span></div>
+    <div class="step"><span class="num">2</span><span>Batch-load notes during plan construction and apply note-over-cue precedence to recall hints.</span></div>
+    <div class="step"><span class="num">3</span><span>Cover precedence with unit tests and the practiced-revision API flow with integration tests.</span></div>
+    <div class="step"><span class="num">4</span><span>Regenerate OpenAPI, run backend gates, and document the frontend contract handoff.</span></div>
+  </section>
+</main>
+</body>
+</html>

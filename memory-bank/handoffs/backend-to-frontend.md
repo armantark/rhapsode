@@ -36,6 +36,9 @@ is available at `http://127.0.0.1:8000/docs`.
   `current_index`, item order, and each item's `completed` field.
 - Render prompt behavior from `PracticeItem.mode` and `PracticeItem.prompt`.
   The prompt payload is intentionally open-ended for plugin modes.
+- Personal notes are separate from immutable revision/segment reads. Treat a
+  `404` from `GET /api/v1/segments/{segment_id}/note` as "no personal note";
+  `PUT` upserts one and requires an `Idempotency-Key`.
 
 ## Main Workflows
 
@@ -52,6 +55,21 @@ is available at `http://127.0.0.1:8000/docs`.
 
 ## Contract Additions Implemented
 
+- Collections are available through `GET/POST /api/v1/collections` and
+  `GET/PUT/DELETE /api/v1/collections/{collection_id}`.
+- Add a passage with `POST /api/v1/collections/{collection_id}/members`
+  using `{ "passage_id": "..." }`; remove it with
+  `DELETE /api/v1/collections/{collection_id}/members/{passage_id}`; reorder
+  all members with `PUT /api/v1/collections/{collection_id}/members` using
+  `{ "passage_ids": ["...", "..."] }`.
+- `CollectionRead.members` is position-ordered and includes passage summaries.
+  `CollectionRead.rollup` exposes mutually exclusive `{ due, learning, new }`
+  counts over each member passage's active revision and default practice grain.
+- `POST /api/v1/sessions` now accepts exactly one of `revision_id` or
+  `collection_id`. Collection sessions preserve existing `modes`,
+  `segment_kinds`, `due_only`, and `minutes` options; `PracticeItemRead` carries
+  its `revision_id` so the frontend can retain passage context while traversing
+  a collection session.
 - `GET /api/v1/media?revision_id={id}&category={reference|saved_best}`
   returns persisted media newest-first.
 - `MediaRead.cue_points` contains ordered `{ label, time }` records.
@@ -59,6 +77,15 @@ is available at `http://127.0.0.1:8000/docs`.
   requires `Idempotency-Key`.
 - `GET /api/v1/analytics/mastery?limit={1..200}&offset={n}` returns
   `{ items, total, limit, offset }`.
+- `GET /api/v1/segments/{segment_id}/note` returns
+  `{ segment_id, text, updated_at }` when a personal note exists.
+- `PUT /api/v1/segments/{segment_id}/note` upserts `{ "text": "..." }` even
+  when the segment's revision is already practiced. It never mutates the
+  segment cue or forks the revision.
+- Newly created cue-recall and weak-link practice items put the personal note
+  in `prompt.hint` when one exists, falling back to the revision-owned cue. For
+  an inline editor on an already-created session, fetch the latest note for the
+  current `segment_id` and prefer it over the persisted fallback prompt hint.
 
 ## Frontend Handoff Prompt
 

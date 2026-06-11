@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rhapsode Collections Backend Complete</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#0c0e12;--surface:#161a21;--surface-2:#1e232c;--border:#2a3040;--text:#e8ecf4;--text-dim:#8b95a8;--accent:#4f8cff;--accent-glow:rgba(79,140,255,.15);--red:#ff5c5c;--green:#4ade80;--amber:#fbbf24;--purple:#a78bfa;--radius:12px}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 12% 0,rgba(74,222,128,.10),transparent 30%),radial-gradient(circle at 90% 8%,var(--accent-glow),transparent 34%),var(--bg);color:var(--text);font-family:Outfit,sans-serif}.wrap{max-width:1160px;margin:auto;padding:48px 22px 72px}.badge,.tag,.eyebrow,button{font-family:"JetBrains Mono",monospace}.badge{display:inline-block;color:var(--green);background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.35);border-radius:999px;padding:7px 11px;font-size:.7rem;letter-spacing:.08em}h1{font-size:2.55rem;line-height:1.04;margin:16px 0 10px}p{color:var(--text-dim);line-height:1.55;margin:0}.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:28px 0}.metric,.card,.prompt{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}.metric{padding:17px}.metric b{display:block;font-size:1.75rem;color:var(--green)}.metric span{font-size:.65rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;font-family:"JetBrains Mono",monospace}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.card{padding:20px}.eyebrow{font-size:.65rem;color:var(--accent);text-transform:uppercase;letter-spacing:.08em}h2{font-size:1.28rem;margin:8px 0 10px}.queue{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:15px}.q{background:var(--surface-2);padding:12px;border-radius:9px;text-align:center}.q b{display:block;font-size:1.25rem}.q:nth-child(1) b{color:var(--accent)}.q:nth-child(2) b{color:var(--amber)}.q:nth-child(3) b{color:var(--green)}.q span{font-size:.6rem;color:var(--text-dim);font-family:"JetBrains Mono",monospace}.tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:15px}.tag{font-size:.58rem;color:#b8c3d8;background:var(--surface-2);border:1px solid var(--border);padding:5px 7px;border-radius:6px}.checks{display:grid;gap:8px;margin-top:14px}.check{display:flex;gap:9px;align-items:center;color:var(--text-dim);font-size:.88rem}.check:before{content:"✓";color:var(--green);font-weight:700}.prompt{margin-top:18px;padding:20px;position:relative}.prompt pre{white-space:pre-wrap;color:#c6d2e8;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:15px;font:400 .72rem/1.55 "JetBrains Mono",monospace;max-height:245px;overflow:auto}button{border:1px solid rgba(79,140,255,.45);background:var(--accent-glow);color:#bcd3ff;border-radius:8px;padding:9px 12px;cursor:pointer}button:hover{background:rgba(79,140,255,.25)}.handoff{display:flex;align-items:center;justify-content:space-between;gap:14px}.note{margin-top:18px;color:var(--amber);font-size:.82rem}@media(max-width:900px){.metrics{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.handoff{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body>
+<main class="wrap">
+  <span class="badge">Backend complete · ready for frontend handoff</span>
+  <h1>Collections now plan and count like a deck</h1>
+  <p>Ordered passage groups, active-revision rollups, and collection-wide practice sessions are implemented without changing the prep LLM or grading model.</p>
+  <section class="metrics">
+    <div class="metric"><b>42</b><span>pytest passing</span></div>
+    <div class="metric"><b>2</b><span>revisions in live session</span></div>
+    <div class="metric"><b>1</b><span>shared smart cap</span></div>
+    <div class="metric"><b>0</b><span>mypy issues</span></div>
+    <div class="metric"><b>0</b><span>ruff issues</span></div>
+  </section>
+  <section class="grid">
+    <article class="card">
+      <span class="eyebrow">Collection contract</span><h2>Ordered membership + rollup</h2>
+      <p>Collection reads resolve each member passage's active revision and count only its default practice grain.</p>
+      <div class="queue"><div class="q"><b>due</b><span>graduated + due</span></div><div class="q"><b>learning</b><span>acquiring</span></div><div class="q"><b>new</b><span>never reviewed</span></div></div>
+      <div class="tags"><span class="tag">CRUD /collections</span><span class="tag">add/remove/reorder</span><span class="tag">Alembic</span></div>
+    </article>
+    <article class="card">
+      <span class="eyebrow">Practice planning</span><h2>One session across passages</h2>
+      <p>`POST /sessions` accepts exactly one of `revision_id` or `collection_id`. Collection plans share one cap/time budget and persist each item's revision.</p>
+      <div class="checks"><div class="check">Explicit modes span members in saved order</div><div class="check">Smart triage works over the combined target</div><div class="check">Full-passage grades stay revision-scoped</div></div>
+    </article>
+    <article class="card">
+      <span class="eyebrow">Verification</span><h2>Automated and live checks passed</h2>
+      <div class="checks"><div class="check">Unit rollup math and shared-cap behavior</div><div class="check">Integration session spans member passages</div><div class="check">Migration backfills existing item revision ids</div><div class="check">OpenAPI regenerated and contract check passes</div><div class="check">Live HTTP workflow and Pinchtab Swagger inspection</div></div>
+    </article>
+    <article class="card">
+      <span class="eyebrow">Live result</span><h2>Two-passage collection smoke test</h2>
+      <p>The migrated local service returned ordered positions `[0, 1]`, rollup `{ due: 0, learning: 0, new: 6 }`, and a four-item cue-recall session spanning two distinct revisions.</p>
+      <div class="tags"><span class="tag">localhost:8011</span><span class="tag">Pinchtab</span><span class="tag">Swagger UI</span></div>
+    </article>
+  </section>
+  <section class="prompt">
+    <div class="handoff"><div><span class="eyebrow">Copy-paste handoff</span><h2>Frontend collection tree + launcher</h2></div><button id="copy">Copy prompt</button></div>
+    <pre id="text">Implement the Rhapsode frontend collection/deck tree and collection practice launcher.
+
+Read every file in memory-bank/ first, especially memory-bank/handoffs/backend-to-frontend.md. Use contracts/openapi.json as the source of truth and regenerate frontend API types. Do not change backend schemas or behavior.
+
+Build collection CRUD/member reorder UI, render CollectionRead.members in position order with its due/learning/new rollup, and let the practice launcher send exactly one of revision_id or collection_id while preserving modes, segment_kinds, due_only, and minutes. During collection sessions use PracticeItemRead.revision_id to preserve passage-specific context.
+
+Add useful unit, integration, and Playwright tests, then manually verify with Pinchtab. Leave backend contract issues in memory-bank/handoffs/frontend-to-backend.md.</pre>
+    <p class="note">A concurrent commit captured the core backend implementation during this run. The final added tests, regenerated contract, memory-bank updates, and handoff prompt remain visible in the worktree.</p>
+  </section>
+</main>
+<script>
+document.getElementById("copy").addEventListener("click", async () => {
+  await navigator.clipboard.writeText(document.getElementById("text").textContent);
+  document.getElementById("copy").textContent = "Copied";
+});
+</script>
+</body>
+</html>

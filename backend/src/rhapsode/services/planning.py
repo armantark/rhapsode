@@ -41,7 +41,9 @@ def _lead_in(text: str, words: int = 2) -> str:
     return " ".join(text.split()[:words])
 
 
-def _recall_prompt(target: models.Segment, line_instruction: str) -> dict[str, Any]:
+def _recall_prompt(
+    target: models.Segment, line_instruction: str, hint: str | None
+) -> dict[str, Any]:
     """A forward-recall prompt: show the lead-in, recite to the end, then check.
     A juncture's own text is the previous line's tail followed by the next
     line's head, so it already reads as 'lead-in → continue'."""
@@ -54,15 +56,21 @@ def _recall_prompt(target: models.Segment, line_instruction: str) -> dict[str, A
     return {
         "instruction": line_instruction,
         "lead_in": _lead_in(target.text),
-        # The evocative phrase (often LLM-drafted) is a weaker, optional nudge —
-        # demoted from the prompt to a hint the learner can choose to peek at.
-        "hint": target.cue,
+        # A learner-authored mnemonic is the strongest optional nudge. The
+        # revision-owned cue remains the fallback and is never mutated.
+        "hint": hint,
         "target_text": target.text,
     }
 
 
-def prompt_for(mode: str, target: models.Segment, context: list[models.Segment]) -> dict[str, Any]:
+def prompt_for(
+    mode: str,
+    target: models.Segment,
+    context: list[models.Segment],
+    hint: str | None = None,
+) -> dict[str, Any]:
     texts = [segment.text for segment in context]
+    effective_hint = target.cue if hint is None else hint
     match mode:
         case "shadowing":
             return {"instruction": "Listen, then shadow aloud.", "target_text": target.text}
@@ -79,11 +87,13 @@ def prompt_for(mode: str, target: models.Segment, context: list[models.Segment])
                 "chain": list(reversed(texts)),
             }
         case "cue_recall":
-            return _recall_prompt(target, "Recite this line to the end.")
+            return _recall_prompt(target, "Recite this line to the end.", effective_hint)
         case "random_start":
             return {"instruction": "Start here and continue.", "start": target.text}
         case "weak_link":
-            return _recall_prompt(target, "This seam keeps tripping you — recite across it.")
+            return _recall_prompt(
+                target, "This seam keeps tripping you — recite across it.", effective_hint
+            )
         case "full_passage":
             return {"instruction": "Recite the full passage from memory.", "blank": True}
         case _:
@@ -104,6 +114,18 @@ def _practice_kinds(
     kinds_present = {segment.kind for segment in revision.segments}
     grain = "chunk" if "chunk" in kinds_present else "line"
     return [grain, "juncture"]
+
+
+def _personal_note_texts(db: Session, segment_ids: list[str]) -> dict[str, str]:
+    if not segment_ids:
+        return {}
+    return dict(
+        db.execute(
+            select(models.PersonalNote.segment_id, models.PersonalNote.text).where(
+                models.PersonalNote.segment_id.in_(segment_ids)
+            )
+        ).tuples().all()
+    )
 
 
 def _ordered_segments(
@@ -261,6 +283,7 @@ def build_smart_plan_for_revisions(
     all_segments = [segment for _, segments in revision_segments for segment in segments]
     if not all_segments:
         return []
+    personal_notes = _personal_note_texts(db, [segment.id for segment in all_segments])
     stages = {
         state.segment_id: state.mastery_stage
         for state in db.scalars(
@@ -362,7 +385,12 @@ def build_smart_plan_for_revisions(
                         "revision_id": revision.id,
                         "segment_id": target.id,
                         "mode": shadow,
-                        "prompt": prompt_for(shadow, target, selected[index:]),
+                        "prompt": prompt_for(
+                            shadow,
+                            target,
+                            selected[index:],
+                            personal_notes.get(target.id, target.cue),
+                        ),
                     }
                 )
             mode = modes[target.id]
@@ -371,7 +399,12 @@ def build_smart_plan_for_revisions(
                     "revision_id": revision.id,
                     "segment_id": target.id,
                     "mode": mode,
-                    "prompt": prompt_for(mode, target, selected[index:]),
+                    "prompt": prompt_for(
+                        mode,
+                        target,
+                        selected[index:],
+                        personal_notes.get(target.id, target.cue),
+                    ),
                 }
             )
         if all_graduated[revision.id] and selected:
@@ -381,7 +414,12 @@ def build_smart_plan_for_revisions(
                     "revision_id": revision.id,
                     "segment_id": selected[0].id,
                     "mode": mode,
-                    "prompt": prompt_for(mode, selected[0], selected),
+                    "prompt": prompt_for(
+                        mode,
+                        selected[0],
+                        selected,
+                        personal_notes.get(selected[0].id, selected[0].cue),
+                    ),
                 }
             )
     return items
@@ -399,6 +437,7 @@ def build_plan(
         segments = [segment for segment in segments if segment.id in only_segment_ids]
     if not segments:
         return []
+    personal_notes = _personal_note_texts(db, [segment.id for segment in segments])
     difficult_ids = _difficult_segment_ids(db)
     items: list[dict[str, Any]] = []
     for mode in modes:
@@ -423,7 +462,12 @@ def build_plan(
                     "revision_id": revision.id,
                     "segment_id": target.id,
                     "mode": mode,
-                    "prompt": prompt_for(mode, target, context),
+                    "prompt": prompt_for(
+                        mode,
+                        target,
+                        context,
+                        personal_notes.get(target.id, target.cue),
+                    ),
                 }
             )
     return items

@@ -20,6 +20,7 @@ def test_openapi_exposes_required_api_groups() -> None:
         "/api/v1/collections/{collection_id}/members/{passage_id}",
         "/api/v1/passages/{passage_id}/revisions",
         "/api/v1/revisions/{revision_id}/segments",
+        "/api/v1/segments/{segment_id}/note",
         "/api/v1/annotations",
         "/api/v1/media",
         "/api/v1/media/{media_id}/cues",

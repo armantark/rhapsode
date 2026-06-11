@@ -68,6 +68,61 @@ def test_smart_session_scaffolds_new_segments(
     assert {item["mode"] for item in session["items"]} == {"progressive_fading"}
 
 
+def test_personal_note_overlay_updates_practiced_revision_hint(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    revision = passage["active_revision"]
+    segment = revision["segments"][0]
+    practiced = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "modes": ["cue_recall"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    )
+    assert practiced.status_code == 201, practiced.text
+    assert client.get(f"/api/v1/segments/{segment['id']}/note").status_code == 404
+
+    saved = client.put(
+        f"/api/v1/segments/{segment['id']}/note",
+        json={"text": "boulē → tabouleh"},
+        headers=mutation(),
+    )
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["segment_id"] == segment["id"]
+    assert saved.json()["text"] == "boulē → tabouleh"
+    fetched = client.get(f"/api/v1/segments/{segment['id']}/note").json()
+    assert fetched["segment_id"] == segment["id"]
+    assert fetched["text"] == "boulē → tabouleh"
+    assert fetched["updated_at"]
+
+    updated = client.put(
+        f"/api/v1/segments/{segment['id']}/note",
+        json={"text": "mēnin → main in"},
+        headers=mutation(),
+    )
+    assert updated.status_code == 200, updated.text
+    session = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "modes": ["cue_recall"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    ).json()
+    item = next(item for item in session["items"] if item["segment_id"] == segment["id"])
+    assert item["prompt"]["hint"] == "mēnin → main in"
+
+    refreshed = client.get(f"/api/v1/revisions/{revision['id']}").json()
+    assert refreshed["practiced"] is True
+    assert refreshed["segments"][0]["cue"] == segment["cue"]
+    assert (
+        client.put(
+            "/api/v1/segments/missing/note",
+            json={"text": "missing"},
+            headers=mutation(),
+        ).status_code
+        == 404
+    )
+
+
 def test_collection_session_spans_member_passages(
     client: TestClient,
     mutation: Callable[..., dict[str, str]],
@@ -112,6 +167,31 @@ def test_collection_session_spans_member_passages(
         second_revision_id,
         second_revision_id,
     ]
+
+    full_passages = client.post(
+        "/api/v1/sessions",
+        json={
+            "collection_id": collection["id"],
+            "modes": ["full_passage"],
+            "segment_kinds": ["line"],
+        },
+        headers=mutation(),
+    ).json()
+    second_item = next(
+        item for item in full_passages["items"] if item["revision_id"] == second_revision_id
+    )
+    graded = client.post(
+        f"/api/v1/sessions/{full_passages['id']}/attempts",
+        json={"item_id": second_item["id"], "rating": "clean"},
+        headers=mutation(),
+    )
+    assert graded.status_code == 201, graded.text
+    reviewed_ids = {
+        state["segment_id"] for state in client.get("/api/v1/analytics/mastery").json()["items"]
+    }
+    assert reviewed_ids == {
+        segment["id"] for segment in second["active_revision"]["segments"]
+    }
 
 
 def test_due_only_session_targets_due_segments(

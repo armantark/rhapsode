@@ -8,6 +8,7 @@ from alembic.config import Config
 
 INITIAL_REVISION = "9306b49e8942"
 PRE_COLLECTION_REVISION = "a1f2c3d4e5f6"
+PRE_PERSONAL_NOTE_REVISION = "b7c8d9e0f1a2"
 
 
 def migration_config(database_path: Path) -> Config:
@@ -135,3 +136,22 @@ def test_collection_migration_backfills_practice_item_revision(tmp_path: Path) -
     assert session_columns["revision_id"][3] == 0
     assert "collection_id" in session_columns
     assert {"collections", "collection_passages"} <= tables
+
+
+def test_personal_note_migration_adds_segment_owned_overlay(tmp_path: Path) -> None:
+    database_path = tmp_path / "rhapsode.db"
+    config = migration_config(database_path)
+    command.upgrade(config, PRE_PERSONAL_NOTE_REVISION)
+    command.upgrade(config, "head")
+
+    with sqlite3.connect(database_path) as connection:
+        columns = {
+            row[1]: row for row in connection.execute("PRAGMA table_info(personal_notes)")
+        }
+        foreign_keys = list(connection.execute("PRAGMA foreign_key_list(personal_notes)"))
+
+    assert set(columns) == {"segment_id", "text", "updated_at"}
+    assert columns["segment_id"][5] == 1
+    assert columns["text"][3] == 1
+    assert columns["updated_at"][3] == 1
+    assert any(row[2] == "segments" and row[6] == "CASCADE" for row in foreign_keys)

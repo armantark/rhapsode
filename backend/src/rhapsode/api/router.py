@@ -12,6 +12,7 @@ from rhapsode.api.deps import get_session
 from rhapsode.config import get_settings
 from rhapsode.services import collections as collection_service
 from rhapsode.services import media as media_service
+from rhapsode.services import notes as note_service
 from rhapsode.services import passages as passage_service
 from rhapsode.services import planning, prep, scheduling
 
@@ -340,6 +341,34 @@ def delete_annotation(annotation_id: str, db: Db) -> dict[str, bool]:
     db.delete(annotation)
     db.commit()
     return {"deleted": True}
+
+
+@router.get(
+    "/segments/{segment_id}/note",
+    response_model=schemas.PersonalNoteRead,
+    tags=["passages"],
+)
+def get_personal_note(segment_id: str, db: Db) -> models.PersonalNote:
+    if db.get(models.Segment, segment_id) is None:
+        raise not_found("Segment")
+    note = note_service.get_note(db, segment_id)
+    if note is None:
+        raise not_found("Personal note")
+    return note
+
+
+@router.put(
+    "/segments/{segment_id}/note",
+    response_model=schemas.PersonalNoteRead,
+    tags=["passages"],
+)
+def put_personal_note(
+    segment_id: str, payload: schemas.PersonalNotePut, db: Db
+) -> models.PersonalNote:
+    try:
+        return note_service.put_note(db, segment_id, payload.text)
+    except LookupError as error:
+        raise not_found("Segment") from error
 
 
 @router.post("/media", response_model=schemas.MediaRead, status_code=201, tags=["media"])

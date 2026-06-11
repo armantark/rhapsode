@@ -3,6 +3,7 @@ import type {
 	AnnotationCreate,
 	AttemptCreate,
 	AttemptResult,
+	CuePoint,
 	Health,
 	LanguageProfile,
 	Media,
@@ -129,6 +130,8 @@ export const api = {
 	},
 	deleteMedia: (mediaId: string, key?: string) =>
 		send<Record<string, boolean>>('DELETE', `/media/${mediaId}`, { key }),
+	setMediaCues: (mediaId: string, cuePoints: CuePoint[], key?: string) =>
+		send<Media>('PUT', `/media/${mediaId}/cues`, { body: { cue_points: cuePoints }, key }),
 	listMedia: (revisionId?: string, category?: MediaCategory) =>
 		send<Media[]>('GET', '/media', { query: { revision_id: revisionId, category } }),
 	mediaUrl: (mediaId: string) => `${BASE}/media/${mediaId}/content`,

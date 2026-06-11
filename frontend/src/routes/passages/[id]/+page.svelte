@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import AudioPlayer from '$lib/components/AudioPlayer.svelte';
+	import LineAligner from '$lib/components/LineAligner.svelte';
 	import SegmentEditor from '$lib/components/SegmentEditor.svelte';
 	import SegmentText from '$lib/components/SegmentText.svelte';
 	import { api, isConflict } from '$lib/api/client';
@@ -41,6 +42,8 @@
 	// this browser (e.g. the scholar-recitation import script) still appear.
 	let referenceMedia: Media[] = $state([]);
 	let uploading = $state(false);
+	// Which reference track's manual line-aligner is open (by media id).
+	let aligning: string | null = $state(null);
 
 	// practice launcher
 	let chosenModes: PracticeMode[] = $state(['cue_recall']);
@@ -59,6 +62,12 @@
 	// display or edit.
 	const visibleSegments = $derived.by(() =>
 		(revision?.segments ?? []).filter((segment) => segment.kind !== 'juncture')
+	);
+	const lineSegments = $derived(
+		visibleSegments
+			.filter((segment) => segment.kind === 'line')
+			.slice()
+			.sort((a, b) => a.ordinal - b.ordinal)
 	);
 	const tree = $derived.by(() => buildSegmentTree(visibleSegments));
 	const kinds = $derived.by(() => presentKinds(visibleSegments));
@@ -272,8 +281,30 @@
 				</label>
 				{#each referenceMedia as media (media.id)}
 					<div class="media">
-						<AudioPlayer src={api.mediaUrl(media.id)} title={media.original_name} storageKey={media.id} />
-						<button class="danger" onclick={() => removeReference(media.id)}>Delete</button>
+						<AudioPlayer src={api.mediaUrl(media.id)} title={media.original_name} storageKey={media.id} cuePoints={media.cue_points ?? []} />
+						<div class="media-actions">
+							{#if lineSegments.length}
+								<button
+									class:active={aligning === media.id}
+									aria-pressed={aligning === media.id}
+									onclick={() => (aligning = aligning === media.id ? null : media.id)}
+								>
+									{(media.cue_points ?? []).length ? '✎ Re-align lines' : '⊺ Align lines'}
+								</button>
+							{/if}
+							<button class="danger" onclick={() => removeReference(media.id)}>Delete</button>
+						</div>
+						{#if aligning === media.id}
+							<LineAligner
+								{media}
+								lines={lineSegments}
+								{profile}
+								onSaved={(updated) => {
+									referenceMedia = referenceMedia.map((item) => (item.id === updated.id ? updated : item));
+									aligning = null;
+								}}
+							/>
+						{/if}
 					</div>
 				{:else}
 					<p class="muted small">No reference audio yet.</p>
@@ -447,10 +478,20 @@
 		margin: 10px 0;
 	}
 
-	.media .danger {
-		align-self: flex-end;
+	.media-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 8px;
+	}
+
+	.media-actions button {
 		font-size: 0.72rem;
 		padding: 4px 10px;
+	}
+
+	.media-actions button.active {
+		border-color: var(--gold);
+		color: var(--gold);
 	}
 
 	.upload input {

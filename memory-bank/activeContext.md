@@ -42,7 +42,24 @@ once" ruling. The app is now ready for real daily Iliad practice.
   per-line cue spans from pauses (ffmpeg silencedetect). During shadowing the
   player auto-seeks and loops the practised line's span. Pause auto-detect is
   heuristic and did NOT cleanly fit the teacher's 26s file (first span swallowed
-  ~2 lines); a manual "tap line starts" UI is the reliable follow-up.
+  ~2 lines), so the reliable path is now the manual `LineAligner.svelte` on a
+  passage's reference audio: play, tap `M` at each line start, save per-line cue
+  spans via `PUT /media/{id}/cues` (client `setMediaCues`).
+- Recall cues are POSITIONAL+VERBATIM, not LLM-authored: `_lead_in` in
+  `planning.py` slices the line's opening words (keeps δ᾽/elisions exact). The
+  evocative phrase (often LLM-drafted) is demoted to an optional `hint` the
+  learner reveals with "Need a hint?". Rationale: an LLM can't author a learner's
+  personal cross-language associations ("boulē → tabouleh"); only the
+  deterministic opening is safe to automate.
+- Flashcard annotation layers: the practice page renders the practised segment's
+  subtree via `SegmentText` (reusing the reading view), so translation/gloss/meter
+  show interlinearly WHEN the answer is revealed (recall integrity preserved).
+  Toggles persist in `rhapsode.practiceLayers`; the `cue` layer is excluded.
+- Space reveals the answer (neutral self-check) for recall modes; juice is now
+  graded — distinct per-grade tones on a "brighter = better" scale, clean-streak
+  escalation (`playGrade(rating, streak)`), eased card-enter + dot pop + 🔥 streak
+  chip, all reduced-motion safe. Grounded in juicy-feedback research (success-
+  dependent, coherent, not over-amplified).
 - LLM prep assistant: Gemini `gemini-3.1-pro-preview` (the only API id for
   3.1 Pro), key from repo-root `.env` as `GEMINI_API_KEY`. Prep-only: drafts
   cue/gloss/translation, never overwrites authored content, practice loop has
@@ -61,9 +78,20 @@ once" ruling. The app is now ready for real daily Iliad practice.
 
 ## Next Work
 
+- DECK GROUPING (needs Arman's decision; see
+  `status-updates/cues-annotations-grouping-roadmap-2026-06-10.html`). Recommended
+  option A: a "collection" model grouping existing passages (Iliad 1.1–5 + 1.6–10)
+  with an Anki-style due/learning/new rollup, and a session that can target a
+  whole collection or one passage. Backend slice first (new model + endpoints +
+  `session.collection_id`), then a frontend deck tree. Hand-off prompt is in the
+  artifact.
+- First-letter fade cue mode (initials only) as a lighter trigger than the full
+  lead-in; pairs with progressive fading.
+- Inline "edit hint" on the flashcard so a mnemonic invented mid-practice sticks
+  to the line immediately (today the hint is editable only in the editor).
+- Verify the manual aligner end-to-end on the teacher's real recording and
+  confirm shadowing auto-jumps to each saved line span.
 - Set `RHAPSODE_BACKUP_DIR` to an iCloud-synced path in the launch command.
-- Build a manual line-alignment affordance (play teacher audio, tap at each
-  line start) that PUTs segment-linked cues — the reliable path, since
-  pause auto-detect under-segments the teacher's recording.
 - LLM-assisted chunking for prose passages is deferred until a prose passage
   exists (grill B4/C1).
+- Parked: curated recorded SFX (synth tones are zero-dependency and graded).

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { LanguageProfile, PracticeItem } from '$lib/api/types';
+	import type { SegmentNode } from '$lib/utils/segments';
+	import SegmentText from './SegmentText.svelte';
 	import { fontStack, langCode } from '$lib/utils/language';
 
 	let {
@@ -7,6 +9,8 @@
 		profile = null,
 		revealed = false,
 		revealText = null,
+		node = null,
+		layers = [],
 		onReveal
 	}: {
 		item: PracticeItem;
@@ -17,8 +21,18 @@
 		/** cue_recall/full_passage prompts omit the answer; the parent looks it
 		 *  up from the revision's segments. */
 		revealText?: string | null;
+		/** The practised segment's subtree, so the checked answer can show its
+		 *  gloss / translation / meter interlinearly (the learner is still
+		 *  acquiring the vocabulary). */
+		node?: SegmentNode | null;
+		/** Annotation layers the learner toggled on for the flashcard. */
+		layers?: string[];
 		onReveal: () => void;
 	} = $props();
+
+	// Render the rich interlinear view only when there is a segment subtree and
+	// at least one layer is on; otherwise plain text keeps the card calm.
+	const annotated = $derived(!!node && layers.length > 0);
 
 	// Prompt payloads are mode-shaped on the backend (see services/planning.py)
 	// and intentionally open-ended for plugin modes, hence the JSON fallback.
@@ -26,6 +40,14 @@
 	const instruction = $derived(typeof prompt.instruction === 'string' ? prompt.instruction : '');
 	const stages = $derived(Array.isArray(prompt.stages) ? (prompt.stages as string[]) : []);
 	const chain = $derived(Array.isArray(prompt.chain) ? (prompt.chain as string[]) : []);
+	const leadIn = $derived(typeof prompt.lead_in === 'string' ? prompt.lead_in : '');
+	const hint = $derived(typeof prompt.hint === 'string' ? prompt.hint : '');
+
+	let showHint = $state(false);
+	$effect(() => {
+		void item.id;
+		showHint = false;
+	});
 	const knownMode = $derived(
 		['shadowing', 'progressive_fading', 'forward_chaining', 'backward_chaining', 'cue_recall', 'random_start', 'weak_link', 'full_passage'].includes(item.mode)
 	);
@@ -68,9 +90,16 @@
 		</ol>
 	{:else if item.mode === 'cue_recall' || item.mode === 'weak_link'}
 		<p class="cue-line">
-			<span class="cue passage-text" {lang} style:font-family={fonts}>{String(prompt.cue ?? '')}</span>
-			<span class="muted">… continue from memory</span>
+			<span class="cue passage-text" {lang} style:font-family={fonts}>{leadIn}</span>
+			<span class="muted">… recite aloud to the end, then check</span>
 		</p>
+		{#if hint}
+			{#if showHint}
+				<p class="hint passage-text" {lang} style:font-family={fonts}>{hint}</p>
+			{:else}
+				<button class="hint-toggle" onclick={() => (showHint = true)}>Need a hint?</button>
+			{/if}
+		{/if}
 	{:else if item.mode === 'full_passage'}
 		<p class="muted blank">Recite the full passage from memory.</p>
 	{:else if !knownMode}
@@ -79,7 +108,13 @@
 	{/if}
 
 	{#if revealed && revealText}
-		<p class="passage-text revealed-text" {lang} style:font-family={fonts}>{revealText}</p>
+		{#if annotated && node}
+			<div class="revealed-text annotated">
+				<SegmentText {node} {profile} {layers} showRuby={false} />
+			</div>
+		{:else}
+			<p class="passage-text revealed-text" {lang} style:font-family={fonts}>{revealText}</p>
+		{/if}
 	{/if}
 
 	{#if !revealed && (item.mode === 'cue_recall' || item.mode === 'weak_link' || item.mode === 'full_passage')}
@@ -130,6 +165,27 @@
 	.revealed-text {
 		border-inline-start: 3px solid var(--gold);
 		padding-inline-start: 12px;
+	}
+
+	.revealed-text.annotated {
+		padding-block: 4px;
+	}
+
+	.hint {
+		color: var(--text-dim);
+		font-style: italic;
+		margin: 0;
+	}
+
+	.hint-toggle {
+		align-self: flex-start;
+		background: none;
+		border: none;
+		color: var(--text-dim);
+		font-size: 0.78rem;
+		padding: 0;
+		text-decoration: underline dotted;
+		cursor: pointer;
 	}
 
 	.blank {

@@ -419,6 +419,38 @@ def test_mastery_stages() -> None:
     assert mastery_stage(state) == "durable"
 
 
+def test_recall_prompt_uses_verbatim_lead_in() -> None:
+    # Line 5 of the Iliad: the lead-in must be the exact opening words, and the
+    # elided particle δ᾽ must survive in the full answer (no LLM paraphrase).
+    line = models.Segment(
+        kind="line",
+        ordinal=27,
+        text="οἰωνοῖσί τε πᾶσι, Διὸς δ᾽ ἐτελείετο βουλή,",
+        cue="Διὸς ἐτελείετο βουλή",
+    )
+    cue = prompt_for("cue_recall", line, [line])
+    assert cue["lead_in"] == "οἰωνοῖσί τε"
+    assert cue["target_text"] == line.text
+    assert "δ᾽" in cue["target_text"]
+    # The evocative phrase is demoted to an optional hint, not the prompt.
+    assert cue["hint"] == "Διὸς ἐτελείετο βουλή"
+
+    weak = prompt_for("weak_link", line, [line])
+    assert weak["lead_in"] == "οἰωνοῖσί τε"
+
+    # A juncture already reads as "previous tail → next head", so its own cue is
+    # the lead-in and its text is the answer.
+    juncture = models.Segment(
+        kind="juncture",
+        ordinal=6,
+        text="οὐλομένην, ἣ μῡρί᾽ …",
+        cue="… θεὰ Πηληϊάδεω Ἀχιλῆος",
+    )
+    seam = prompt_for("cue_recall", juncture, [juncture])
+    assert seam["lead_in"] == "… θεὰ Πηληϊάδεω Ἀχιλῆος"
+    assert seam["target_text"] == "οὐλομένην, ἣ μῡρί᾽ …"
+
+
 def test_plugin_practice_mode_can_extend_prompts() -> None:
     register_practice_mode(
         "echo",

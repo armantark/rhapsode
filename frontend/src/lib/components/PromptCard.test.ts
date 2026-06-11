@@ -75,14 +75,23 @@ describe('built-in mode rendering', () => {
 		expect(screen.getByRole('button', { name: /Show answer/ })).toBeInTheDocument();
 	});
 
-	it('weak link shows the cue and reveals the target', async () => {
+	it('weak link shows the verbatim lead-in, hides the hint, reveals the target', async () => {
 		render(PromptCard, {
-			item: item('weak_link', { instruction: 'Repair this weak link.', cue: 'destructive', target_text: 'οὐλομένην' }),
+			item: item('weak_link', {
+				instruction: 'This seam keeps tripping you — recite across it.',
+				lead_in: 'οἰωνοῖσί τε',
+				hint: 'destructive',
+				target_text: 'οὐλομένην'
+			}),
 			revealed: true,
 			revealText: 'οὐλομένην',
 			onReveal: vi.fn()
 		});
-		expect(screen.getByText('destructive')).toBeInTheDocument();
+		// The lead-in is the positional cue; the evocative phrase is demoted to a
+		// hint behind a click, not shown by default.
+		expect(screen.getByText('οἰωνοῖσί τε')).toBeInTheDocument();
+		expect(screen.queryByText('destructive')).toBeNull();
+		expect(screen.getByRole('button', { name: /Need a hint/ })).toBeInTheDocument();
 		expect(screen.getByText('οὐλομένην')).toBeInTheDocument();
 	});
 });

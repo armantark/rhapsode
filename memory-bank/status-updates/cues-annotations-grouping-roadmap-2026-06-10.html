@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Cues, Annotations & Grouping — Roadmap</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;500;700&display=swap"
+			rel="stylesheet"
+		/>
+		<style>
+			:root {
+				--bg: #0c0e12;
+				--surface: #161a21;
+				--surface-2: #1e232c;
+				--border: #2a3040;
+				--text: #e8ecf4;
+				--text-dim: #8b95a8;
+				--accent: #4f8cff;
+				--accent-glow: rgba(79, 140, 255, 0.15);
+				--red: #ff5c5c;
+				--green: #4ade80;
+				--amber: #fbbf24;
+				--purple: #a78bfa;
+				--gold: #d8b06b;
+				--radius: 12px;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				margin: 0;
+				background: radial-gradient(1200px 600px at 80% -10%, #14181f 0%, var(--bg) 55%);
+				color: var(--text);
+				font-family: 'Outfit', sans-serif;
+				font-weight: 300;
+				line-height: 1.55;
+				padding: 40px 22px 80px;
+			}
+			.wrap {
+				max-width: 1080px;
+				margin: 0 auto;
+			}
+			.badge {
+				font-family: 'JetBrains Mono', monospace;
+				font-size: 0.7rem;
+				letter-spacing: 0.12em;
+				color: var(--accent);
+				background: var(--accent-glow);
+				border: 1px solid rgba(79, 140, 255, 0.35);
+				padding: 5px 12px;
+				border-radius: 999px;
+			}
+			h1 {
+				font-weight: 700;
+				font-size: 2.05rem;
+				margin: 16px 0 6px;
+				letter-spacing: -0.01em;
+			}
+			.sub {
+				color: var(--text-dim);
+				max-width: 70ch;
+				margin: 0;
+			}
+			h2 {
+				font-weight: 700;
+				font-size: 1.15rem;
+				margin: 42px 0 14px;
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+			h2 .num {
+				font-family: 'JetBrains Mono', monospace;
+				font-size: 0.7rem;
+				color: var(--bg);
+				background: var(--accent);
+				width: 22px;
+				height: 22px;
+				border-radius: 6px;
+				display: grid;
+				place-items: center;
+			}
+			.shipped {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+				gap: 10px;
+			}
+			.ship {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-left: 3px solid var(--green);
+				border-radius: 10px;
+				padding: 12px 14px;
+			}
+			.ship .t {
+				font-weight: 500;
+				font-size: 0.95rem;
+			}
+			.ship .d {
+				color: var(--text-dim);
+				font-size: 0.82rem;
+				margin-top: 3px;
+			}
+			.tag {
+				font-family: 'JetBrains Mono', monospace;
+				font-size: 0.62rem;
+				color: var(--text-dim);
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: 5px;
+				padding: 2px 6px;
+				margin: 6px 4px 0 0;
+				display: inline-block;
+			}
+			.grid {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 14px;
+			}
+			@media (max-width: 900px) {
+				.grid {
+					grid-template-columns: 1fr;
+				}
+			}
+			.card {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius);
+				padding: 16px 18px;
+			}
+			.card h3 {
+				margin: 0 0 4px;
+				font-size: 1rem;
+				font-weight: 500;
+			}
+			.prio {
+				font-family: 'JetBrains Mono', monospace;
+				font-size: 0.62rem;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				padding: 2px 7px;
+				border-radius: 5px;
+			}
+			.p-high {
+				color: var(--amber);
+				border: 1px solid rgba(251, 191, 36, 0.4);
+			}
+			.p-med {
+				color: var(--green);
+				border: 1px solid rgba(74, 222, 128, 0.4);
+			}
+			.p-polish {
+				color: var(--purple);
+				border: 1px solid rgba(167, 139, 250, 0.4);
+			}
+			.card p {
+				color: var(--text-dim);
+				font-size: 0.88rem;
+				margin: 8px 0 0;
+			}
+			.opt {
+				display: block;
+				border: 1px solid var(--border);
+				border-radius: 10px;
+				padding: 12px 14px;
+				margin-top: 10px;
+				cursor: pointer;
+				transition: border-color 0.15s, background 0.15s;
+			}
+			.opt:hover {
+				border-color: var(--accent);
+			}
+			.opt.sel {
+				border-color: var(--gold);
+				background: rgba(216, 176, 107, 0.07);
+			}
+			.opt .ot {
+				font-weight: 500;
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+			.opt .rec {
+				font-family: 'JetBrains Mono', monospace;
+				font-size: 0.6rem;
+				color: var(--gold);
+				border: 1px solid rgba(216, 176, 107, 0.5);
+				border-radius: 5px;
+				padding: 1px 6px;
+			}
+			.opt p {
+				margin: 6px 0 0;
+				font-size: 0.83rem;
+			}
+			.mock {
+				background: var(--bg);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				padding: 10px;
+				margin-top: 10px;
+				font-family: 'JetBrains Mono', monospace;
+				font-size: 0.72rem;
+			}
+			.mrow {
+				display: flex;
+				justify-content: space-between;
+				padding: 4px 6px;
+				border-radius: 5px;
+			}
+			.mrow.parent {
+				color: var(--text);
+				font-weight: 600;
+			}
+			.mrow.child {
+				color: var(--text-dim);
+				padding-left: 22px;
+			}
+			.mrow .due {
+				color: var(--green);
+			}
+			button.copy {
+				font-family: 'JetBrains Mono', monospace;
+				font-size: 0.72rem;
+				color: var(--accent);
+				background: var(--accent-glow);
+				border: 1px solid rgba(79, 140, 255, 0.4);
+				border-radius: 8px;
+				padding: 8px 14px;
+				cursor: pointer;
+				margin-top: 14px;
+			}
+			button.copy:hover {
+				background: rgba(79, 140, 255, 0.25);
+			}
+			.handoff {
+				border-left: 3px solid var(--purple);
+			}
+			pre {
+				white-space: pre-wrap;
+				background: var(--bg);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				padding: 12px;
+				font-family: 'JetBrains Mono', monospace;
+				font-size: 0.74rem;
+				color: var(--text-dim);
+				margin-top: 10px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="wrap">
+			<span class="badge">SHIPPED + ROADMAP · 2026-06-10</span>
+			<h1>Cues you can trust, meaning on the card, and decks that stack</h1>
+			<p class="sub">
+				You were right: an LLM can't author <em>your</em> mnemonics. So software now provides only the
+				deterministic part of a cue — the line's own opening words — and your evocative association
+				becomes an optional hint you author. Gloss, translation and meter now ride along on the
+				flashcard when you check. Below: what shipped this turn, plus the deck-grouping design that
+				needs one decision from you before I build it.
+			</p>
+
+			<h2><span class="num">✓</span> Shipped this turn</h2>
+			<div class="shipped">
+				<div class="ship">
+					<div class="t">Verbatim lead-in cue</div>
+					<div class="d">The cue is now the line's first words, sliced from the text — so δ᾽ and elided particles stay exact. No paraphrase drift.</div>
+				</div>
+				<div class="ship">
+					<div class="t">Your phrase → optional hint</div>
+					<div class="d">The evocative phrase is demoted behind a "Need a hint?" click. It's a nudge, not the prompt.</div>
+				</div>
+				<div class="ship">
+					<div class="t">Annotations on the card</div>
+					<div class="d">Toggle translation / gloss / meter; they appear interlinearly when you reveal to check. Choice persists.</div>
+				</div>
+				<div class="ship">
+					<div class="t">Space = show answer</div>
+					<div class="d">The natural "flip the card" key, alongside ⌘Z undo.</div>
+				</div>
+				<div class="ship">
+					<div class="t">Graded, coherent juice</div>
+					<div class="d">Distinct tones per grade on a "brighter = better recall" scale, clean-streak escalation, eased card pop, dot pop, 🔥 streak chip. Reduced-motion safe.</div>
+				</div>
+				<div class="ship">
+					<div class="t">Manual tap-to-align aligner</div>
+					<div class="d">On a passage's reference audio: play, tap <strong>M</strong> at each line start, save per-line cue spans that drive shadowing auto-jump.</div>
+				</div>
+			</div>
+
+			<h2><span class="num">1</span> Decision needed: how should grouping work?</h2>
+			<div class="card">
+				<h3>Your ask: stack 1–5 with 6–10, or drill 5–10 alone <span class="prio p-high">major · needs backend</span></h3>
+				<p>
+					Anki does this with a deck tree (your screenshot): a parent rolls up its children's
+					New/Learn/Due counts, and you can study a parent or any child. The question is what the
+					"deck" maps to in this app, since a passage already owns ordered line segments.
+				</p>
+				<div class="mock" aria-hidden="true">
+					<div class="mrow parent"><span>▾ Iliad 1.1–10</span><span class="due">due 14</span></div>
+					<div class="mrow child"><span>Iliad 1.1–5</span><span class="due">due 6</span></div>
+					<div class="mrow child"><span>Iliad 1.6–10</span><span class="due">due 8</span></div>
+				</div>
+
+				<label class="opt" data-g="a">
+					<span class="ot"><input type="radio" name="group" /> A · Collections over passages <span class="rec">recommended</span></span>
+					<p>
+						A new lightweight "collection" groups existing passages (Iliad 1.1–5, 1.6–10). The
+						session launcher can target a collection (all children) or one passage. Smallest data
+						model, matches your screenshot's parent/child rollup, and keeps each passage's revisions
+						and audio intact. Doesn't let you slice <em>within</em> a passage.
+					</p>
+				</label>
+				<label class="opt" data-g="b">
+					<span class="ot"><input type="radio" name="group" /> B · Range selection within one passage</span>
+					<p>
+						Keep one big "Iliad 1" passage and pick a line range (5–10) at session start. No new
+						model, but no rollup view, and you'd re-pick ranges every time instead of seeing decks.
+					</p>
+				</label>
+				<label class="opt" data-g="c">
+					<span class="ot"><input type="radio" name="group" /> C · Both — collections + saved ranges</span>
+					<p>
+						Collections for the deck tree, plus saved named ranges inside a passage. Most flexible,
+						most surface area. Probably overkill for one user memorizing in 5-line chunks.
+					</p>
+				</label>
+
+				<button class="copy" data-prompt="grouping">Copy backend hand-off prompt (option A)</button>
+			</div>
+
+			<h2><span class="num">2</span> Backlog — captured, not yet built</h2>
+			<div class="grid">
+				<div class="card">
+					<h3>First-letter fade cue <span class="prio p-med">medium</span></h3>
+					<p>
+						You said the only safe automation is the opening words or even first letters. A cue mode
+						that shows just initials ( μ. ἄ. θ.) — a lighter trigger than the full lead-in, for when a
+						line is nearly solid. Pairs with progressive fading.
+					</p>
+					<span class="tag">planning.py</span><span class="tag">PromptCard.svelte</span>
+				</div>
+				<div class="card">
+					<h3>Author your own mnemonic <span class="prio p-med">medium</span></h3>
+					<p>
+						The hint is the right home for "boulē → tabouleh", but today it's editable only in the
+						passage editor. Add inline "edit hint" on the card so an association you invent mid-practice
+						sticks to that line immediately.
+					</p>
+					<span class="tag">SegmentEditor.svelte</span><span class="tag">PromptCard.svelte</span>
+				</div>
+				<div class="card">
+					<h3>Curated recorded SFX <span class="prio p-polish">polish · parked</span></h3>
+					<p>
+						Synth tones are zero-dependency and already graded. Recorded SFX would add fidelity but
+						bring files + licensing. Parked unless the synth ever feels thin.
+					</p>
+					<span class="tag">feedback.ts</span>
+				</div>
+				<div class="card">
+					<h3>Aligner: verify on real audio <span class="prio p-med">medium</span></h3>
+					<p>
+						The tap-to-align UI is in. Next is a real pass on your teacher's recording end-to-end, then
+						confirm shadowing auto-jumps to each line's saved span.
+					</p>
+					<span class="tag">LineAligner.svelte</span><span class="tag">AudioPlayer.svelte</span>
+				</div>
+			</div>
+
+			<h2><span class="num">3</span> Hand-off to the backend dev</h2>
+			<div class="card handoff">
+				<h3>If you pick option A, this is the backend slice</h3>
+				<p>Grouping needs a data model + endpoints before any frontend deck tree can exist. Copy this to the GPT/backend thread:</p>
+				<pre id="handoff-text">Build "collections" for Rhapsode (single-user, local-first). A collection groups
+existing passages so the practice launcher can target a whole group or one passage,
+with an Anki-style rollup of due/learning counts.
+
+Backend tasks:
+1. Model: Collection(id, name, created_at) + ordered membership to Passage
+   (collection_id, passage_id, position). Alembic migration.
+2. Schemas: CollectionCreate/Read, CollectionRead includes members in order and a
+   rollup { due, learning, new } aggregated across member passages' active revisions
+   (reuse the analytics/due logic per segment).
+3. Endpoints: CRUD /collections, add/remove/reorder members, and allow
+   POST /sessions to accept a collection_id (plan over the union of member
+   passages' segments, respecting existing mode/kind/minutes options).
+4. Tests: unit (rollup math), integration (session over a collection spans
+   members), and regenerate contracts/openapi.json.
+
+Do NOT change the LLM or grading model. Leave a note in the code for the frontend
+dev describing the collection endpoints + the session collection_id field.</pre>
+				<button class="copy" data-prompt="copy-handoff">Copy hand-off text</button>
+			</div>
+		</div>
+		<script>
+			document.querySelectorAll('.opt').forEach((el) => {
+				el.addEventListener('click', () => {
+					document.querySelectorAll('.opt').forEach((o) => o.classList.remove('sel'));
+					el.classList.add('sel');
+					el.querySelector('input').checked = true;
+				});
+			});
+			document.querySelector('.opt[data-g="a"]').classList.add('sel');
+			document.querySelector('.opt[data-g="a"] input').checked = true;
+
+			const handoff = document.getElementById('handoff-text').textContent;
+			document.querySelectorAll('button.copy').forEach((btn) => {
+				btn.addEventListener('click', async () => {
+					await navigator.clipboard.writeText(handoff);
+					const old = btn.textContent;
+					btn.textContent = '✓ Copied';
+					setTimeout(() => (btn.textContent = old), 1400);
+				});
+			});
+		</script>
+	</body>
+</html>

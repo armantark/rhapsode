@@ -1,9 +1,14 @@
-// Lightweight audiovisual feedback for the practice loop. The grade buttons
-// are a physical, repeated gesture, so a short tuned tone plus a colour pulse
-// makes each rating feel distinct and the session feel responsive — without
-// pulling in an audio library or shipping sound files. Tones are synthesised
-// on a lazily-created AudioContext (grading is a user gesture, so autoplay
-// policy is satisfied) and can be muted; muting persists in localStorage.
+// Lightweight audiovisual feedback for the practice loop. Grounded in juicy-
+// feedback research (CHI 2024, Kao et al.): what motivates is GRADED,
+// success-DEPENDENT, audio-visually COHERENT feedback — not loud amplification,
+// which can backfire by occluding the action→outcome link. So each rating gets
+// a distinct character on a rising "better recall = brighter" scale, and a
+// clean streak escalates to reward competence. Everything is synthesised on a
+// lazily-created AudioContext (grading is a user gesture, satisfying autoplay
+// policy); no audio files, no licensing. Muting persists in localStorage.
+//
+// Parked idea: swap the synth for curated recorded SFX if we ever want more
+// fidelity — kept out for now to stay zero-dependency and small.
 
 import type { AttemptRating } from '$lib/api/types';
 
@@ -52,19 +57,33 @@ function tone(freq: number, when: number, duration = 0.16, type: OscillatorType 
 	osc.stop(start + duration + 0.02);
 }
 
-const GRADE_TONES: Record<AttemptRating, () => void> = {
-	revealed: () => tone(196, 0, 0.22, 'triangle'),
-	incorrect: () => tone(261.63, 0, 0.18, 'triangle'),
-	hesitant: () => tone(392, 0, 0.16),
-	clean: () => {
-		tone(523.25, 0);
-		tone(783.99, 0.07);
+const GRADE_TONES: Record<AttemptRating, (streak: number) => void> = {
+	// Again: a gentle two-note fall — "not yet", never a harsh buzzer.
+	revealed: () => {
+		tone(392, 0, 0.16, 'triangle');
+		tone(294, 0.1, 0.2, 'triangle');
+	},
+	// Hard: a soft low "tock" — felt as effort/weight, quick decay.
+	incorrect: () => tone(174.61, 0, 0.12, 'triangle'),
+	// Good: a bright step up — clean confirmation.
+	hesitant: () => {
+		tone(440, 0, 0.13);
+		tone(554.37, 0.08, 0.14);
+	},
+	// Easy: a sparkle arpeggio that climbs higher the longer the clean streak,
+	// so a run of perfect recalls audibly rewards itself (competence/curiosity).
+	clean: (streak) => {
+		const lift = Math.min(streak, 5) * 40;
+		tone(523.25 + lift, 0);
+		tone(659.25 + lift, 0.06);
+		tone(783.99 + lift, 0.12);
+		if (streak >= 3) tone(1046.5 + lift, 0.18, 0.34);
 	}
 };
 
-export function playGrade(rating: AttemptRating): void {
+export function playGrade(rating: AttemptRating, streak = 0): void {
 	if (!soundEnabled()) return;
-	GRADE_TONES[rating]();
+	GRADE_TONES[rating](streak);
 }
 
 /** A rising major arpeggio to cap a finished session. */

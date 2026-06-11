@@ -33,6 +33,34 @@ def progressive_masks(text: str) -> list[str]:
     return stages
 
 
+def _lead_in(text: str, words: int = 2) -> str:
+    """The first couple of words, verbatim, as a retrieval trigger. Recitation
+    is chained — each phrase fires the next — so the most effective cue for
+    verbatim recall is the line's own opening, sliced straight from the text so
+    diacritics and elided particles stay exact (no LLM paraphrase drift)."""
+    return " ".join(text.split()[:words])
+
+
+def _recall_prompt(target: models.Segment, line_instruction: str) -> dict[str, Any]:
+    """A forward-recall prompt: show the lead-in, recite to the end, then check.
+    A juncture's own text is the previous line's tail followed by the next
+    line's head, so it already reads as 'lead-in → continue'."""
+    if target.kind == "juncture":
+        return {
+            "instruction": "Recite the line this leads into.",
+            "lead_in": target.cue or _lead_in(target.text),
+            "target_text": target.text,
+        }
+    return {
+        "instruction": line_instruction,
+        "lead_in": _lead_in(target.text),
+        # The evocative phrase (often LLM-drafted) is a weaker, optional nudge —
+        # demoted from the prompt to a hint the learner can choose to peek at.
+        "hint": target.cue,
+        "target_text": target.text,
+    }
+
+
 def prompt_for(mode: str, target: models.Segment, context: list[models.Segment]) -> dict[str, Any]:
     texts = [segment.text for segment in context]
     match mode:
@@ -51,15 +79,11 @@ def prompt_for(mode: str, target: models.Segment, context: list[models.Segment])
                 "chain": list(reversed(texts)),
             }
         case "cue_recall":
-            return {"instruction": "Continue from the cue.", "cue": target.cue or target.text[:12]}
+            return _recall_prompt(target, "Recite this line to the end.")
         case "random_start":
             return {"instruction": "Start here and continue.", "start": target.text}
         case "weak_link":
-            return {
-                "instruction": "Repair this weak link.",
-                "cue": target.cue,
-                "target_text": target.text,
-            }
+            return _recall_prompt(target, "This seam keeps tripping you — recite across it.")
         case "full_passage":
             return {"instruction": "Recite the full passage from memory.", "blank": True}
         case _:

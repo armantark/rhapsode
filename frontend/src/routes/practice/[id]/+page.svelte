@@ -17,6 +17,8 @@
 	import type { AttemptRecording } from '$lib/audio/recorder';
 	import { registerMedia } from '$lib/utils/mediaRegistry';
 	import { clearActiveSession, rememberActiveSession } from '$lib/utils/recovery';
+	import { buildSegmentTree } from '$lib/utils/segments';
+	import { profileLayers } from '$lib/utils/language';
 	import {
 		isSoundEnabled,
 		playComplete,
@@ -55,6 +57,15 @@
 	let flashToken = $state(0);
 	let celebrate = $state(false);
 	let soundOn = $state(true);
+	// Consecutive clean recalls this tab — a competence/curiosity driver that
+	// escalates the reward (brighter tone, growing chip).
+	let streak = $state(0);
+
+	function trailingCleans(): number {
+		let count = 0;
+		for (let i = history.length - 1; i >= 0 && history[i] === 'clean'; i -= 1) count += 1;
+		return count;
+	}
 	// Recording is deliberately opt-in (grill D2): speaking aloud is the
 	// learning act; the mic is for occasionally capturing a best take.
 	const MIC_KEY = 'rhapsode.micEnabled';
@@ -101,6 +112,47 @@
 	const segmentById = $derived.by(
 		() => new Map((revision?.segments ?? []).map((segment) => [segment.id, segment]))
 	);
+	// The segment subtree (with token children + annotations) for the card, so
+	// the checked answer can show gloss/translation/meter interlinearly.
+	const nodeById = $derived.by(() => {
+		const map = new Map<string, ReturnType<typeof buildSegmentTree>[number]>();
+		const walk = (nodes: ReturnType<typeof buildSegmentTree>) => {
+			for (const n of nodes) {
+				map.set(n.id, n);
+				walk(n.children);
+			}
+		};
+		walk(buildSegmentTree(revision?.segments ?? []));
+		return map;
+	});
+	const currentNode = $derived(
+		currentItem?.segment_id ? (nodeById.get(currentItem.segment_id) ?? null) : null
+	);
+	// Layer toggles for the flashcard (translation/gloss/meter), persisted so the
+	// choice sticks across cards and sessions.
+	const LAYERS_KEY = 'rhapsode.practiceLayers';
+	let enabledLayers: string[] = $state([]);
+	const layerChoices = $derived.by(() => {
+		const declared = profileLayers(profile)
+			.map((entry) => entry.layer)
+			.filter((layer) => layer !== 'cue');
+		const present = new Set(
+			(revision?.segments ?? []).flatMap((segment) =>
+				(segment.annotations ?? []).map((annotation) => annotation.layer)
+			)
+		);
+		for (const child of nodeById.values()) {
+			for (const annotation of child.annotations ?? []) present.add(annotation.layer);
+		}
+		return [...new Set([...declared, ...present])].filter((layer) => layer !== 'cue');
+	});
+
+	function toggleLayer(layer: string) {
+		enabledLayers = enabledLayers.includes(layer)
+			? enabledLayers.filter((entry) => entry !== layer)
+			: [...enabledLayers, layer];
+		localStorage.setItem(LAYERS_KEY, JSON.stringify(enabledLayers));
+	}
 	// Listed from the backend so imported scholar recitations appear too.
 	let referenceMedia: Media[] = $state([]);
 	const revealText = $derived.by(() => {
@@ -123,6 +175,12 @@
 	onMount(async () => {
 		micEnabled = localStorage.getItem(MIC_KEY) === 'true';
 		soundOn = isSoundEnabled();
+		try {
+			const stored = JSON.parse(localStorage.getItem(LAYERS_KEY) ?? '[]');
+			if (Array.isArray(stored)) enabledLayers = stored.filter((entry) => typeof entry === 'string');
+		} catch {
+			enabledLayers = [];
+		}
 		try {
 			session = await api.getSession(page.params.id ?? '');
 			revision = await api.getRevision(session.revision_id);
@@ -179,7 +237,8 @@
 				? `${RATING_LABELS[landed]} · mastery ${result.mastery_stage}${result.due_at ? ` · next ${new Date(result.due_at).toLocaleDateString()}` : ''}`
 				: RATING_LABELS[landed];
 			session = result.session;
-			playGrade(landed);
+			streak = landed === 'clean' ? streak + 1 : 0;
+			playGrade(landed, streak);
 			pulse(landed);
 			if (items.every((item) => item.completed)) {
 				await finish();
@@ -202,6 +261,7 @@
 			celebrate = false;
 			const last = history.pop();
 			if (last) tally = { ...tally, [last]: Math.max(0, tally[last] - 1) };
+			streak = trailingCleans();
 			lastFeedback = 'Undid the last card';
 			playUndo();
 		} catch (cause) {
@@ -215,12 +275,24 @@
 		}
 	}
 
+	const canReveal = $derived(
+		!!currentItem &&
+			!revealed &&
+			['cue_recall', 'weak_link', 'full_passage'].includes(currentItem.mode)
+	);
+
 	function onWindowKeydown(event: KeyboardEvent) {
+		const target = event.target as HTMLElement | null;
+		if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+		// Space shows the answer to self-check — the natural "flip the card" key.
+		if (event.key === ' ' && canReveal) {
+			event.preventDefault();
+			revealed = true;
+			return;
+		}
 		if (!(event.metaKey || event.ctrlKey) || event.shiftKey || event.key.toLowerCase() !== 'z') {
 			return;
 		}
-		const target = event.target as HTMLElement | null;
-		if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
 		event.preventDefault();
 		void undo();
 	}
@@ -289,6 +361,13 @@
 			<h1>{passageTitle}</h1>
 		</div>
 		<div class="head-actions">
+			{#if streak >= 2}
+				{#key streak}
+					<span class="streak" class:hot={streak >= 5} title="{streak} clean in a row">
+						🔥 {streak}
+					</span>
+				{/key}
+			{/if}
 			<button
 				class="ghost"
 				onclick={undo}
@@ -318,13 +397,33 @@
 	{#if error}<p class="error-banner" role="alert">{error}</p>{/if}
 
 	{#if currentItem}
-		<PromptCard
-			item={currentItem}
-			{profile}
-			{revealed}
-			{revealText}
-			onReveal={() => (revealed = true)}
-		/>
+		{#key currentItem.id}
+			<div class="card-enter">
+				<PromptCard
+					item={currentItem}
+					{profile}
+					{revealed}
+					{revealText}
+					node={currentNode}
+					layers={enabledLayers}
+					onReveal={() => (revealed = true)}
+				/>
+			</div>
+		{/key}
+
+		{#if layerChoices.length}
+			<div class="layers" role="group" aria-label="Annotation layers">
+				<span class="muted small">Show on check:</span>
+				{#each layerChoices as layer (layer)}
+					<button
+						class="layer-chip"
+						class:active={enabledLayers.includes(layer)}
+						aria-pressed={enabledLayers.includes(layer)}
+						onclick={() => toggleLayer(layer)}
+					>{layer}</button>
+				{/each}
+			</div>
+		{/if}
 
 		{#if referenceMedia.length}
 			{#if currentItem.mode === 'shadowing'}
@@ -372,7 +471,9 @@
 				couldn't recall it.
 			</p>
 		{:else}
-			<p class="muted small">Recite from memory, then “Show answer” to check before grading.</p>
+			<p class="muted small">
+				Recite from memory, then press <kbd>Space</kbd> to check before grading.
+			</p>
 		{/if}
 		{#if lastFeedback}
 			<p class="feedback">{lastFeedback}</p>
@@ -446,22 +547,28 @@
 		animation: flash 0.6s ease-out;
 	}
 
+	/* Graded intensity: success flashes brightest, "Again" barely at all, so the
+	   feedback differentiates outcomes rather than shouting equally at all. */
 	.flash.clean {
+		--peak: 0.34;
 		background: radial-gradient(circle at 50% 60%, var(--green) 0%, transparent 60%);
 	}
 	.flash.hesitant {
+		--peak: 0.24;
 		background: radial-gradient(circle at 50% 60%, var(--gold) 0%, transparent 60%);
 	}
 	.flash.incorrect {
+		--peak: 0.18;
 		background: radial-gradient(circle at 50% 60%, var(--red) 0%, transparent 60%);
 	}
 	.flash.revealed {
+		--peak: 0.12;
 		background: radial-gradient(circle at 50% 60%, var(--purple) 0%, transparent 60%);
 	}
 
 	@keyframes flash {
 		0% {
-			opacity: 0.32;
+			opacity: var(--peak, 0.3);
 			transform: scale(1.04);
 		}
 		100% {
@@ -474,6 +581,11 @@
 		.flash {
 			animation: none;
 			opacity: 0;
+		}
+		.dot.done,
+		.card-enter,
+		.streak {
+			animation: none;
 		}
 	}
 
@@ -495,6 +607,66 @@
 	.dot.done {
 		background: var(--green);
 		border-color: var(--green);
+		animation: dotpop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+	}
+
+	@keyframes dotpop {
+		0% {
+			transform: scale(0.5);
+		}
+		60% {
+			transform: scale(1.35);
+		}
+		100% {
+			transform: scale(1);
+		}
+	}
+
+	/* OutBack ease: the new card overshoots slightly and settles — springy,
+	   organic, not a hard cut. */
+	.card-enter {
+		animation: cardenter 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
+	}
+
+	@keyframes cardenter {
+		0% {
+			opacity: 0;
+			transform: translateY(8px) scale(0.985);
+		}
+		100% {
+			opacity: 1;
+			transform: translateY(0) scale(1);
+		}
+	}
+
+	.streak {
+		font-family: var(--font-mono);
+		font-size: 0.82rem;
+		color: var(--amber);
+		background: rgba(251, 191, 36, 0.1);
+		border: 1px solid rgba(251, 191, 36, 0.35);
+		border-radius: 999px;
+		padding: 3px 9px;
+		display: inline-block;
+		animation: streakpop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+	}
+
+	.streak.hot {
+		color: #ff8a3d;
+		border-color: rgba(255, 138, 61, 0.6);
+		box-shadow: 0 0 10px rgba(255, 138, 61, 0.35);
+	}
+
+	@keyframes streakpop {
+		0% {
+			transform: scale(0.7);
+		}
+		60% {
+			transform: scale(1.25);
+		}
+		100% {
+			transform: scale(1);
+		}
 	}
 
 	.dot.current {
@@ -522,6 +694,25 @@
 		padding: 2px 0;
 		margin-bottom: 10px;
 		cursor: pointer;
+	}
+
+	.layers {
+		display: flex;
+		align-items: center;
+		gap: 7px;
+		flex-wrap: wrap;
+		margin: 4px 0 12px;
+	}
+
+	.layer-chip {
+		font-size: 0.74rem;
+		padding: 3px 10px;
+		text-transform: capitalize;
+	}
+
+	.layer-chip.active {
+		border-color: var(--gold);
+		color: var(--gold);
 	}
 
 	.reference {

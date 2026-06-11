@@ -134,6 +134,36 @@ describe('built-in mode rendering', () => {
 	});
 });
 
+describe('personal notes on the cue card', () => {
+	it('prefers a live personal note over the drafted-cue hint', async () => {
+		render(PromptCard, {
+			item: item('cue_recall', { instruction: 'Recite this line to the end.', lead_in: 'μῆνιν ἄειδε', hint: 'wrath/anger' }),
+			note: 'mēnin ~ "mean" — Achilles is mean',
+			onReveal: vi.fn(),
+			onSaveNote: vi.fn()
+		});
+		await fireEvent.click(screen.getByRole('button', { name: /Need a hint/ }));
+		expect(screen.getByText('mēnin ~ "mean" — Achilles is mean')).toBeInTheDocument();
+		// The frozen drafted hint is suppressed in favour of the learner's note.
+		expect(screen.queryByText('wrath/anger')).toBeNull();
+	});
+
+	it('offers "Add a note" even when there is no drafted hint, and saves the draft', async () => {
+		const onSaveNote = vi.fn();
+		render(PromptCard, {
+			item: item('cue_recall', { instruction: 'Recite this line to the end.', lead_in: 'μῆνιν ἄειδε' }),
+			onReveal: vi.fn(),
+			onSaveNote
+		});
+		await fireEvent.click(screen.getByRole('button', { name: /Add a note/ }));
+		await fireEvent.click(screen.getByRole('button', { name: /Add a note/ }));
+		const editor = screen.getByLabelText('Personal note');
+		await fireEvent.input(editor, { target: { value: 'tabouleh trick' } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Save note' }));
+		expect(onSaveNote).toHaveBeenCalledWith('tabouleh trick');
+	});
+});
+
 describe('plugin modes', () => {
 	it('renders unknown prompt payloads verbatim instead of breaking', () => {
 		render(PromptCard, {

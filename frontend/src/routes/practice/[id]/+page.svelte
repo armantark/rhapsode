@@ -48,6 +48,7 @@
 	let loading = $state(true);
 
 	let revealed = $state(false);
+	let segmentNote: string | null = $state(null);
 	let submitting = $state(false);
 	let undoing = $state(false);
 	let savingBest = $state(false);
@@ -190,6 +191,31 @@
 		runningSince = clockActive() ? performance.now() : null;
 		pendingMediaId = null;
 	});
+
+	// The session's prompt.hint was frozen at plan time; fetch the live note so
+	// edits made this session surface immediately. A 404 is "no note" (null).
+	$effect(() => {
+		const segmentId = currentItem?.segment_id ?? null;
+		segmentNote = null;
+		if (!segmentId) return;
+		let cancelled = false;
+		void api
+			.getNote(segmentId)
+			.then((fetched) => {
+				if (!cancelled) segmentNote = fetched?.text ?? null;
+			})
+			.catch(() => {});
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	async function saveNote(text: string) {
+		const segmentId = currentItem?.segment_id;
+		if (!segmentId) return;
+		const saved = await api.putNote(segmentId, text);
+		segmentNote = saved.text;
+	}
 
 	onMount(async () => {
 		micEnabled = localStorage.getItem(MIC_KEY) === 'true';
@@ -448,7 +474,9 @@
 					{revealText}
 					node={currentNode}
 					layers={enabledLayers}
+					note={segmentNote}
 					onReveal={() => (revealed = true)}
+					onSaveNote={saveNote}
 				/>
 			</div>
 		{/key}

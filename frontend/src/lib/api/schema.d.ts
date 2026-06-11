@@ -386,6 +386,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/segments/{segment_id}/note": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Personal Note */
+        get: operations["get_personal_note_api_v1_segments__segment_id__note_get"];
+        /** Put Personal Note */
+        put: operations["put_personal_note_api_v1_segments__segment_id__note_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sessions": {
         parameters: {
             query?: never;
@@ -821,6 +839,23 @@ export interface components {
             language_profile_id: string;
             /** Title */
             title: string;
+        };
+        /** PersonalNotePut */
+        PersonalNotePut: {
+            /** Text */
+            text: string;
+        };
+        /** PersonalNoteRead */
+        PersonalNoteRead: {
+            /** Segment Id */
+            segment_id: string;
+            /** Text */
+            text: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** PluginInput */
         PluginInput: {
@@ -1993,6 +2028,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RevisionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_personal_note_api_v1_segments__segment_id__note_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                segment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalNoteRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_personal_note_api_v1_segments__segment_id__note_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                segment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonalNotePut"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalNoteRead"];
                 };
             };
             /** @description Validation Error */

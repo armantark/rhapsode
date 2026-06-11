@@ -11,7 +11,9 @@
 		revealText = null,
 		node = null,
 		layers = [],
-		onReveal
+		note = null,
+		onReveal,
+		onSaveNote
 	}: {
 		item: PracticeItem;
 		profile?: LanguageProfile | null;
@@ -27,7 +29,13 @@
 		node?: SegmentNode | null;
 		/** Annotation layers the learner toggled on for the flashcard. */
 		layers?: string[];
+		/** The learner's live personal note for this segment, fetched by the
+		 *  parent. It outranks the drafted cue as the hint (a self-authored
+		 *  mnemonic is the strongest nudge), and stays editable. */
+		note?: string | null;
 		onReveal: () => void;
+		/** Persists the note for the current segment; parent owns the request. */
+		onSaveNote?: (text: string) => void | Promise<void>;
 	} = $props();
 
 	// Render the rich interlinear view only when there is a segment subtree and
@@ -41,6 +49,12 @@
 	const stages = $derived(Array.isArray(prompt.stages) ? (prompt.stages as string[]) : []);
 	const chain = $derived(Array.isArray(prompt.chain) ? (prompt.chain as string[]) : []);
 	const hint = $derived(typeof prompt.hint === 'string' ? prompt.hint : '');
+	// A live personal note outranks the session's drafted-cue hint, which was
+	// frozen at plan time. Editing the note updates the card without rebuilding
+	// the session.
+	const personalNote = $derived(typeof note === 'string' ? note : '');
+	const effectiveHint = $derived(personalNote || hint);
+	const canEditNote = $derived(!!onSaveNote && !!item.segment_id);
 
 	// The full target line — also the source of last-resort cues so a session
 	// planned before the lead-in cue model still shows something to recall from.
@@ -65,11 +79,31 @@
 
 	let showHint = $state(false);
 	let showLetters = $state(false);
+	let editingNote = $state(false);
+	let noteDraft = $state('');
+	let savingNote = $state(false);
 	$effect(() => {
 		void item.id;
 		showHint = false;
 		showLetters = false;
+		editingNote = false;
 	});
+
+	function openNoteEditor() {
+		noteDraft = personalNote;
+		editingNote = true;
+	}
+
+	async function saveNote() {
+		if (!onSaveNote) return;
+		savingNote = true;
+		try {
+			await onSaveNote(noteDraft.trim());
+			editingNote = false;
+		} finally {
+			savingNote = false;
+		}
+	}
 	const knownMode = $derived(
 		['shadowing', 'progressive_fading', 'forward_chaining', 'backward_chaining', 'cue_recall', 'random_start', 'weak_link', 'full_passage'].includes(item.mode)
 	);
@@ -128,11 +162,39 @@
 					{showLetters ? 'Hide first letters' : 'Show first letters'}
 				</button>
 			{/if}
-			{#if hint}
+			{#if effectiveHint || canEditNote}
 				{#if showHint}
-					<span class="hint passage-text" {lang} style:font-family={fonts}>{hint}</span>
+					{#if effectiveHint}
+						<span class="hint passage-text" {lang} style:font-family={fonts}>
+							{#if personalNote}<span class="note-tag">your note</span>{/if}{effectiveHint}
+						</span>
+					{/if}
+					{#if canEditNote}
+						{#if editingNote}
+							<div class="note-editor">
+								<textarea
+									bind:value={noteDraft}
+									rows="2"
+									aria-label="Personal note"
+									placeholder="Your own memory hook — e.g. boulē sounds like tabouleh"
+								></textarea>
+								<div class="note-actions">
+									<button class="hint-toggle" onclick={saveNote} disabled={savingNote}>
+										{savingNote ? 'Saving…' : 'Save note'}
+									</button>
+									<button class="hint-toggle" onclick={() => (editingNote = false)}>Cancel</button>
+								</div>
+							</div>
+						{:else}
+							<button class="hint-toggle" onclick={openNoteEditor}>
+								{personalNote ? 'Edit note' : 'Add a note'}
+							</button>
+						{/if}
+					{/if}
 				{:else}
-					<button class="hint-toggle" onclick={() => (showHint = true)}>Need a hint?</button>
+					<button class="hint-toggle" onclick={() => (showHint = true)}>
+						{effectiveHint ? 'Need a hint?' : 'Add a note'}
+					</button>
 				{/if}
 			{/if}
 		</div>
@@ -224,6 +286,39 @@
 		color: var(--text-dim);
 		font-style: italic;
 		margin: 0;
+	}
+
+	.note-tag {
+		font-style: normal;
+		font-family: var(--font-mono);
+		font-size: 0.62rem;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--gold);
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		padding: 1px 6px;
+		margin-right: 8px;
+		vertical-align: middle;
+	}
+
+	.note-editor {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		flex-basis: 100%;
+	}
+
+	.note-editor textarea {
+		width: 100%;
+		margin: 0;
+		font-family: var(--font-ui);
+		resize: vertical;
+	}
+
+	.note-actions {
+		display: flex;
+		gap: 12px;
 	}
 
 	.hint-toggle {

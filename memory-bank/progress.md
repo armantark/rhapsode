@@ -61,9 +61,15 @@
   (new collections-flow spec + cue-model fixes to practice-flow). Manually
   verified end to end in a browser.
 
+- Personal-notes frontend shipped: inline note editor on the practice card with
+  `getNote`/`putNote` client methods (404 = no note), live note-over-drafted-hint
+  precedence behind the existing "Need a hint?" reveal, and in-place save without
+  a session rebuild. Covered by client + PromptCard unit tests and a notes-flow
+  Playwright spec; 68 unit/integration tests and 10/10 functional e2e green.
+- Reconciled the dev-DB migration drift (dropped empty orphan collection/note
+  tables, ran `alembic upgrade head`); backend boots on the dev DB again.
+
 ## Remaining
-- Add inline personal-note authoring to the practice card using the generated
-  note endpoints; prefer the latest note over the persisted fallback hint.
 - Point `RHAPSODE_BACKUP_DIR` at a synced (iCloud) folder when launching.
 - Extend the reference-audio URL map beyond Iliad 1.1-100 as practice grows.
 - Prose chunk drafting via LLM is deferred until a prose passage exists.

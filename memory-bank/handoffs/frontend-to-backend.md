@@ -99,16 +99,30 @@ What the frontend now does:
   language profile, and reference audio always match the card. The session list
   and recovery pointer resolve a title from `collection_id` when present.
 
-### Issue for the backend dev (not a contract problem)
+### Resolved: dev-DB migration drift
 
-- Starting the dev backend against the existing dev database fails with
-  `sqlite3.OperationalError: table collections already exists`. Alembic runs
-  `a1f2c3d4e5f6 -> b7c8d9e0f1a2 (add_collections) -> c8d9e0f1a2b3
-  (add_personal_notes)` on startup, but the dev DB already has a `collections`
-  table that was created without recording revision `b7c8d9e0f1a2`. A fresh data
-  dir migrates cleanly (verified in e2e and via manual browser testing), so the
-  fix is to `alembic stamp` the dev DB to the right head (or recreate it).
-  Please confirm the migration is idempotent / the dev DB is reconciled.
+- The dev DB previously failed to boot with `table collections already exists`:
+  it had `collections`, `collection_passages`, and `personal_notes` (all empty)
+  whose schemas matched the migrations, but `alembic_version` was stuck at
+  `a1f2c3d4e5f6`. Fixed by dropping the three orphan tables and running
+  `alembic upgrade head`, which replays `b7c8d9e0f1a2 (add_collections)` and
+  `c8d9e0f1a2b3 (add_personal_notes)` cleanly. The backend now boots on the dev
+  DB (`/health` and `/collections` return 200). No data was lost.
+
+## Personal Notes Frontend (2026-06-11)
+
+Inline personal-note authoring is implemented on the practice card and verified
+against the contract; no backend changes were needed.
+
+- New client methods: `getNote(segmentId)` (treats `404` as `null`, not an
+  error) and `putNote(segmentId, text)` (idempotency-keyed).
+- The card fetches the live note for the current segment on every item. Hint
+  precedence is note-first, then the persisted `prompt.hint` drafted-cue
+  fallback — both stay behind the existing "Need a hint?" reveal so recall
+  integrity is unchanged.
+- The note editor saves through `PUT` and updates the card in place (no session
+  rebuild). "Add a note" is offered even when a segment has no drafted hint.
+- No contract issues found.
 
 ### Contract observations (no change requested)
 

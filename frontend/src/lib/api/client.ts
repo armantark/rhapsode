@@ -13,6 +13,7 @@ import type {
 	Passage,
 	PassageDetail,
 	PassageInput,
+	PersonalNote,
 	PracticeSession,
 	PrepSuggestResult,
 	Revision,
@@ -106,6 +107,19 @@ export const api = {
 		send<Revision>('POST', `/passages/${passageId}/revisions`, { body: input, key }),
 	replaceSegments: (revisionId: string, segments: SegmentInput[], key?: string) =>
 		send<Revision>('PUT', `/revisions/${revisionId}/segments`, { body: { segments }, key }),
+
+	// A 404 means the segment simply has no personal note yet — a normal state,
+	// not an error, so callers get null instead of a thrown ApiError.
+	getNote: async (segmentId: string): Promise<PersonalNote | null> => {
+		try {
+			return await send<PersonalNote>('GET', `/segments/${segmentId}/note`);
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 404) return null;
+			throw error;
+		}
+	},
+	putNote: (segmentId: string, text: string, key?: string) =>
+		send<PersonalNote>('PUT', `/segments/${segmentId}/note`, { body: { text }, key }),
 
 	createAnnotation: (input: AnnotationCreate, key?: string) =>
 		send<Annotation>('POST', '/annotations', { body: input, key }),

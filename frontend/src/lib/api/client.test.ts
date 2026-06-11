@@ -101,6 +101,37 @@ describe('smart sessions', () => {
 	});
 });
 
+describe('personal notes', () => {
+	it('treats a 404 as "no note yet" rather than an error', async () => {
+		vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ detail: 'Personal note not found' }, 404));
+		await expect(api.getNote('seg-1')).resolves.toBeNull();
+	});
+
+	it('returns the note when one exists', async () => {
+		vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+			jsonResponse({ segment_id: 'seg-1', text: 'boulē ~ tabouleh', updated_at: '2026-06-11T00:00:00Z' })
+		);
+		const note = await api.getNote('seg-1');
+		expect(note?.text).toBe('boulē ~ tabouleh');
+	});
+
+	it('still propagates non-404 errors from the note fetch', async () => {
+		vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ detail: 'boom' }, 500));
+		await expect(api.getNote('seg-1')).rejects.toBeInstanceOf(ApiError);
+	});
+
+	it('PUTs the note text with an idempotency key', async () => {
+		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+			jsonResponse({ segment_id: 'seg-1', text: 'mnemonic', updated_at: '2026-06-11T00:00:00Z' })
+		);
+		await api.putNote('seg-1', 'mnemonic');
+		expect(fetchMock.mock.calls[0][1]?.method).toBe('PUT');
+		expect(String(fetchMock.mock.calls[0][0])).toContain('/api/v1/segments/seg-1/note');
+		expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string)).toEqual({ text: 'mnemonic' });
+		expect((fetchMock.mock.calls[0][1]?.headers as Record<string, string>)['Idempotency-Key']).toBeTruthy();
+	});
+});
+
 describe('collections', () => {
 	it('creates a collection by name', async () => {
 		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({}, 201));

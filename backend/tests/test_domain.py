@@ -432,6 +432,50 @@ def test_minutes_budget_sizes_session_and_prioritizes_finisher(
         assert len(plan) == 7
 
 
+def test_minutes_budget_fills_short_passage_with_varied_repeats(
+    session_factory: object,
+) -> None:
+    """A short passage cannot fill a generous budget in one pass, so leftover
+    time buys extra repetitions that vary the retrieval mode rather than
+    re-dealing the same exercise — and a per-segment cap stops a giant budget
+    from grinding three lines to dust."""
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="latin-fill", name="Latin")
+        passage = models.Passage(title="Eclogue", language_profile=language)
+        revision = models.PassageRevision(
+            passage=passage, revision_number=1, source_text="..."
+        )
+        revision.segments = [
+            models.Segment(kind="line", ordinal=index, text=f"line {index}")
+            for index in range(3)
+        ]
+        db.add(passage)
+        db.commit()
+
+        # No budget: one quick pass, each new line exactly once.
+        standard = build_smart_plan(db, revision, ["line"])
+        assert [item["mode"] for item in standard] == ["progressive_fading"] * 3
+
+        # 10 minutes (600s): the 3-line pass spends 3×75s = 225s, then the
+        # rotation [cue_recall (20s), random_start (30s)] fills the rest, two
+        # extra reps per line, in successive passage-order run-throughs.
+        plan = build_smart_plan(db, revision, ["line"], minutes=10)
+        assert [item["mode"] for item in plan] == (
+            ["progressive_fading"] * 3 + ["cue_recall"] * 3 + ["random_start"] * 3
+        )
+        # Every line is drilled three times, each time a different way.
+        per_segment = {segment.id: [] for segment in revision.segments}
+        for item in plan:
+            per_segment[item["segment_id"]].append(item["mode"])
+        for modes in per_segment.values():
+            assert sorted(modes) == ["cue_recall", "progressive_fading", "random_start"]
+
+        # A huge budget cannot exceed the per-segment repetition cap: still the
+        # primary turn plus the two-mode rotation, never more.
+        capped = build_smart_plan(db, revision, ["line"], minutes=120)
+        assert len(capped) == 9
+
+
 def test_mastery_stages() -> None:
     state = models.ReviewState(
         segment_id="segment",

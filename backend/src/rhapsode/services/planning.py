@@ -207,6 +207,20 @@ def smart_mode_for(stage: str | None, difficult: bool) -> str:
 # a capped session is one the user actually completes and comes back from.
 SMART_SESSION_CAP = 12
 
+# When a minutes budget is chosen it is a TARGET, not just a ceiling: once every
+# targeted segment has had its primary turn and time remains (a short passage
+# can't otherwise fill 15 minutes), the leftover budget buys extra repetitions
+# that walk this rotation. It is ordered most-to-least support so repeats fade
+# scaffolding rather than re-dealing one exercise, and a segment's own primary
+# mode is skipped so the first repeat always varies the retrieval. The rotation
+# length also caps reps per segment, which stops a tiny passage from being
+# ground to death when a long budget is picked.
+FILL_MODE_CYCLE = [
+    PracticeMode.progressive_fading.value,
+    PracticeMode.cue_recall.value,
+    PracticeMode.random_start.value,
+]
+
 # Cold-start seconds-per-item until personal latency history exists (grill
 # A1). Wrong for at most a few sessions; the per-mode means take over once a
 # mode has enough samples.
@@ -339,6 +353,11 @@ def build_smart_plan_for_revisions(
         ),
     )
     chosen: list[tuple[int, models.PassageRevision, models.Segment]] = []
+    # Extra repetitions keyed by segment id, populated only by the minutes path
+    # when one full pass leaves budget on the clock. fill_rotations[id][round]
+    # is the mode to use for that segment's (round+1)-th extra turn.
+    fill_reps: dict[str, int] = {}
+    fill_rotations: dict[str, list[str]] = {}
     if minutes is not None:
         seconds = _mode_seconds(db)
         budget = minutes * 60.0
@@ -362,6 +381,32 @@ def build_smart_plan_for_revisions(
                 break
             budget -= cost
             chosen.append(entry)
+        # Every targeted segment fit in one pass and time remains: spend the
+        # leftover budget on varied repetitions so the chosen minutes are a
+        # target, not just a ceiling. Reps are dealt highest-triage-first, so
+        # weak links and learning material soak up the extra time before solid
+        # lines do; the per-segment rotation cap keeps it from over-drilling.
+        if chosen and len(chosen) == len(triaged):
+            for entry in triaged:
+                fill_rotations[entry[2].id] = [
+                    mode for mode in FILL_MODE_CYCLE if mode != modes[entry[2].id]
+                ]
+                fill_reps[entry[2].id] = 0
+            progressed = True
+            while progressed:
+                progressed = False
+                for entry in triaged:
+                    segment = entry[2]
+                    rotation = fill_rotations[segment.id]
+                    count = fill_reps[segment.id]
+                    if count >= len(rotation):
+                        continue
+                    cost = seconds.get(rotation[count], FALLBACK_MODE_SECONDS)
+                    if budget - cost < 0:
+                        continue
+                    budget -= cost
+                    fill_reps[segment.id] = count + 1
+                    progressed = True
     else:
         # The cap limits ITEMS, not segments: a shadowed new segment takes
         # two slots, so a fresh passage with audio still ends while momentum
@@ -376,8 +421,23 @@ def build_smart_plan_for_revisions(
             chosen.append(entry)
 
     items: list[dict[str, Any]] = []
-    # Present survivors in collection-member order and passage order. Each
-    # item's revision snapshot keeps full-passage grading scoped correctly.
+
+    def emit(target: models.Segment, mode: str, context: list[models.Segment]) -> None:
+        # The revision snapshot on each item keeps full-passage grading scoped
+        # correctly, so the target's own revision id rides along.
+        items.append(
+            {
+                "revision_id": target.revision_id,
+                "segment_id": target.id,
+                "mode": mode,
+                "prompt": prompt_for(
+                    mode, target, context, personal_notes.get(target.id, target.cue)
+                ),
+            }
+        )
+
+    # Present survivors in collection-member order and passage order.
+    selected_by_revision: list[tuple[models.PassageRevision, list[models.Segment]]] = []
     for revision, _segments in revision_segments:
         selected = sorted(
             (
@@ -387,51 +447,29 @@ def build_smart_plan_for_revisions(
             ),
             key=lambda segment: (segment.ordinal, segment.kind != "juncture"),
         )
+        selected_by_revision.append((revision, selected))
+
+    # Primary pass: each segment's stage-chosen mode, with a shadow lead-in on
+    # first audio exposure.
+    for _revision, selected in selected_by_revision:
         for index, target in enumerate(selected):
             if target.id in shadow_first:
-                shadow = PracticeMode.shadowing.value
-                items.append(
-                    {
-                        "revision_id": revision.id,
-                        "segment_id": target.id,
-                        "mode": shadow,
-                        "prompt": prompt_for(
-                            shadow,
-                            target,
-                            selected[index:],
-                            personal_notes.get(target.id, target.cue),
-                        ),
-                    }
-                )
-            mode = modes[target.id]
-            items.append(
-                {
-                    "revision_id": revision.id,
-                    "segment_id": target.id,
-                    "mode": mode,
-                    "prompt": prompt_for(
-                        mode,
-                        target,
-                        selected[index:],
-                        personal_notes.get(target.id, target.cue),
-                    ),
-                }
-            )
+                emit(target, PracticeMode.shadowing.value, selected[index:])
+            emit(target, modes[target.id], selected[index:])
+
+    # Budget-fill repetitions, presented as further run-throughs of the passage
+    # rather than one segment drilled back to back.
+    for round_index in range(max(fill_reps.values(), default=0)):
+        for _revision, selected in selected_by_revision:
+            for index, target in enumerate(selected):
+                if fill_reps.get(target.id, 0) > round_index:
+                    emit(target, fill_rotations[target.id][round_index], selected[index:])
+
+    # The holistic finisher closes the session, once every targeted segment of
+    # a passage has graduated.
+    for revision, selected in selected_by_revision:
         if all_graduated[revision.id] and selected:
-            mode = PracticeMode.full_passage.value
-            items.append(
-                {
-                    "revision_id": revision.id,
-                    "segment_id": selected[0].id,
-                    "mode": mode,
-                    "prompt": prompt_for(
-                        mode,
-                        selected[0],
-                        selected,
-                        personal_notes.get(selected[0].id, selected[0].cue),
-                    ),
-                }
-            )
+            emit(selected[0], PracticeMode.full_passage.value, selected)
     return items
 
 

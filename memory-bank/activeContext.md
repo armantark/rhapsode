@@ -34,6 +34,21 @@ collection/deck tree remains the next handoff.
   junctures), 12-item cap or an optional `minutes` budget converted via
   per-mode mean attempt latency (defaults until ≥5 samples). Finisher is
   budgeted first when the passage is fully graduated.
+- `minutes` is a TARGET, not just a ceiling. When one full pass leaves budget
+  on the clock (short passage, generous time), the leftover buys extra varied
+  repetitions: each segment walks `FILL_MODE_CYCLE`
+  (progressive_fading→cue_recall→random_start, skipping its own primary mode),
+  dealt highest-triage-first and presented as further passage-order
+  run-throughs. The rotation length caps reps per segment so a tiny passage is
+  never ground to death by a long budget; a budget that binds in the first pass
+  is unaffected.
+- Review UNITS are only the practiced kinds (`planning.practiceable_kinds`:
+  grain + juncture). Word `token` segments carry interlinear glosses but are
+  never drilled, so full-passage grading no longer fans review states onto
+  them, and both due paths (the `/analytics/due` listing and `due_only`
+  sessions) ignore non-practiceable kinds. This fixed the "Target has no
+  practiceable segments" 422 that stranded "Practice N due" when stale token
+  states from an earlier full-passage grade surfaced as permanently-due.
 - Frontend latency clock counts focused time only (pauses on blur/hidden).
 - Mic is opt-in (`rhapsode.micEnabled`); reference audio listing is now
   API-backed (`GET /media`) so script-imported scholar audio appears.
@@ -77,7 +92,7 @@ collection/deck tree remains the next handoff.
 
 ## Verified Results
 
-- Backend: 45 pytest, ruff, strict mypy, contract `--check` all green.
+- Backend: 48 pytest, ruff, strict mypy, contract `--check` all green.
 - Frontend: 47 vitest, svelte-check 0/0, 7/7 Playwright e2e green.
 - Live Gemini call drafted 5 cues + 5 glosses + 5 translations onto the real
   Iliad passage; quality checked by hand (accurate glosses, natural

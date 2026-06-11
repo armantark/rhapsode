@@ -48,10 +48,17 @@ def _recall_prompt(
     A juncture's own text is the previous line's tail followed by the next
     line's head, so it already reads as 'lead-in → continue'."""
     if target.kind == "juncture":
+        # A juncture's text is the next line's head: its first JUNCTURE_SPAN
+        # words plus an ellipsis. "Opening" left the stop point ambiguous, so we
+        # name the exact word count — the one mode that stops mid-line needs the
+        # clearest endpoint of all.
+        opening_words = [word for word in target.text.split() if word != "…"]
+        count = len(opening_words)
+        plural = "s" if count != 1 else ""
         return {
-            # The answer is only the next line's opening (a juncture's text is its
-            # head), so the endpoint is "a few words in", not the whole line.
-            "instruction": "Carry on from here into the next line's opening.",
+            "instruction": (
+                f"Carry on into the next line — recite just its first {count} word{plural}, then stop."
+            ),
             "lead_in": target.cue or _lead_in(target.text),
             "target_text": target.text,
         }

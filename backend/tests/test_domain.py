@@ -514,11 +514,14 @@ def test_every_mode_states_its_recitation_extent() -> None:
         instruction = prompt_for(mode, line, context)["instruction"].lower()
         assert needle in instruction, (mode, instruction)
 
-    # A juncture recites only the next line's opening, and the instruction says so.
+    # A juncture stops mid-line, so its instruction must name the exact word
+    # count, not a vague "opening". Two real words here -> "first 2 words".
     juncture = models.Segment(
         kind="juncture", ordinal=1, text="epsilon zeta …", cue="… gamma delta"
     )
-    assert "next line" in prompt_for("cue_recall", juncture, [juncture])["instruction"].lower()
+    seam_instruction = prompt_for("cue_recall", juncture, [juncture])["instruction"].lower()
+    assert "first 2 words" in seam_instruction, seam_instruction
+    assert "stop" in seam_instruction
 
 
 def test_mastery_stages() -> None:

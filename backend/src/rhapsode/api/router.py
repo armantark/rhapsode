@@ -477,9 +477,17 @@ def create_session(payload: schemas.SessionCreate, db: Db) -> models.PracticeSes
             raise not_found("Revision") from error
     only_segment_ids = None
     if payload.due_only:
-        only_segment_ids = planning.due_segment_ids(
-            db, [segment.id for revision in revisions for segment in revision.segments]
-        )
+        # Only segments the planner can actually serve are candidates for a
+        # due-review session. Word tokens may carry stale review states from an
+        # earlier full-passage grade, but they are not review units, so a due
+        # session built from them would plan nothing and 422.
+        practiceable_ids: list[str] = []
+        for revision in revisions:
+            kinds = planning.practiceable_kinds(revision)
+            practiceable_ids.extend(
+                segment.id for segment in revision.segments if segment.kind in kinds
+            )
+        only_segment_ids = planning.due_segment_ids(db, practiceable_ids)
         if not only_segment_ids:
             raise HTTPException(status_code=422, detail="No segments are due for review.")
     if payload.modes is None:
@@ -572,17 +580,21 @@ def submit_attempt(
                 status_code=422, detail="Only saved_best media may be attached to an attempt."
             )
     if item.mode == schemas.PracticeMode.full_passage.value:
-        affected_ids = (
-            list(
-                db.scalars(
-                    select(models.Segment.id)
-                    .where(models.Segment.revision_id == (item.revision_id or session.revision_id))
-                    .order_by(models.Segment.ordinal)
-                )
-            )
-            if item.revision_id or session.revision_id
-            else []
-        )
+        # A full-passage recitation advances every review unit of the passage,
+        # but only the review units: fanning the grade onto word tokens would
+        # mint review states the planner can never schedule, surfacing them as
+        # permanently-"due" yet unpracticeable segments.
+        revision_id = item.revision_id or session.revision_id
+        revision = db.get(models.PassageRevision, revision_id) if revision_id else None
+        if revision is not None:
+            kinds = planning.practiceable_kinds(revision)
+            affected_ids = [
+                segment.id
+                for segment in sorted(revision.segments, key=lambda segment: segment.ordinal)
+                if segment.kind in kinds
+            ]
+        else:
+            affected_ids = []
     elif item.segment_id:
         affected_ids = [item.segment_id]
     else:
@@ -668,13 +680,41 @@ def complete_session(session_id: str, db: Db) -> models.PracticeSession:
 @router.get("/analytics/due", response_model=list[schemas.ReviewStateRead], tags=["analytics"])
 def due_reviews(db: Db, before: datetime | None = None) -> list[models.ReviewState]:
     cutoff = before or datetime.now(UTC)
-    return list(
+    states = list(
         db.scalars(
             select(models.ReviewState)
             .where(models.ReviewState.due_at <= cutoff)
             .order_by(models.ReviewState.due_at)
         )
     )
+    if not states:
+        return states
+    # Hide review states that belong to non-review-unit segments (word tokens
+    # left over from an earlier full-passage grade). Listing them would promise
+    # a due session the planner cannot build. Grain is per-revision, so the
+    # practiceable kinds are resolved once per revision and cached.
+    segments = {
+        segment.id: segment
+        for segment in db.scalars(
+            select(models.Segment).where(
+                models.Segment.id.in_([state.segment_id for state in states])
+            )
+        )
+    }
+    kinds_by_revision: dict[str, list[str]] = {}
+
+    def is_practiceable(segment: models.Segment) -> bool:
+        kinds = kinds_by_revision.get(segment.revision_id)
+        if kinds is None:
+            kinds = planning.practiceable_kinds(segment.revision)
+            kinds_by_revision[segment.revision_id] = kinds
+        return segment.kind in kinds
+
+    return [
+        state
+        for state in states
+        if (segment := segments.get(state.segment_id)) is not None and is_practiceable(segment)
+    ]
 
 
 @router.get("/analytics/mastery", response_model=schemas.MasteryPage, tags=["analytics"])

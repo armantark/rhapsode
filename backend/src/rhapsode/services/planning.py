@@ -116,6 +116,16 @@ def _practice_kinds(
     return [grain, "juncture"]
 
 
+def practiceable_kinds(revision: models.PassageRevision) -> list[str]:
+    """The segment kinds that are actual review units for a revision. Word
+    tokens exist only to carry interlinear glosses for the reading view; they
+    are never drilled, so review states must never accrue to them. Exposing the
+    planner's own grain choice keeps the schedulers, the due listing, and
+    full-passage grading from disagreeing about what is practiceable (a
+    disagreement that otherwise strands the 'Practice N due' button)."""
+    return _practice_kinds(revision, None)
+
+
 def _personal_note_texts(db: Session, segment_ids: list[str]) -> dict[str, str]:
     if not segment_ids:
         return {}

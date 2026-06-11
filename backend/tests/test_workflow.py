@@ -246,6 +246,121 @@ def test_due_only_session_targets_due_segments(
     assert body["items"][0]["mode"] == "cue_recall"
 
 
+def _tokenized_passage(
+    client: TestClient, mutation: Callable[..., dict[str, str]], greek_id: str
+) -> dict[str, object]:
+    """A passage segmented at both grains the whitespace default produces: one
+    line plus its word tokens. Tokens carry glosses for reading but are never
+    review units, which is exactly the mismatch the fixes below guard."""
+    payload = {
+        "title": "Iliad token regression",
+        "language_profile_id": greek_id,
+        "source_text": "μῆνιν ἄειδε θεά",
+        "segments": [
+            {"client_id": "line-1", "kind": "line", "ordinal": 0, "text": "μῆνιν ἄειδε θεά"},
+            {"client_id": "t0", "parent_client_id": "line-1", "kind": "token", "ordinal": 0,
+             "text": "μῆνιν"},
+            {"client_id": "t1", "parent_client_id": "line-1", "kind": "token", "ordinal": 1,
+             "text": "ἄειδε"},
+            {"client_id": "t2", "parent_client_id": "line-1", "kind": "token", "ordinal": 2,
+             "text": "θεά"},
+        ],
+    }
+    response = client.post("/api/v1/passages", json=payload, headers=mutation())
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+def test_full_passage_grade_skips_word_tokens(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    greek_id: str,
+) -> None:
+    """Root cause: a full-passage recitation must advance only review units.
+    Fanning the grade onto word tokens minted states the planner could never
+    schedule, surfacing them as permanently-due-yet-unpracticeable segments."""
+    revision = _tokenized_passage(client, mutation, greek_id)["active_revision"]
+    token_ids = {s["id"] for s in revision["segments"] if s["kind"] == "token"}
+    assert token_ids
+
+    full_passage = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "modes": ["full_passage"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    ).json()
+    graded = client.post(
+        f"/api/v1/sessions/{full_passage['id']}/attempts",
+        json={"item_id": full_passage["items"][0]["id"], "rating": "clean"},
+        headers=mutation(),
+    )
+    assert graded.status_code == 201, graded.text
+
+    reviewed = {s["segment_id"] for s in client.get("/api/v1/analytics/mastery").json()["items"]}
+    assert reviewed, "the line should have gained a review state"
+    assert not (reviewed & token_ids), "tokens must not receive review states"
+
+
+def test_stale_token_states_do_not_strand_due_review(
+    client: TestClient,
+    session_factory: object,
+    mutation: Callable[..., dict[str, str]],
+    greek_id: str,
+) -> None:
+    """Regression for the 'Target has no practiceable segments' 422: even when
+    a word token already holds a due review state (left by the pre-fix bug), it
+    must neither appear in the due listing nor block the due-review session."""
+    from datetime import UTC, datetime, timedelta
+
+    from fsrs import Card
+    from sqlalchemy import update
+
+    from rhapsode import models
+
+    revision = _tokenized_passage(client, mutation, greek_id)["active_revision"]
+    line_id = next(s["id"] for s in revision["segments"] if s["kind"] == "line")
+    token_ids = {s["id"] for s in revision["segments"] if s["kind"] == "token"}
+
+    session = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "modes": ["cue_recall"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    ).json()
+    client.post(
+        f"/api/v1/sessions/{session['id']}/attempts",
+        json={"item_id": session["items"][0]["id"], "rating": "hesitant"},
+        headers=mutation(),
+    )
+
+    with session_factory() as db:  # type: ignore[operator]
+        db.add(
+            models.ReviewState(
+                segment_id=next(iter(token_ids)),
+                fsrs_card_json=Card().to_json(),
+                due_at=datetime.now(UTC) - timedelta(days=1),
+                mastery_stage="learning",
+                clean_count=0,
+                attempt_count=1,
+            )
+        )
+        # Backdate the legitimate line state too, so it is genuinely due now.
+        db.execute(update(models.ReviewState).values(due_at=datetime.now(UTC) - timedelta(days=1)))
+        db.commit()
+
+    due_ids = {state["segment_id"] for state in client.get("/api/v1/analytics/due").json()}
+    assert line_id in due_ids
+    assert not (due_ids & token_ids), "tokens must be hidden from the due listing"
+
+    due_session = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "due_only": True},
+        headers=mutation(),
+    )
+    assert due_session.status_code == 201, due_session.text
+    planned = {item["segment_id"] for item in due_session.json()["items"]}
+    assert line_id in planned
+    assert not (planned & token_ids)
+
+
 def test_weak_links_report_mean_latency(
     client: TestClient,
     mutation: Callable[..., dict[str, str]],

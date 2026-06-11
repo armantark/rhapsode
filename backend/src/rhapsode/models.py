@@ -61,6 +61,37 @@ class Passage(Base, TimestampMixin):
         cascade="all, delete-orphan",
         foreign_keys="PassageRevision.passage_id",
     )
+    collection_memberships: Mapped[list[CollectionPassage]] = relationship(
+        back_populates="passage", cascade="all, delete-orphan"
+    )
+
+
+class Collection(Base):
+    __tablename__ = "collections"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    name: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    members: Mapped[list[CollectionPassage]] = relationship(
+        back_populates="collection",
+        cascade="all, delete-orphan",
+        order_by="CollectionPassage.position",
+    )
+
+
+class CollectionPassage(Base):
+    __tablename__ = "collection_passages"
+    __table_args__ = (UniqueConstraint("collection_id", "position"),)
+
+    collection_id: Mapped[str] = mapped_column(
+        ForeignKey("collections.id", ondelete="CASCADE"), primary_key=True
+    )
+    passage_id: Mapped[str] = mapped_column(
+        ForeignKey("passages.id", ondelete="CASCADE"), primary_key=True
+    )
+    position: Mapped[int] = mapped_column(Integer)
+    collection: Mapped[Collection] = relationship(back_populates="members")
+    passage: Mapped[Passage] = relationship(back_populates="collection_memberships")
 
 
 class PassageRevision(Base, TimestampMixin):
@@ -143,7 +174,12 @@ class PracticeSession(Base, TimestampMixin):
     __tablename__ = "practice_sessions"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
-    revision_id: Mapped[str] = mapped_column(ForeignKey("passage_revisions.id", ondelete="CASCADE"))
+    revision_id: Mapped[str | None] = mapped_column(
+        ForeignKey("passage_revisions.id", ondelete="CASCADE"), nullable=True
+    )
+    collection_id: Mapped[str | None] = mapped_column(
+        ForeignKey("collections.id", ondelete="SET NULL"), nullable=True
+    )
     status: Mapped[str] = mapped_column(String, default="active", index=True)
     plan: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     current_index: Mapped[int] = mapped_column(Integer, default=0)
@@ -159,6 +195,9 @@ class PracticeItem(Base, TimestampMixin):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
     session_id: Mapped[str] = mapped_column(ForeignKey("practice_sessions.id", ondelete="CASCADE"))
+    revision_id: Mapped[str | None] = mapped_column(
+        ForeignKey("passage_revisions.id", ondelete="SET NULL"), nullable=True
+    )
     segment_id: Mapped[str | None] = mapped_column(ForeignKey("segments.id", ondelete="SET NULL"))
     position: Mapped[int] = mapped_column(Integer)
     mode: Mapped[str] = mapped_column(String)

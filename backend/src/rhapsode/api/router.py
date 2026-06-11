@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 from rhapsode import __version__, models, schemas
 from rhapsode.api.deps import get_session
 from rhapsode.config import get_settings
+from rhapsode.services import collections as collection_service
 from rhapsode.services import media as media_service
 from rhapsode.services import passages as passage_service
 from rhapsode.services import planning, prep, scheduling
@@ -107,6 +108,150 @@ def get_passage(passage_id: str, db: Db) -> schemas.PassageDetail:
     return schemas.PassageDetail(
         **schemas.PassageRead.model_validate(passage).model_dump(),
         active_revision=schemas.RevisionRead.model_validate(revision) if revision else None,
+    )
+
+
+@router.get("/collections", response_model=list[schemas.CollectionRead], tags=["collections"])
+def list_collections(db: Db) -> list[schemas.CollectionRead]:
+    collections = db.scalars(select(models.Collection).order_by(models.Collection.created_at))
+    return [
+        collection_service.collection_read(db, collection_service.get_collection(db, item.id))
+        for item in collections
+    ]
+
+
+@router.post(
+    "/collections", response_model=schemas.CollectionRead, status_code=201, tags=["collections"]
+)
+def create_collection(payload: schemas.CollectionCreate, db: Db) -> schemas.CollectionRead:
+    collection = models.Collection(name=payload.name)
+    db.add(collection)
+    db.commit()
+    return collection_service.collection_read(
+        db, collection_service.get_collection(db, collection.id)
+    )
+
+
+@router.get(
+    "/collections/{collection_id}", response_model=schemas.CollectionRead, tags=["collections"]
+)
+def get_collection(collection_id: str, db: Db) -> schemas.CollectionRead:
+    try:
+        collection = collection_service.get_collection(db, collection_id)
+    except LookupError as error:
+        raise not_found("Collection") from error
+    return collection_service.collection_read(db, collection)
+
+
+@router.put(
+    "/collections/{collection_id}", response_model=schemas.CollectionRead, tags=["collections"]
+)
+def update_collection(
+    collection_id: str, payload: schemas.CollectionCreate, db: Db
+) -> schemas.CollectionRead:
+    try:
+        collection = collection_service.get_collection(db, collection_id)
+    except LookupError as error:
+        raise not_found("Collection") from error
+    collection.name = payload.name
+    db.commit()
+    return collection_service.collection_read(db, collection)
+
+
+@router.delete("/collections/{collection_id}", tags=["collections"])
+def delete_collection(collection_id: str, db: Db) -> dict[str, bool]:
+    try:
+        collection = collection_service.get_collection(db, collection_id)
+    except LookupError as error:
+        raise not_found("Collection") from error
+    db.delete(collection)
+    db.commit()
+    return {"deleted": True}
+
+
+@router.post(
+    "/collections/{collection_id}/members",
+    response_model=schemas.CollectionRead,
+    tags=["collections"],
+)
+def add_collection_member(
+    collection_id: str, payload: schemas.CollectionMemberAdd, db: Db
+) -> schemas.CollectionRead:
+    try:
+        collection = collection_service.get_collection(db, collection_id)
+    except LookupError as error:
+        raise not_found("Collection") from error
+    if db.get(models.Passage, payload.passage_id) is None:
+        raise not_found("Passage")
+    if any(member.passage_id == payload.passage_id for member in collection.members):
+        raise HTTPException(status_code=409, detail="Passage is already in this collection.")
+    collection.members.append(
+        models.CollectionPassage(passage_id=payload.passage_id, position=len(collection.members))
+    )
+    db.commit()
+    return collection_service.collection_read(
+        db, collection_service.get_collection(db, collection_id)
+    )
+
+
+@router.delete(
+    "/collections/{collection_id}/members/{passage_id}",
+    response_model=schemas.CollectionRead,
+    tags=["collections"],
+)
+def remove_collection_member(
+    collection_id: str, passage_id: str, db: Db
+) -> schemas.CollectionRead:
+    try:
+        collection = collection_service.get_collection(db, collection_id)
+    except LookupError as error:
+        raise not_found("Collection") from error
+    member = next(
+        (member for member in collection.members if member.passage_id == passage_id), None
+    )
+    if member is None:
+        raise not_found("Collection member")
+    db.delete(member)
+    db.flush()
+    remaining = [item for item in collection.members if item is not member]
+    for position, item in enumerate(remaining):
+        item.position = position
+    db.commit()
+    return collection_service.collection_read(
+        db, collection_service.get_collection(db, collection_id)
+    )
+
+
+@router.put(
+    "/collections/{collection_id}/members",
+    response_model=schemas.CollectionRead,
+    tags=["collections"],
+)
+def reorder_collection_members(
+    collection_id: str, payload: schemas.CollectionMembersReorder, db: Db
+) -> schemas.CollectionRead:
+    try:
+        collection = collection_service.get_collection(db, collection_id)
+    except LookupError as error:
+        raise not_found("Collection") from error
+    current_ids = {member.passage_id for member in collection.members}
+    requested_ids = set(payload.passage_ids)
+    if len(requested_ids) != len(payload.passage_ids) or requested_ids != current_ids:
+        raise HTTPException(
+            status_code=422,
+            detail="Reorder must contain every collection passage exactly once.",
+        )
+    by_passage = {member.passage_id: member for member in collection.members}
+    # Shift away from the unique position range before assigning the final
+    # order, so SQLite never observes a transient duplicate position.
+    for member in collection.members:
+        member.position += len(collection.members)
+    db.flush()
+    for position, passage_id in enumerate(payload.passage_ids):
+        by_passage[passage_id].position = position
+    db.commit()
+    return collection_service.collection_read(
+        db, collection_service.get_collection(db, collection_id)
     )
 
 
@@ -286,48 +431,66 @@ def delete_media(media_id: str, db: Db) -> dict[str, bool]:
 
 @router.post("/sessions", response_model=schemas.SessionRead, status_code=201, tags=["practice"])
 def create_session(payload: schemas.SessionCreate, db: Db) -> models.PracticeSession:
-    try:
-        revision = passage_service.get_revision(db, payload.revision_id)
-    except LookupError as error:
-        raise not_found("Revision") from error
+    collection = None
+    if payload.collection_id is not None:
+        try:
+            collection = collection_service.get_collection(db, payload.collection_id)
+        except LookupError as error:
+            raise not_found("Collection") from error
+        revisions = collection_service.active_revisions(db, collection)
+        if not revisions:
+            raise HTTPException(status_code=422, detail="Collection has no active passages.")
+    else:
+        assert payload.revision_id is not None
+        try:
+            revisions = [passage_service.get_revision(db, payload.revision_id)]
+        except LookupError as error:
+            raise not_found("Revision") from error
     only_segment_ids = None
     if payload.due_only:
         only_segment_ids = planning.due_segment_ids(
-            db, [segment.id for segment in revision.segments]
+            db, [segment.id for revision in revisions for segment in revision.segments]
         )
         if not only_segment_ids:
             raise HTTPException(status_code=422, detail="No segments are due for review.")
     if payload.modes is None:
         requested_modes: list[str] = []
-        plan = planning.build_smart_plan(
+        plan = planning.build_smart_plan_for_revisions(
             db,
-            revision,
+            revisions,
             payload.segment_kinds,
             only_segment_ids,
             minutes=payload.minutes,
         )
     else:
         requested_modes = [mode.value for mode in payload.modes]
-        plan = planning.build_plan(
-            db, revision, requested_modes, payload.segment_kinds, only_segment_ids
-        )
+        plan = [
+            item
+            for revision in revisions
+            for item in planning.build_plan(
+                db, revision, requested_modes, payload.segment_kinds, only_segment_ids
+            )
+        ]
     if not plan:
-        raise HTTPException(status_code=422, detail="Revision has no practiceable segments.")
+        raise HTTPException(status_code=422, detail="Target has no practiceable segments.")
     session = models.PracticeSession(
-        revision_id=revision.id,
+        revision_id=revisions[0].id if collection is None else None,
+        collection_id=collection.id if collection is not None else None,
         plan={
             "modes": requested_modes,
             "segment_kinds": payload.segment_kinds,
             "smart": payload.modes is None,
             "due_only": payload.due_only,
             "minutes": payload.minutes,
+            "revision_ids": [revision.id for revision in revisions],
         },
     )
     db.add(session)
     db.flush()
     for position, definition in enumerate(plan):
         db.add(models.PracticeItem(session_id=session.id, position=position, **definition))
-    revision.practiced = True
+    for revision in revisions:
+        revision.practiced = True
     db.commit()
     return get_session_detail(session.id, db)
 
@@ -380,12 +543,16 @@ def submit_attempt(
                 status_code=422, detail="Only saved_best media may be attached to an attempt."
             )
     if item.mode == schemas.PracticeMode.full_passage.value:
-        affected_ids = list(
-            db.scalars(
-                select(models.Segment.id)
-                .where(models.Segment.revision_id == session.revision_id)
-                .order_by(models.Segment.ordinal)
+        affected_ids = (
+            list(
+                db.scalars(
+                    select(models.Segment.id)
+                    .where(models.Segment.revision_id == (item.revision_id or session.revision_id))
+                    .order_by(models.Segment.ordinal)
+                )
             )
+            if item.revision_id or session.revision_id
+            else []
         )
     elif item.segment_id:
         affected_ids = [item.segment_id]

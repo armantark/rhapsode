@@ -2,6 +2,22 @@ import { fireEvent, render, screen } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 import PromptCard from './PromptCard.svelte';
 import type { PracticeItem } from '$lib/api/types';
+import type { SegmentNode } from '$lib/utils/segments';
+
+function lineNode(text: string): SegmentNode {
+	return {
+		id: 'seg-1',
+		revision_id: 'rev-1',
+		kind: 'line',
+		text,
+		ordinal: 0,
+		parent_id: null,
+		cue: null,
+		annotations: [],
+		metadata_json: {},
+		children: []
+	};
+}
 
 // Prompt payloads mirror backend/src/rhapsode/services/planning.py exactly;
 // these tests pin the renderer to that contract.
@@ -93,6 +109,27 @@ describe('built-in mode rendering', () => {
 		expect(screen.queryByText('destructive')).toBeNull();
 		expect(screen.getByRole('button', { name: /Need a hint/ })).toBeInTheDocument();
 		expect(screen.getByText('οὐλομένην')).toBeInTheDocument();
+	});
+
+	it('falls back to the segment opening when a stale prompt has no lead-in', () => {
+		// Sessions planned before the lead-in cue model store no lead_in, which
+		// left the card with nothing to recall from. The node's own text rescues it.
+		render(PromptCard, {
+			item: item('weak_link', { instruction: 'This seam keeps tripping you — recite across it.' }),
+			node: lineNode('μῆνιν ἄειδε θεὰ Πηληϊάδεω Ἀχιλῆος'),
+			onReveal: vi.fn()
+		});
+		expect(screen.getByText('μῆνιν ἄειδε')).toBeInTheDocument();
+	});
+
+	it('shows first letters as the lightest scaffold on demand', async () => {
+		render(PromptCard, {
+			item: item('cue_recall', { instruction: 'Recite this line to the end.', lead_in: 'μῆνιν ἄειδε' }),
+			node: lineNode('μῆνιν ἄειδε θεὰ'),
+			onReveal: vi.fn()
+		});
+		await fireEvent.click(screen.getByRole('button', { name: /Show first letters/ }));
+		expect(screen.getByText('μ. ἄ. θ.')).toBeInTheDocument();
 	});
 });
 

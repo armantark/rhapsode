@@ -40,13 +40,35 @@
 	const instruction = $derived(typeof prompt.instruction === 'string' ? prompt.instruction : '');
 	const stages = $derived(Array.isArray(prompt.stages) ? (prompt.stages as string[]) : []);
 	const chain = $derived(Array.isArray(prompt.chain) ? (prompt.chain as string[]) : []);
-	const leadIn = $derived(typeof prompt.lead_in === 'string' ? prompt.lead_in : '');
 	const hint = $derived(typeof prompt.hint === 'string' ? prompt.hint : '');
 
+	// The full target line — also the source of last-resort cues so a session
+	// planned before the lead-in cue model still shows something to recall from.
+	const lineText = $derived(node?.text ?? revealText ?? '');
+	function firstWords(text: string, count: number): string {
+		return text.split(/\s+/).filter(Boolean).slice(0, count).join(' ');
+	}
+	// First glyph of each word: the lightest structural scaffold — enough shape
+	// to fire recall once a line is nearly solid, without handing back the words.
+	function firstLetters(text: string): string {
+		return text
+			.split(/\s+/)
+			.filter(Boolean)
+			.map((word) => `${[...word][0] ?? ''}.`)
+			.join(' ');
+	}
+	const leadIn = $derived(
+		(typeof prompt.lead_in === 'string' && prompt.lead_in) ||
+			firstWords(lineText, 2) ||
+			(typeof prompt.cue === 'string' ? prompt.cue : '')
+	);
+
 	let showHint = $state(false);
+	let showLetters = $state(false);
 	$effect(() => {
 		void item.id;
 		showHint = false;
+		showLetters = false;
 	});
 	const knownMode = $derived(
 		['shadowing', 'progressive_fading', 'forward_chaining', 'backward_chaining', 'cue_recall', 'random_start', 'weak_link', 'full_passage'].includes(item.mode)
@@ -90,16 +112,30 @@
 		</ol>
 	{:else if item.mode === 'cue_recall' || item.mode === 'weak_link'}
 		<p class="cue-line">
-			<span class="cue passage-text" {lang} style:font-family={fonts}>{leadIn}</span>
-			<span class="muted">… recite aloud to the end, then check</span>
-		</p>
-		{#if hint}
-			{#if showHint}
-				<p class="hint passage-text" {lang} style:font-family={fonts}>{hint}</p>
-			{:else}
-				<button class="hint-toggle" onclick={() => (showHint = true)}>Need a hint?</button>
+			{#if leadIn}
+				<span class="cue passage-text" {lang} style:font-family={fonts}>{leadIn}</span>
 			{/if}
+			<span class="muted">{leadIn ? '… recite aloud to the end, then check' : 'Recite this line from memory, then check'}</span>
+		</p>
+		{#if showLetters && lineText}
+			<p class="letters passage-text" {lang} style:font-family={fonts} title="First letter of each word">
+				{firstLetters(lineText)}
+			</p>
 		{/if}
+		<div class="cue-actions">
+			{#if lineText}
+				<button class="hint-toggle" onclick={() => (showLetters = !showLetters)}>
+					{showLetters ? 'Hide first letters' : 'Show first letters'}
+				</button>
+			{/if}
+			{#if hint}
+				{#if showHint}
+					<span class="hint passage-text" {lang} style:font-family={fonts}>{hint}</span>
+				{:else}
+					<button class="hint-toggle" onclick={() => (showHint = true)}>Need a hint?</button>
+				{/if}
+			{/if}
+		</div>
 	{:else if item.mode === 'full_passage'}
 		<p class="muted blank">Recite the full passage from memory.</p>
 	{:else if !knownMode}
@@ -171,6 +207,19 @@
 		padding-block: 4px;
 	}
 
+	.cue-actions {
+		display: flex;
+		align-items: center;
+		gap: 16px;
+		flex-wrap: wrap;
+	}
+
+	.letters {
+		letter-spacing: 0.12em;
+		color: var(--gold);
+		margin: 0;
+	}
+
 	.hint {
 		color: var(--text-dim);
 		font-style: italic;
@@ -178,7 +227,6 @@
 	}
 
 	.hint-toggle {
-		align-self: flex-start;
 		background: none;
 		border: none;
 		color: var(--text-dim);

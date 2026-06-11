@@ -68,6 +68,52 @@ def test_smart_session_scaffolds_new_segments(
     assert {item["mode"] for item in session["items"]} == {"progressive_fading"}
 
 
+def test_collection_session_spans_member_passages(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+    greek_passage_payload: dict[str, object],
+) -> None:
+    second = client.post(
+        "/api/v1/passages",
+        json={**greek_passage_payload, "title": "Iliad 1.3-4"},
+        headers=mutation(),
+    ).json()
+    collection = client.post(
+        "/api/v1/collections", json={"name": "Iliad opening"}, headers=mutation()
+    ).json()
+    for member in (passage, second):
+        added = client.post(
+            f"/api/v1/collections/{collection['id']}/members",
+            json={"passage_id": member["id"]},
+            headers=mutation(),
+        )
+        assert added.status_code == 200, added.text
+
+    created = client.post(
+        "/api/v1/sessions",
+        json={
+            "collection_id": collection["id"],
+            "modes": ["cue_recall"],
+            "segment_kinds": ["line"],
+        },
+        headers=mutation(),
+    )
+    assert created.status_code == 201, created.text
+    session = created.json()
+    first_revision_id = passage["active_revision"]["id"]
+    second_revision_id = second["active_revision"]["id"]
+    assert session["revision_id"] is None
+    assert session["collection_id"] == collection["id"]
+    assert session["plan"]["revision_ids"] == [first_revision_id, second_revision_id]
+    assert [item["revision_id"] for item in session["items"]] == [
+        first_revision_id,
+        first_revision_id,
+        second_revision_id,
+        second_revision_id,
+    ]
+
+
 def test_due_only_session_targets_due_segments(
     client: TestClient,
     session_factory: object,

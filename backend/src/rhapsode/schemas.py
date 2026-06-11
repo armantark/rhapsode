@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ORMModel(BaseModel):
@@ -112,6 +112,38 @@ class PassageDetail(PassageRead):
     active_revision: RevisionRead | None = None
 
 
+class CollectionCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+
+
+class CollectionMemberAdd(BaseModel):
+    passage_id: str
+
+
+class CollectionMembersReorder(BaseModel):
+    passage_ids: list[str]
+
+
+class CollectionRollup(BaseModel):
+    due: int
+    learning: int
+    new: int
+
+
+class CollectionMemberRead(ORMModel):
+    passage_id: str
+    position: int
+    passage: PassageRead
+
+
+class CollectionRead(BaseModel):
+    id: str
+    name: str
+    created_at: datetime
+    members: list[CollectionMemberRead]
+    rollup: CollectionRollup
+
+
 class SegmentsReplaceInput(BaseModel):
     segments: list[SegmentInput]
 
@@ -166,7 +198,12 @@ class PracticeMode(StrEnum):
 
 
 class SessionCreate(BaseModel):
-    revision_id: str
+    # Frontend contract: send exactly one target. Collection management lives
+    # at /collections; add/remove/reorder use /collections/{id}/members, and a
+    # collection session is launched by sending collection_id instead of
+    # revision_id while keeping modes, segment_kinds, due_only, and minutes.
+    revision_id: str | None = None
+    collection_id: str | None = None
     # None means "smart": the planner picks a mode per segment from its
     # mastery stage instead of the caller prescribing a technique.
     modes: list[PracticeMode] | None = None
@@ -180,10 +217,17 @@ class SessionCreate(BaseModel):
     # caller's own per-mode attempt latencies. None keeps the fixed item cap.
     minutes: int | None = Field(default=None, ge=1, le=180)
 
+    @model_validator(mode="after")
+    def exactly_one_target(self) -> Self:
+        if (self.revision_id is None) == (self.collection_id is None):
+            raise ValueError("Send exactly one of revision_id or collection_id.")
+        return self
+
 
 class PracticeItemRead(ORMModel):
     id: str
     session_id: str
+    revision_id: str | None
     segment_id: str | None
     position: int
     mode: str
@@ -193,7 +237,8 @@ class PracticeItemRead(ORMModel):
 
 class SessionRead(ORMModel):
     id: str
-    revision_id: str
+    revision_id: str | None
+    collection_id: str | None
     status: str
     plan: dict[str, Any]
     current_index: int

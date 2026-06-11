@@ -75,10 +75,73 @@ def test_plugin_validation_and_settings(
     assert client.get("/api/v1/settings").json() == [saved.json()]
 
 
+def test_collection_crud_and_ordered_membership(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+    greek_passage_payload: dict[str, object],
+) -> None:
+    second = client.post(
+        "/api/v1/passages",
+        json={**greek_passage_payload, "title": "Iliad 1.3-4"},
+        headers=mutation(),
+    ).json()
+    created = client.post(
+        "/api/v1/collections", json={"name": "Iliad Book 1"}, headers=mutation()
+    )
+    assert created.status_code == 201
+    collection_id = created.json()["id"]
+
+    first_added = client.post(
+        f"/api/v1/collections/{collection_id}/members",
+        json={"passage_id": passage["id"]},
+        headers=mutation(),
+    )
+    assert first_added.status_code == 200
+    assert first_added.json()["rollup"] == {"due": 0, "learning": 0, "new": 3}
+    client.post(
+        f"/api/v1/collections/{collection_id}/members",
+        json={"passage_id": second["id"]},
+        headers=mutation(),
+    )
+    duplicate = client.post(
+        f"/api/v1/collections/{collection_id}/members",
+        json={"passage_id": second["id"]},
+        headers=mutation(),
+    )
+    assert duplicate.status_code == 409
+
+    reordered = client.put(
+        f"/api/v1/collections/{collection_id}/members",
+        json={"passage_ids": [second["id"], passage["id"]]},
+        headers=mutation(),
+    )
+    assert [member["passage_id"] for member in reordered.json()["members"]] == [
+        second["id"],
+        passage["id"],
+    ]
+    renamed = client.put(
+        f"/api/v1/collections/{collection_id}",
+        json={"name": "Iliad Opening"},
+        headers=mutation(),
+    )
+    assert renamed.json()["name"] == "Iliad Opening"
+    removed = client.delete(
+        f"/api/v1/collections/{collection_id}/members/{second['id']}",
+        headers=mutation(),
+    )
+    assert [member["position"] for member in removed.json()["members"]] == [0]
+    assert len(client.get("/api/v1/collections").json()) == 1
+    assert client.delete(f"/api/v1/collections/{collection_id}", headers=mutation()).json() == {
+        "deleted": True
+    }
+
+
 def test_common_not_found_errors(
     client: TestClient, mutation: Callable[..., dict[str, str]]
 ) -> None:
     assert client.get("/api/v1/passages/missing").status_code == 404
+    assert client.get("/api/v1/collections/missing").status_code == 404
     assert client.get("/api/v1/revisions/missing").status_code == 404
     assert client.get("/api/v1/sessions/missing").status_code == 404
     assert client.delete("/api/v1/media/missing", headers=mutation()).status_code == 404

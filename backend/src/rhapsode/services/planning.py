@@ -239,59 +239,87 @@ def build_smart_plan(
     only_segment_ids: set[str] | None = None,
     minutes: int | None = None,
 ) -> list[dict[str, Any]]:
-    segments = _ordered_segments(revision, segment_kinds)
-    if only_segment_ids is not None:
-        segments = [segment for segment in segments if segment.id in only_segment_ids]
-    if not segments:
+    return build_smart_plan_for_revisions(
+        db, [revision], segment_kinds, only_segment_ids, minutes
+    )
+
+
+def build_smart_plan_for_revisions(
+    db: Session,
+    revisions: list[models.PassageRevision],
+    segment_kinds: list[str] | None,
+    only_segment_ids: set[str] | None = None,
+    minutes: int | None = None,
+) -> list[dict[str, Any]]:
+    revision_segments: list[tuple[models.PassageRevision, list[models.Segment]]] = []
+    for revision in revisions:
+        segments = _ordered_segments(revision, segment_kinds)
+        if only_segment_ids is not None:
+            segments = [segment for segment in segments if segment.id in only_segment_ids]
+        if segments:
+            revision_segments.append((revision, segments))
+    all_segments = [segment for _, segments in revision_segments for segment in segments]
+    if not all_segments:
         return []
     stages = {
         state.segment_id: state.mastery_stage
         for state in db.scalars(
             select(models.ReviewState).where(
-                models.ReviewState.segment_id.in_([segment.id for segment in segments])
+                models.ReviewState.segment_id.in_([segment.id for segment in all_segments])
             )
         )
     }
     difficult_ids = _difficult_segment_ids(db)
     modes = {
         segment.id: smart_mode_for(stages.get(segment.id), segment.id in difficult_ids)
-        for segment in segments
+        for segment in all_segments
     }
     # First exposure rides the recording when one exists (grill D2): hear a
     # fluent rendition and speak along BEFORE fading it from memory. Junctures
     # are fragments and don't map onto the audio, so they skip the pass.
     shadow_first: set[str] = set()
-    if _has_reference_audio(db, revision.id):
-        shadow_first = {
-            segment.id
-            for segment in segments
-            if stages.get(segment.id) in (None, "new") and segment.kind != "juncture"
-        }
+    for revision, segments in revision_segments:
+        if _has_reference_audio(db, revision.id):
+            shadow_first.update(
+                segment.id
+                for segment in segments
+                if stages.get(segment.id) in (None, "new") and segment.kind != "juncture"
+            )
     # The finisher is appended once every targeted segment graduates —
     # per-segment drilling alone never exercises flow.
-    all_graduated = len(segments) > 1 and all(
-        stages.get(segment.id) in {"review", "durable"} for segment in segments
-    )
+    all_graduated = {
+        revision.id: len(segments) > 1
+        and all(stages.get(segment.id) in {"review", "durable"} for segment in segments)
+        for revision, segments in revision_segments
+    }
 
     triaged = sorted(
-        segments,
-        key=lambda segment: (
-            _triage_rank(stages.get(segment.id), segment.id in difficult_ids),
-            segment.ordinal,
+        (
+            (revision_index, revision, segment)
+            for revision_index, (revision, segments) in enumerate(revision_segments)
+            for segment in segments
+        ),
+        key=lambda entry: (
+            _triage_rank(stages.get(entry[2].id), entry[2].id in difficult_ids),
+            entry[0],
+            entry[2].ordinal,
         ),
     )
-    chosen: list[models.Segment] = []
+    chosen: list[tuple[int, models.PassageRevision, models.Segment]] = []
     if minutes is not None:
         seconds = _mode_seconds(db)
         budget = minutes * 60.0
-        # For a fully graduated passage the holistic recitation is the
-        # highest-value use of the minutes: budget it FIRST and let per-line
-        # maintenance fill the remainder (grill A4).
-        if all_graduated:
+        # For fully graduated passages, holistic recitations are budgeted
+        # first. A collection remains one shared budget rather than granting
+        # every member passage its own full session allowance.
+        for revision, _segments in revision_segments:
+            if not all_graduated[revision.id]:
+                continue
             budget -= seconds.get(
                 PracticeMode.full_passage.value, FALLBACK_MODE_SECONDS
             )
-        for segment in triaged:
+        for entry in triaged:
+            segment = entry[2]
             cost = seconds.get(modes[segment.id], FALLBACK_MODE_SECONDS)
             if segment.id in shadow_first:
                 cost += seconds.get(
@@ -300,53 +328,62 @@ def build_smart_plan(
             if chosen and budget - cost < 0:
                 break
             budget -= cost
-            chosen.append(segment)
+            chosen.append(entry)
     else:
         # The cap limits ITEMS, not segments: a shadowed new segment takes
         # two slots, so a fresh passage with audio still ends while momentum
         # lasts.
         used = 0
-        for segment in triaged:
+        for entry in triaged:
+            segment = entry[2]
             weight = 2 if segment.id in shadow_first else 1
             if chosen and used + weight > SMART_SESSION_CAP:
                 break
             used += weight
-            chosen.append(segment)
-    # Present the survivors in passage order: verse is memorized in sequence
-    # even when triage picked the targets. A juncture shares its ordinal with
-    # its landing line and drills first.
-    segments = sorted(
-        chosen, key=lambda segment: (segment.ordinal, segment.kind != "juncture")
-    )
+            chosen.append(entry)
 
     items: list[dict[str, Any]] = []
-    for index, target in enumerate(segments):
-        if target.id in shadow_first:
-            shadow = PracticeMode.shadowing.value
+    # Present survivors in collection-member order and passage order. Each
+    # item's revision snapshot keeps full-passage grading scoped correctly.
+    for revision, _segments in revision_segments:
+        selected = sorted(
+            (
+                segment
+                for _, chosen_revision, segment in chosen
+                if chosen_revision.id == revision.id
+            ),
+            key=lambda segment: (segment.ordinal, segment.kind != "juncture"),
+        )
+        for index, target in enumerate(selected):
+            if target.id in shadow_first:
+                shadow = PracticeMode.shadowing.value
+                items.append(
+                    {
+                        "revision_id": revision.id,
+                        "segment_id": target.id,
+                        "mode": shadow,
+                        "prompt": prompt_for(shadow, target, selected[index:]),
+                    }
+                )
+            mode = modes[target.id]
             items.append(
                 {
+                    "revision_id": revision.id,
                     "segment_id": target.id,
-                    "mode": shadow,
-                    "prompt": prompt_for(shadow, target, segments[index:]),
+                    "mode": mode,
+                    "prompt": prompt_for(mode, target, selected[index:]),
                 }
             )
-        mode = modes[target.id]
-        items.append(
-            {
-                "segment_id": target.id,
-                "mode": mode,
-                "prompt": prompt_for(mode, target, segments[index:]),
-            }
-        )
-    if all_graduated and segments:
-        mode = PracticeMode.full_passage.value
-        items.append(
-            {
-                "segment_id": segments[0].id,
-                "mode": mode,
-                "prompt": prompt_for(mode, segments[0], segments),
-            }
-        )
+        if all_graduated[revision.id] and selected:
+            mode = PracticeMode.full_passage.value
+            items.append(
+                {
+                    "revision_id": revision.id,
+                    "segment_id": selected[0].id,
+                    "mode": mode,
+                    "prompt": prompt_for(mode, selected[0], selected),
+                }
+            )
     return items
 
 
@@ -383,6 +420,7 @@ def build_plan(
             )
             items.append(
                 {
+                    "revision_id": revision.id,
                     "segment_id": target.id,
                     "mode": mode,
                     "prompt": prompt_for(mode, target, context),

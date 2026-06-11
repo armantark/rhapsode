@@ -476,6 +476,51 @@ def test_minutes_budget_fills_short_passage_with_varied_repeats(
         assert len(capped) == 9
 
 
+def test_random_start_is_a_checkable_recall_with_an_endpoint() -> None:
+    # The drop-in cold start must give something to recall (a lead-in, not the
+    # whole line) plus the full line as the checkable answer, and an instruction
+    # that states where to stop — not the old open-ended "continue".
+    line = models.Segment(
+        kind="line",
+        ordinal=2,
+        text="πολλὰς δ᾽ ἰφθίμους ψυχὰς Ἄϊδι προΐαψεν",
+        cue="souls to Hades",
+    )
+    prompt = prompt_for("random_start", line, [line])
+    assert prompt["lead_in"] == "πολλὰς δ᾽"
+    assert prompt["target_text"] == line.text
+    assert "continue" not in prompt["instruction"].lower()
+    assert "end" in prompt["instruction"].lower()
+
+
+def test_every_mode_states_its_recitation_extent() -> None:
+    # Each exercise must tell the learner how far to recite, phrased for what it
+    # asks — no open-ended "continue". The expected endpoint phrase is pinned per
+    # mode so the wording can't silently drift back to ambiguity.
+    line = models.Segment(kind="line", ordinal=0, text="alpha beta gamma delta")
+    following = models.Segment(kind="line", ordinal=1, text="epsilon zeta eta theta")
+    context = [line, following]
+    endpoint_phrase = {
+        "shadowing": "line",
+        "progressive_fading": "line",
+        "forward_chaining": "last line",
+        "backward_chaining": "ending",
+        "cue_recall": "to the end",
+        "random_start": "to the end",
+        "weak_link": "to the end",
+        "full_passage": "start to finish",
+    }
+    for mode, needle in endpoint_phrase.items():
+        instruction = prompt_for(mode, line, context)["instruction"].lower()
+        assert needle in instruction, (mode, instruction)
+
+    # A juncture recites only the next line's opening, and the instruction says so.
+    juncture = models.Segment(
+        kind="juncture", ordinal=1, text="epsilon zeta …", cue="… gamma delta"
+    )
+    assert "next line" in prompt_for("cue_recall", juncture, [juncture])["instruction"].lower()
+
+
 def test_mastery_stages() -> None:
     state = models.ReviewState(
         segment_id="segment",

@@ -88,7 +88,7 @@ describe('built-in mode rendering', () => {
 			item: item('full_passage', { instruction: 'Recite the full passage from memory.', blank: true }),
 			onReveal: vi.fn()
 		});
-		expect(screen.getByText('Recite the full passage from memory.', { selector: '.blank' })).toBeInTheDocument();
+		expect(screen.getByText('Recite the whole passage from memory, start to finish.', { selector: '.blank' })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /Show answer/ })).toBeInTheDocument();
 	});
 
@@ -110,6 +110,28 @@ describe('built-in mode rendering', () => {
 		expect(screen.queryByText('destructive')).toBeNull();
 		expect(screen.getByRole('button', { name: /Need a hint/ })).toBeInTheDocument();
 		expect(screen.getByText('οὐλομένην')).toBeInTheDocument();
+	});
+
+	it('random start is a checkable cold start: lead-in shown, full line hidden until revealed', async () => {
+		const onReveal = vi.fn();
+		const { rerender } = render(PromptCard, {
+			item: item('random_start', {
+				instruction: 'Dropped in at a random line — recite it to the end.',
+				lead_in: 'πολλὰς δ᾽',
+				target_text: 'πολλὰς δ᾽ ἰφθίμους ψυχὰς Ἄϊδι προΐαψεν'
+			}),
+			revealText: 'πολλὰς δ᾽ ἰφθίμους ψυχὰς Ἄϊδι προΐαψεν',
+			onReveal
+		});
+		// The instruction now states the endpoint, and the full line is withheld
+		// so there is something to recall.
+		expect(screen.getByText('Dropped in at a random line — recite it to the end.')).toBeInTheDocument();
+		expect(screen.getByText('πολλὰς δ᾽')).toBeInTheDocument();
+		expect(screen.queryByText('πολλὰς δ᾽ ἰφθίμους ψυχὰς Ἄϊδι προΐαψεν')).toBeNull();
+		await fireEvent.click(screen.getByRole('button', { name: /Show answer/ }));
+		expect(onReveal).toHaveBeenCalledOnce();
+		await rerender({ revealed: true });
+		expect(screen.getByText('πολλὰς δ᾽ ἰφθίμους ψυχὰς Ἄϊδι προΐαψεν')).toBeInTheDocument();
 	});
 
 	it('falls back to the segment opening when a stale prompt has no lead-in', () => {

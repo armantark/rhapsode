@@ -61,6 +61,16 @@ collection/deck tree remains the next handoff.
   ~2 lines), so the reliable path is now the manual `LineAligner.svelte` on a
   passage's reference audio: play, tap `M` at each line start, save per-line cue
   spans via `PUT /media/{id}/cues` (client `setMediaCues`).
+- Every practice instruction states its recitation EXTENT (no open-ended
+  "continue"): shadowing/fading recite the whole line; chaining goes through to
+  the last line / the ending; cue-recall, weak-link and random-start recite the
+  line to the end; junctures recite only into the next line's opening (their
+  target is the head); full-passage is start to finish. `random_start` is now a
+  CHECKABLE cold start — it reuses the recall shape (`_recall_prompt`): a short
+  lead-in is shown, the full line is the revealed answer, framed as an arbitrary
+  drop-in entry point to break serial-order dependence (it was previously a
+  full-line display with no reveal). The card renders it like cue_recall and it
+  is in the reveal/Space allow-lists.
 - Recall cues are POSITIONAL+VERBATIM, not LLM-authored: `_lead_in` in
   `planning.py` slices the line's opening words (keeps δ᾽/elisions exact). The
   evocative phrase (often LLM-drafted) is demoted to an optional `hint` the
@@ -92,8 +102,8 @@ collection/deck tree remains the next handoff.
 
 ## Verified Results
 
-- Backend: 48 pytest, ruff, strict mypy, contract `--check` all green.
-- Frontend: 47 vitest, svelte-check 0/0, 7/7 Playwright e2e green.
+- Backend: 50 pytest, ruff, strict mypy, contract `--check` all green.
+- Frontend: 69 vitest, svelte-check 0/0, Playwright e2e green.
 - Live Gemini call drafted 5 cues + 5 glosses + 5 translations onto the real
   Iliad passage; quality checked by hand (accurate glosses, natural
   translations).

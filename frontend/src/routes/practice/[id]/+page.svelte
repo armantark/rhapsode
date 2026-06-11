@@ -345,7 +345,7 @@
 	const canReveal = $derived(
 		!!currentItem &&
 			!revealed &&
-			['cue_recall', 'weak_link', 'full_passage'].includes(currentItem.mode)
+			['cue_recall', 'weak_link', 'random_start', 'full_passage'].includes(currentItem.mode)
 	);
 
 	function onWindowKeydown(event: KeyboardEvent) {

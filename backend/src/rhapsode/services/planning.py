@@ -49,7 +49,9 @@ def _recall_prompt(
     line's head, so it already reads as 'lead-in → continue'."""
     if target.kind == "juncture":
         return {
-            "instruction": "Recite the line this leads into.",
+            # The answer is only the next line's opening (a juncture's text is its
+            # head), so the endpoint is "a few words in", not the whole line.
+            "instruction": "Carry on from here into the next line's opening.",
             "lead_in": target.cue or _lead_in(target.text),
             "target_text": target.text,
         }
@@ -73,29 +75,47 @@ def prompt_for(
     effective_hint = target.cue if hint is None else hint
     match mode:
         case "shadowing":
-            return {"instruction": "Listen, then shadow aloud.", "target_text": target.text}
+            return {
+                "instruction": "Listen, then shadow the whole line aloud.",
+                "target_text": target.text,
+            }
         case "progressive_fading":
             return {
-                "instruction": "Recite as support fades.",
+                "instruction": "Recite the whole line to the end as the support fades.",
                 "stages": progressive_masks(target.text),
             }
         case "forward_chaining":
-            return {"instruction": "Recite this growing chain.", "chain": texts}
+            return {
+                "instruction": "Recite the chain from the top through to the last line.",
+                "chain": texts,
+            }
         case "backward_chaining":
             return {
-                "instruction": "Recite this chain into the ending.",
+                "instruction": "Recite from the first line straight through to the ending.",
                 "chain": list(reversed(texts)),
             }
         case "cue_recall":
             return _recall_prompt(target, "Recite this line to the end.", effective_hint)
         case "random_start":
-            return {"instruction": "Start here and continue.", "start": target.text}
+            # A drop-in cold start: this line is reached WITHOUT its usual run-up,
+            # to break the serial-order dependence that lets you recite a passage
+            # top-to-bottom yet freeze if dropped in the middle. Same checkable
+            # recall shape as cue_recall (lead-in shown, full line revealed to
+            # check) but framed as an arbitrary entry point with a clear endpoint.
+            return _recall_prompt(
+                target, "Dropped in at a random line — recite it to the end.", effective_hint
+            )
         case "weak_link":
             return _recall_prompt(
-                target, "This seam keeps tripping you — recite across it.", effective_hint
+                target,
+                "This seam keeps tripping you — recite the line across it to the end.",
+                effective_hint,
             )
         case "full_passage":
-            return {"instruction": "Recite the full passage from memory.", "blank": True}
+            return {
+                "instruction": "Recite the whole passage from memory, start to finish.",
+                "blank": True,
+            }
         case _:
             if builder := plugin_mode_builders.get(mode):
                 return builder(target, context)

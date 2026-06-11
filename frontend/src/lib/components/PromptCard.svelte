@@ -125,7 +125,7 @@
 		{#if instruction}<p class="instruction">{instruction}</p>{/if}
 	</div>
 
-	{#if item.mode === 'shadowing' || item.mode === 'random_start'}
+	{#if item.mode === 'shadowing'}
 		<p class="passage-text" {lang} style:font-family={fonts}>
 			{String(prompt.target_text ?? prompt.start ?? '')}
 		</p>
@@ -144,12 +144,12 @@
 				<li class="passage-text" {lang} style:font-family={fonts}>{link}</li>
 			{/each}
 		</ol>
-	{:else if item.mode === 'cue_recall' || item.mode === 'weak_link'}
+	{:else if item.mode === 'cue_recall' || item.mode === 'weak_link' || item.mode === 'random_start'}
 		<p class="cue-line">
 			{#if leadIn}
 				<span class="cue passage-text" {lang} style:font-family={fonts}>{leadIn}</span>
 			{/if}
-			<span class="muted">{leadIn ? '… recite aloud to the end, then check' : 'Recite this line from memory, then check'}</span>
+			<span class="muted">{leadIn ? '… recite aloud from here, then check' : 'Recite from memory, then check'}</span>
 		</p>
 		{#if showLetters && lineText}
 			<p class="letters passage-text" {lang} style:font-family={fonts} title="First letter of each word">
@@ -199,7 +199,7 @@
 			{/if}
 		</div>
 	{:else if item.mode === 'full_passage'}
-		<p class="muted blank">Recite the full passage from memory.</p>
+		<p class="muted blank">Recite the whole passage from memory, start to finish.</p>
 	{:else if !knownMode}
 		<!-- Plugin practice modes render their open-ended payload verbatim. -->
 		<pre class="plugin-prompt">{JSON.stringify(item.prompt, null, 2)}</pre>
@@ -215,7 +215,7 @@
 		{/if}
 	{/if}
 
-	{#if !revealed && (item.mode === 'cue_recall' || item.mode === 'weak_link' || item.mode === 'full_passage')}
+	{#if !revealed && (item.mode === 'cue_recall' || item.mode === 'weak_link' || item.mode === 'random_start' || item.mode === 'full_passage')}
 		<button class="reveal" onclick={onReveal}>Show answer to check</button>
 	{/if}
 </div>

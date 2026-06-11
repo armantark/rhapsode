@@ -12,6 +12,8 @@ backend/htmlcov/
 backend/.coverage
 
 backend/data-e2e/
+backend/data-test/
+backend/data-manual/
 
 node_modules/
 frontend/.svelte-kit/

@@ -87,8 +87,15 @@ def prompt_for(
                 "target_text": target.text,
             }
         case "progressive_fading":
+            # A juncture is the next line's head, not a whole line, so its fading
+            # drill stops at the head rather than running to a line end.
+            instruction = (
+                "Recite the next line's opening as the support fades."
+                if target.kind == "juncture"
+                else "Recite the whole line to the end as the support fades."
+            )
             return {
-                "instruction": "Recite the whole line to the end as the support fades.",
+                "instruction": instruction,
                 "stages": progressive_masks(target.text),
             }
         case "forward_chaining":

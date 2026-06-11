@@ -522,6 +522,10 @@ def test_every_mode_states_its_recitation_extent() -> None:
     seam_instruction = prompt_for("cue_recall", juncture, [juncture])["instruction"].lower()
     assert "first 2 words" in seam_instruction, seam_instruction
     assert "stop" in seam_instruction
+    # First exposure fades a juncture too; it must not claim a "whole line".
+    fade_instruction = prompt_for("progressive_fading", juncture, [juncture])["instruction"].lower()
+    assert "opening" in fade_instruction, fade_instruction
+    assert "whole line" not in fade_instruction
 
 
 def test_mastery_stages() -> None:

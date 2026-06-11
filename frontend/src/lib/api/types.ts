@@ -30,6 +30,10 @@ export type AttemptCreate = Omit<components['schemas']['AttemptCreate'], 'reveal
 	revealed?: boolean;
 };
 export type CuePoint = components['schemas']['CuePoint'];
+export type Collection = components['schemas']['CollectionRead'];
+export type CollectionMember = components['schemas']['CollectionMemberRead'];
+export type CollectionRollup = components['schemas']['CollectionRollup'];
+export type CollectionCreate = components['schemas']['CollectionCreate'];
 export type AttemptResult = components['schemas']['AttemptResult'];
 export type AttemptRating = components['schemas']['AttemptRating'];
 export type ReviewState = components['schemas']['ReviewStateRead'];

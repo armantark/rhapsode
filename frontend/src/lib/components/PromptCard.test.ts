@@ -25,6 +25,7 @@ function item(mode: string, prompt: Record<string, unknown>): PracticeItem {
 	return {
 		id: `item-${mode}`,
 		session_id: 'session-1',
+		revision_id: 'rev-1',
 		segment_id: 'seg-1',
 		position: 0,
 		mode,

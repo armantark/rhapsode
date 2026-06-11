@@ -101,6 +101,48 @@ describe('smart sessions', () => {
 	});
 });
 
+describe('collections', () => {
+	it('creates a collection by name', async () => {
+		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({}, 201));
+		await api.createCollection({ name: 'Iliad 1.1–10' });
+		const url = String(fetchMock.mock.calls[0][0]);
+		expect(url).toContain('/api/v1/collections');
+		expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string)).toEqual({ name: 'Iliad 1.1–10' });
+	});
+
+	it('adds a member with the passage_id body the contract expects', async () => {
+		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({}, 200));
+		await api.addCollectionMember('col-1', 'pas-9');
+		const url = String(fetchMock.mock.calls[0][0]);
+		expect(url).toContain('/api/v1/collections/col-1/members');
+		expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string)).toEqual({ passage_id: 'pas-9' });
+	});
+
+	it('reorders members by sending the full passage_ids order', async () => {
+		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({}, 200));
+		await api.reorderCollectionMembers('col-1', ['b', 'a', 'c']);
+		expect(fetchMock.mock.calls[0][1]?.method).toBe('PUT');
+		expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string)).toEqual({
+			passage_ids: ['b', 'a', 'c']
+		});
+	});
+
+	it('removes a member via the nested path', async () => {
+		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({}, 200));
+		await api.removeCollectionMember('col-1', 'pas-9');
+		expect(String(fetchMock.mock.calls[0][0])).toContain('/api/v1/collections/col-1/members/pas-9');
+		expect(fetchMock.mock.calls[0][1]?.method).toBe('DELETE');
+	});
+
+	it('starts a collection session with collection_id and no revision_id', async () => {
+		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({}, 201));
+		await api.createSession({ collection_id: 'col-1', modes: ['cue_recall'], segment_kinds: ['line'] });
+		const body = JSON.parse(fetchMock.mock.calls[0][1]?.body as string);
+		expect(body.collection_id).toBe('col-1');
+		expect('revision_id' in body).toBe(false);
+	});
+});
+
 describe('prep assistant', () => {
 	it('posts to the revision-scoped endpoint with default layers', async () => {
 		const fetchMock = vi

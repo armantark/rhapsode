@@ -39,9 +39,31 @@
   (vendored CSVs, CC-BY) via `scripts/import_meter.py`.
 - All gates green: 33 backend tests, ruff, strict mypy, contract check,
   47 frontend unit tests, svelte-check clean, 7/7 Playwright e2e.
+- Collections backend implemented: ordered passage membership, active-revision
+  due/learning/new rollups, CRUD/member reorder endpoints, and collection-wide
+  sessions with a shared smart cap/time budget and revision-scoped grading.
+- Collections backend gates green: 42 pytest, Ruff, strict mypy, migration
+  preservation/backfill checks, and regenerated OpenAPI contract.
+- Added per-segment personal-note overlays with GET/PUT endpoints, a
+  segment-owned migration, and note-over-drafted-cue practice hint precedence.
+- Personal-note backend gates green: 45 pytest, Ruff, strict mypy, regenerated
+  OpenAPI contract check, migrated startup smoke test, and PinchTab Swagger
+  verification.
+
+- Collections frontend shipped: `/collections` list with due/learning/new
+  rollups + create, `/collections/{id}` deck tree (add/remove/reorder/rename/
+  delete) and a collection practice launcher that sends `collection_id`
+  (preserving modes, segment_kinds, due_only, minutes). The practice page now
+  switches the active revision per item via `PracticeItemRead.revision_id`, so a
+  collection session keeps each passage's segments/profile/audio in context.
+- Collections frontend gates green: svelte-check clean, 62 unit/integration
+  tests (added collection client + RollupBadges suites), and 9/9 Playwright e2e
+  (new collections-flow spec + cue-model fixes to practice-flow). Manually
+  verified end to end in a browser.
 
 ## Remaining
-
+- Add inline personal-note authoring to the practice card using the generated
+  note endpoints; prefer the latest note over the persisted fallback hint.
 - Point `RHAPSODE_BACKUP_DIR` at a synced (iCloud) folder when launching.
 - Extend the reference-audio URL map beyond Iliad 1.1-100 as practice grows.
 - Prose chunk drafting via LLM is deferred until a prose passage exists.

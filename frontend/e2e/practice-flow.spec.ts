@@ -33,8 +33,9 @@ test('full loop: create, render Unicode, practice, grade, review', async ({ page
 	await startManualSession(page);
 	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
 
-	// Item 1: grade clean via the Anki-style "Easy" shortcut (4).
-	await expect(page.getByText('Sing, goddess')).toBeVisible();
+	// Item 1: the cue card shows the verbatim lead-in (the literal recall cue
+	// now lives behind "Need a hint?"). Grade clean via the "Easy" shortcut (4).
+	await expect(page.getByText('Recite this line to the end.')).toBeVisible();
 	await page.keyboard.press('4');
 	await expect(page.getByText(/Easy · mastery/)).toBeVisible();
 
@@ -65,7 +66,7 @@ test('an interrupted session resumes at the persisted cursor after reload', asyn
 	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
 	const sessionUrl = page.url();
 
-	await expect(page.getByText('Sing, goddess')).toBeVisible();
+	await expect(page.getByText('Recite this line to the end.')).toBeVisible();
 	await page.keyboard.press('3'); // "Good" → hesitant on item 1
 	await expect(page.getByText(/Good · mastery/)).toBeVisible();
 
@@ -90,14 +91,14 @@ test('Cmd+Z reopens the last graded card and rewinds the tally', async ({ page }
 	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
 
 	// Grade item 1, advancing the cursor.
-	await expect(page.getByText('Sing, goddess')).toBeVisible();
+	await expect(page.getByText('Recite this line to the end.')).toBeVisible();
 	await page.keyboard.press('4');
 	await expect(page.getByText('1/2 items')).toBeVisible();
 
 	// Cmd/Ctrl+Z rolls the card back: the cursor returns and the first cue shows.
 	await page.keyboard.press('ControlOrMeta+z');
 	await expect(page.getByText('0/2 items')).toBeVisible();
-	await expect(page.getByText('Sing, goddess')).toBeVisible();
+	await expect(page.getByText('Recite this line to the end.')).toBeVisible();
 	await expect(page.getByText('Undid the last card')).toBeVisible();
 
 	// A second undo with nothing left is a no-op with a hint, not an error.

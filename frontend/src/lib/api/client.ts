@@ -3,6 +3,8 @@ import type {
 	AnnotationCreate,
 	AttemptCreate,
 	AttemptResult,
+	Collection,
+	CollectionCreate,
 	CuePoint,
 	Health,
 	LanguageProfile,
@@ -135,6 +137,28 @@ export const api = {
 	listMedia: (revisionId?: string, category?: MediaCategory) =>
 		send<Media[]>('GET', '/media', { query: { revision_id: revisionId, category } }),
 	mediaUrl: (mediaId: string) => `${BASE}/media/${mediaId}/content`,
+
+	listCollections: () => send<Collection[]>('GET', '/collections'),
+	getCollection: (collectionId: string) =>
+		send<Collection>('GET', `/collections/${collectionId}`),
+	createCollection: (input: CollectionCreate, key?: string) =>
+		send<Collection>('POST', '/collections', { body: input, key }),
+	updateCollection: (collectionId: string, input: CollectionCreate, key?: string) =>
+		send<Collection>('PUT', `/collections/${collectionId}`, { body: input, key }),
+	deleteCollection: (collectionId: string, key?: string) =>
+		send<Record<string, boolean>>('DELETE', `/collections/${collectionId}`, { key }),
+	addCollectionMember: (collectionId: string, passageId: string, key?: string) =>
+		send<Collection>('POST', `/collections/${collectionId}/members`, {
+			body: { passage_id: passageId },
+			key
+		}),
+	removeCollectionMember: (collectionId: string, passageId: string, key?: string) =>
+		send<Collection>('DELETE', `/collections/${collectionId}/members/${passageId}`, { key }),
+	reorderCollectionMembers: (collectionId: string, passageIds: string[], key?: string) =>
+		send<Collection>('PUT', `/collections/${collectionId}/members`, {
+			body: { passage_ids: passageIds },
+			key
+		}),
 
 	listSessions: (status?: string) =>
 		send<PracticeSession[]>('GET', '/sessions', { query: { status } }),

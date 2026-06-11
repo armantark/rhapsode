@@ -14,18 +14,37 @@
 		pointer = recallActiveSession();
 		try {
 			sessions = await api.listSessions();
-			// Sessions only carry revision ids; resolve titles via the revision's
-			// passage. Parallel fetches: local backend, small N.
-			const revisionIds = [...new Set(sessions.map((session) => session.revision_id))];
-			const revisions = await Promise.all(revisionIds.map((id) => api.getRevision(id)));
-			const passages = await api.listPassages();
+			// A session targets either a single passage revision or a whole
+			// collection. Resolve a display title for each. Parallel fetches:
+			// local backend, small N.
+			const revisionIds = [
+				...new Set(
+					sessions
+						.map((session) => session.revision_id)
+						.filter((id): id is string => !!id)
+				)
+			];
+			const collectionIds = [
+				...new Set(
+					sessions
+						.map((session) => session.collection_id)
+						.filter((id): id is string => !!id)
+				)
+			];
+			const [revisions, passages, collections] = await Promise.all([
+				Promise.all(revisionIds.map((id) => api.getRevision(id))),
+				api.listPassages(),
+				Promise.all(collectionIds.map((id) => api.getCollection(id)))
+			]);
 			const passageTitle = new Map(passages.map((passage) => [passage.id, passage.title]));
-			titles = new Map(
-				revisions.map((revision) => [
-					revision.id,
-					passageTitle.get(revision.passage_id) ?? revision.passage_id
-				])
-			);
+			const resolved = new Map<string, string>();
+			for (const revision of revisions) {
+				resolved.set(revision.id, passageTitle.get(revision.passage_id) ?? revision.passage_id);
+			}
+			for (const collection of collections) {
+				resolved.set(collection.id, collection.name);
+			}
+			titles = resolved;
 		} catch (cause) {
 			error = `Could not load sessions: ${cause instanceof Error ? cause.message : cause}`;
 		} finally {
@@ -35,6 +54,11 @@
 
 	const active = $derived(sessions.filter((session) => session.status === 'active'));
 	const finished = $derived(sessions.filter((session) => session.status !== 'active'));
+
+	function sessionTitle(session: PracticeSession): string {
+		const key = session.collection_id ?? session.revision_id;
+		return (key ? titles.get(key) : null) ?? key ?? session.id;
+	}
 
 	function progress(session: PracticeSession): string {
 		const items = session.items ?? [];
@@ -64,7 +88,8 @@
 	<div class="list">
 		{#each active as session (session.id)}
 			<a class="card session" href="/practice/{session.id}">
-				<strong>{titles.get(session.revision_id) ?? session.revision_id}</strong>
+				<strong>{sessionTitle(session)}</strong>
+				{#if session.collection_id}<span class="tag collection">collection</span>{/if}
 				<span class="tag">{progress(session)} items</span>
 				<span class="muted">resume at #{session.current_index + 1}</span>
 			</a>
@@ -76,7 +101,8 @@
 		<div class="list">
 			{#each finished as session (session.id)}
 				<a class="card session completed" href="/practice/{session.id}">
-					<strong>{titles.get(session.revision_id) ?? session.revision_id}</strong>
+					<strong>{sessionTitle(session)}</strong>
+					{#if session.collection_id}<span class="tag collection">collection</span>{/if}
 					<span class="tag">{progress(session)} items</span>
 					{#if session.completed_at}
 						<span class="muted">{new Date(session.completed_at).toLocaleString()}</span>

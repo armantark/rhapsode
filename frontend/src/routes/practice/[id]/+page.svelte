@@ -35,9 +35,15 @@
 	};
 
 	let session: PracticeSession | null = $state(null);
-	let revision: Revision | null = $state(null);
-	let profile: LanguageProfile | null = $state(null);
-	let passageTitle = $state('');
+	// A session can span one passage (revision_id) or a whole collection, where
+	// each item carries its own revision_id. We hold every revision the session
+	// touches and switch the active one per item, so passage-specific context
+	// (segments, profile, reference audio) always matches the card on screen.
+	let revisionMap: Record<string, Revision> = $state({});
+	let profileMap: Record<string, LanguageProfile> = $state({});
+	let titleMap: Record<string, string> = $state({});
+	let mediaMap: Record<string, Media[]> = $state({});
+	let collectionName = $state('');
 	let error = $state('');
 	let loading = $state(true);
 
@@ -98,7 +104,7 @@
 		return focusedMs + (runningSince !== null ? performance.now() - runningSince : 0);
 	}
 
-	const items = $derived.by(() =>
+	const items = $derived.by((): PracticeItem[] =>
 		[...(session?.items ?? [])].sort((a, b) => a.position - b.position)
 	);
 	const currentItem = $derived.by((): PracticeItem | null => {
@@ -109,6 +115,21 @@
 		return fromIndex ?? items.find((item) => !item.completed) ?? null;
 	});
 	const doneCount = $derived(items.filter((item) => item.completed).length);
+	// The active revision follows the current card (collection sessions) and
+	// falls back to the session's own revision (single-passage sessions).
+	// The cast works around a svelte-check flow-analysis quirk where the
+	// $state-backed `session` is narrowed to `never` inside this $derived; the
+	// runtime type is unaffected. currentItem (itself a $derived) needs no cast.
+	const activeRevisionId = $derived(
+		currentItem?.revision_id ?? (session as PracticeSession | null)?.revision_id ?? null
+	);
+	const revision = $derived(activeRevisionId ? (revisionMap[activeRevisionId] ?? null) : null);
+	const profile = $derived(activeRevisionId ? (profileMap[activeRevisionId] ?? null) : null);
+	const referenceMedia = $derived(activeRevisionId ? (mediaMap[activeRevisionId] ?? []) : []);
+	const passageTitle = $derived(activeRevisionId ? (titleMap[activeRevisionId] ?? '') : '');
+	// Collection sessions show the collection name in the header but still need
+	// the per-card passage title for saved-best filenames.
+	const sessionTitle = $derived(collectionName || passageTitle);
 	const segmentById = $derived.by(
 		() => new Map((revision?.segments ?? []).map((segment) => [segment.id, segment]))
 	);
@@ -153,8 +174,6 @@
 			: [...enabledLayers, layer];
 		localStorage.setItem(LAYERS_KEY, JSON.stringify(enabledLayers));
 	}
-	// Listed from the backend so imported scholar recitations appear too.
-	let referenceMedia: Media[] = $state([]);
 	const revealText = $derived.by(() => {
 		if (!currentItem) return null;
 		const prompt = currentItem.prompt as Record<string, unknown>;
@@ -183,20 +202,42 @@
 		}
 		try {
 			session = await api.getSession(page.params.id ?? '');
-			revision = await api.getRevision(session.revision_id);
-			const [languages, passage, reference] = await Promise.all([
-				api.listLanguages(),
-				api.getPassage(revision.passage_id),
-				api.listMedia(revision.id, 'reference')
-			]);
-			referenceMedia = reference;
-			passageTitle = passage.title;
-			profile = languages.find((candidate) => candidate.id === passage.language_profile_id) ?? null;
+			const languages = await api.listLanguages();
+			const languageById = new Map(languages.map((language) => [language.id, language]));
+			// Every revision the session touches: a collection session has none on
+			// the session itself, so gather them from the items instead.
+			const revisionIds = [
+				...new Set(
+					[
+						session.revision_id,
+						...(session.items ?? []).map((item) => item.revision_id)
+					].filter((id): id is string => !!id)
+				)
+			];
+			// Independent per-revision fetches run in parallel (local backend, small N).
+			await Promise.all(
+				revisionIds.map(async (revisionId) => {
+					const loaded = await api.getRevision(revisionId);
+					const [passage, reference] = await Promise.all([
+						api.getPassage(loaded.passage_id),
+						api.listMedia(loaded.id, 'reference')
+					]);
+					revisionMap[revisionId] = loaded;
+					titleMap[revisionId] = passage.title;
+					mediaMap[revisionId] = reference;
+					const languageProfile = languageById.get(passage.language_profile_id);
+					if (languageProfile) profileMap[revisionId] = languageProfile;
+				})
+			);
+			if (session.collection_id) {
+				collectionName = (await api.getCollection(session.collection_id)).name;
+			}
 			if (session.status === 'active') {
+				const firstRevisionId = revisionIds[0] ?? '';
 				rememberActiveSession({
 					sessionId: session.id,
-					revisionId: revision.id,
-					passageTitle: passage.title
+					revisionId: session.revision_id ?? firstRevisionId,
+					passageTitle: collectionName || titleMap[firstRevisionId] || 'Practice'
 				});
 			}
 		} catch (cause) {
@@ -357,8 +398,9 @@
 {:else}
 	<header class="head">
 		<div>
-			<span class="eyebrow">Practice session</span>
-			<h1>{passageTitle}</h1>
+			<span class="eyebrow">{collectionName ? 'Collection practice' : 'Practice session'}</span>
+			<h1>{sessionTitle}</h1>
+			{#if collectionName && passageTitle}<p class="muted small head-sub">{passageTitle}</p>{/if}
 		</div>
 		<div class="head-actions">
 			{#if streak >= 2}
@@ -642,7 +684,7 @@
 	.streak {
 		font-family: var(--font-mono);
 		font-size: 0.82rem;
-		color: var(--amber);
+		color: var(--gold);
 		background: rgba(251, 191, 36, 0.1);
 		border: 1px solid rgba(251, 191, 36, 0.35);
 		border-radius: 999px;

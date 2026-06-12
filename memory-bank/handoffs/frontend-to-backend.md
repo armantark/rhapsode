@@ -146,3 +146,39 @@ The frontend is intentionally stateless except for:
 
 All three can be safely wiped; the only consequence is that media uploaded
 before the wipe will not appear in the UI until the listing endpoint lands.
+
+## Desktop / Tauri Frontend (2026-06-12)
+
+Tauri v2 scaffolding lives in `frontend/src-tauri/`. The Rust shell:
+
+1. Reserves a localhost port and sets backend env vars under the OS app data dir:
+   `RHAPSODE_PORT`, `RHAPSODE_DATA_DIR`, `RHAPSODE_DATABASE_URL`,
+   `RHAPSODE_MEDIA_DIR`, `RHAPSODE_BACKUP_DIR`.
+2. Spawns sidecar `binaries/rhapsode-backend-<target-triple>`.
+3. Polls `GET /api/v1/health` until 200.
+4. Exposes `api_base_url()` → `http://127.0.0.1:{port}/api/v1`.
+5. Kills the sidecar on app exit.
+
+Debug builds fall back to `http://127.0.0.1:8000/api/v1` when the sidecar binary
+is missing (for `tauri dev` with `uv run rhapsode` running separately).
+
+### Backend contract (reconciled 2026-06-12)
+
+| Item | Status |
+|------|--------|
+| Sidecar basename | `rhapsode-backend` → `frontend/src-tauri/binaries/rhapsode-backend-<target-triple>` (`.exe` on Windows) |
+| Build script | `uv run python scripts/build_backend_sidecar.py --target-triple <triple>` from repo root |
+| Health probe | `GET /api/v1/health` → 200 |
+| Desktop CORS | `RHAPSODE_DESKTOP=1` enables Tauri webview origins (Rust sets this on spawn) |
+| Frozen paths | Alembic + bundled data resolve inside PyInstaller output |
+| Env vars | Honor existing `RHAPSODE_*` settings in `config.py` |
+
+### Notes
+
+- `Cargo.lock` pins `time = 0.3.47` to avoid Rust 1.95 / `time 0.3.48` E0119; revisit when upstream fixes land.
+- Sidecar smoke without Tauri: `uv run python scripts/desktop_sidecar_smoke.py --require-sidecar` after building the sidecar.
+
+Frontend API discovery: browser dev unchanged (`/api/v1` proxy); Tauri awaits
+`initApiBase()` in `+layout.svelte` before rendering. CI:
+`.github/workflows/desktop-release.yml` builds the sidecar via
+`scripts/build_backend_sidecar.py` before `tauri build`.

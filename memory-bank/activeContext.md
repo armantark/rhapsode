@@ -2,10 +2,9 @@
 
 ## Current Focus
 
-The collections backend is implemented on top of the 2026-06-10 practice
-system. Existing passages can now be grouped in an ordered collection, viewed
-with an Anki-style rollup, and launched as one practice target. The frontend
-collection/deck tree remains the next handoff.
+Tauri v2 desktop release is wired end-to-end: PyInstaller sidecar, Rust lifecycle,
+frontend API discovery, CI draft-release workflow, and sidecar smoke verification.
+Remaining work is manual release validation (signing, first tag push, install smoke).
 
 ## Active Decisions
 
@@ -99,11 +98,20 @@ collection/deck tree remains the next handoff.
   session launches resolve member passages' active revisions; collection
   sessions persist that revision snapshot and apply one shared smart cap or
   minutes budget across the union.
+- Desktop packaging: Tauri v2 shell in `frontend/src-tauri` spawns PyInstaller
+  sidecar `rhapsode-backend-<target-triple>`, sets `RHAPSODE_DESKTOP=1` and
+  data paths under the OS app data dir, polls `/api/v1/health`, exposes
+  `api_base_url()` to Svelte. Browser dev unchanged (Vite proxy `/api/v1`).
+  CI: `.github/workflows/desktop-release.yml` builds sidecar via
+  `scripts/build_backend_sidecar.py` before `tauri build`. Remote:
+  `https://github.com/armantark/rhapsode.git`.
 
 ## Verified Results
 
-- Backend: 50 pytest, ruff, strict mypy, contract `--check` all green.
-- Frontend: 69 vitest, svelte-check 0/0, Playwright e2e green.
+- Backend: 57 pytest, ruff, strict mypy, contract `--check` all green.
+- Frontend: 72 vitest, svelte-check 0/0, production build green.
+- Desktop: `cargo check` in `src-tauri` green; sidecar smoke
+  (`scripts/desktop_sidecar_smoke.py --require-sidecar`) passes on macOS arm64.
 - Live Gemini call drafted 5 cues + 5 glosses + 5 translations onto the real
   Iliad passage; quality checked by hand (accurate glosses, natural
   translations).
@@ -113,16 +121,13 @@ collection/deck tree remains the next handoff.
 
 ## Next Work
 
-- Build the frontend deck tree and collection launcher against the collection
-  contract documented in `handoffs/backend-to-frontend.md`.
-- First-letter fade cue mode (initials only) as a lighter trigger than the full
-  lead-in; pairs with progressive fading.
-- Wire the personal-note endpoints into an inline practice-card note editor.
-  Prefer the latest fetched note over the persisted prompt hint so edits also
-  appear immediately in an already-created session.
-- Verify the manual aligner end-to-end on the teacher's real recording and
-  confirm shadowing auto-jumps to each saved line span.
-- Set `RHAPSODE_BACKUP_DIR` to an iCloud-synced path in the launch command.
+- Push repo to GitHub and cut first desktop release tag (`desktop-v0.0.1` or
+  `v0.0.1`) to trigger draft release workflow.
+- Code signing / notarization (macOS) and Windows Authenticode — optional second
+  pass; unsigned artifacts show OS trust warnings.
+- Manual install smoke: open `.dmg`/installer, create passage, practice, reload,
+  resume.
+- Point `RHAPSODE_BACKUP_DIR` at an iCloud-synced path in the launch command.
 - LLM-assisted chunking for prose passages is deferred until a prose passage
   exists (grill B4/C1).
 - Parked: curated recorded SFX (synth tones are zero-dependency and graded).

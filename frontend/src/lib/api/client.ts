@@ -24,8 +24,7 @@ import type {
 	Setting,
 	WeakLink
 } from './types';
-
-const BASE = '/api/v1';
+import { getApiBase } from './platform';
 
 export class ApiError extends Error {
 	readonly status: number;
@@ -55,7 +54,9 @@ interface SendOptions {
 }
 
 async function send<T>(method: string, path: string, options: SendOptions = {}): Promise<T> {
-	const url = new URL(BASE + path, globalThis.location?.origin ?? 'http://localhost');
+	const base = getApiBase();
+	const origin = base.startsWith('http') ? undefined : (globalThis.location?.origin ?? 'http://localhost');
+	const url = new URL(base + path, origin);
 	for (const [name, value] of Object.entries(options.query ?? {})) {
 		if (value !== undefined) url.searchParams.set(name, value);
 	}
@@ -150,7 +151,7 @@ export const api = {
 		send<Media>('PUT', `/media/${mediaId}/cues`, { body: { cue_points: cuePoints }, key }),
 	listMedia: (revisionId?: string, category?: MediaCategory) =>
 		send<Media[]>('GET', '/media', { query: { revision_id: revisionId, category } }),
-	mediaUrl: (mediaId: string) => `${BASE}/media/${mediaId}/content`,
+	mediaUrl: (mediaId: string) => `${getApiBase()}/media/${mediaId}/content`,
 
 	listCollections: () => send<Collection[]>('GET', '/collections'),
 	getCollection: (collectionId: string) =>

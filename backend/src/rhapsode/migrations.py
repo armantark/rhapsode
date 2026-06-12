@@ -1,8 +1,8 @@
 from pathlib import Path
 
 from alembic import command
-from alembic.config import Config
 from rhapsode.config import get_settings
+from rhapsode.resources import build_alembic_config
 from rhapsode.services.backup import snapshot_sqlite
 
 
@@ -16,9 +16,7 @@ def main() -> None:
     path = database_path(settings.database_url)
     if path:
         snapshot_sqlite(path, settings.backup_dir, "pre-migration")
-    config = Config("alembic.ini")
-    config.attributes["database_url"] = settings.database_url
-    config.set_main_option("sqlalchemy.url", settings.database_url)
+    config = build_alembic_config(settings.database_url)
     command.upgrade(config, "head")
 
 

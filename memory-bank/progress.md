@@ -50,6 +50,11 @@
   OpenAPI contract check, migrated startup smoke test, and PinchTab Swagger
   verification.
 
+- Desktop backend sidecar packaging: PyInstaller spec + build script, frozen
+  Alembic path resolution, runtime `RHAPSODE_*` env support, desktop-only CORS,
+  and backend tests. Handoff documented in
+  `memory-bank/handoffs/backend-to-frontend.md`.
+
 - Collections frontend shipped: `/collections` list with due/learning/new
   rollups + create, `/collections/{id}` deck tree (add/remove/reorder/rename/
   delete) and a collection practice launcher that sends `collection_id`
@@ -69,7 +74,25 @@
 - Reconciled the dev-DB migration drift (dropped empty orphan collection/note
   tables, ran `alembic upgrade head`); backend boots on the dev DB again.
 
+- Tauri v2 desktop shell shipped in `frontend/src-tauri`: sidecar spawn/kill,
+  health polling, `api_base_url()` command, `initApiBase()` in layout, debug
+  fallback to external backend on port 8000.
+- GitHub Actions draft release workflow (`.github/workflows/desktop-release.yml`)
+  with macOS arm64/Intel + Windows matrix; sidecar built via
+  `scripts/build_backend_sidecar.py` before `tauri build`.
+- Integration reconciliation: unified build script naming, `RHAPSODE_DESKTOP=1`
+  on sidecar spawn, CI `uv sync` + Python sidecar build, git remote
+  `https://github.com/armantark/rhapsode.git`.
+- Desktop sidecar smoke script (`scripts/desktop_sidecar_smoke.py`) verifies
+  health + passage listing without launching Tauri.
+- All gates green (2026-06-12): 57 backend pytest, ruff, mypy, openapi check;
+  72 frontend vitest, svelte-check, build; `cargo check`; sidecar smoke pass.
+
 ## Remaining
+
+- Push to GitHub and trigger first tagged draft release.
+- Code signing / notarization (macOS) and Windows Authenticode (optional).
+- Manual install validation on packaged `.dmg`/installer artifacts.
 - Point `RHAPSODE_BACKUP_DIR` at a synced (iCloud) folder when launching.
 - Extend the reference-audio URL map beyond Iliad 1.1-100 as practice grows.
 - Prose chunk drafting via LLM is deferred until a prose passage exists.

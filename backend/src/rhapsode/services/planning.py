@@ -57,7 +57,8 @@ def _recall_prompt(
         plural = "s" if count != 1 else ""
         return {
             "instruction": (
-                f"Carry on into the next line — recite just its first {count} word{plural}, then stop."
+                "Carry on into the next line — recite just its first "
+                f"{count} word{plural}, then stop."
             ),
             "lead_in": target.cue or _lead_in(target.text),
             "target_text": target.text,

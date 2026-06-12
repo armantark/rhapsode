@@ -1,9 +1,19 @@
 <script lang="ts">
 	import '../app.css';
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import favicon from '$lib/assets/favicon.svg';
+	import { initApiBase, isTauri } from '$lib/api/platform';
 
 	let { children } = $props();
+
+	let ready = $state(!isTauri());
+
+	onMount(async () => {
+		if (!isTauri()) return;
+		await initApiBase();
+		ready = true;
+	});
 
 	const links = [
 		{ href: '/', label: 'Library' },
@@ -22,13 +32,17 @@
 </svelte:head>
 
 <div class="shell">
-	<nav aria-label="Primary">
-		<a class="brand" href="/">RHAPSODE</a>
-		{#each links as link (link.href)}
-			<a href={link.href} aria-current={isCurrent(link.href) ? 'page' : undefined}>{link.label}</a>
-		{/each}
-	</nav>
-	<main>{@render children()}</main>
+	{#if ready}
+		<nav aria-label="Primary">
+			<a class="brand" href="/">RHAPSODE</a>
+			{#each links as link (link.href)}
+				<a href={link.href} aria-current={isCurrent(link.href) ? 'page' : undefined}>{link.label}</a>
+			{/each}
+		</nav>
+		<main>{@render children()}</main>
+	{:else}
+		<p class="boot">Starting Rhapsode…</p>
+	{/if}
 </div>
 
 <style>
@@ -72,5 +86,12 @@
 
 	main {
 		min-height: 60vh;
+	}
+
+	.boot {
+		padding: 48px 0;
+		color: var(--text-dim);
+		font-family: var(--font-mono);
+		letter-spacing: 0.08em;
 	}
 </style>

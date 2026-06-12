@@ -87,6 +87,63 @@ is available at `http://127.0.0.1:8000/docs`.
   an inline editor on an already-created session, fetch the latest note for the
   current `segment_id` and prefer it over the persisted fallback prompt hint.
 
+## Desktop / Tauri Sidecar (2026-06-12)
+
+The backend can run as a PyInstaller sidecar spawned by the Tauri host. Browser
+dev mode is unchanged: Vite still proxies same-origin `/api/v1`.
+
+### Sidecar binary
+
+- Build script: `uv run python scripts/build_backend_sidecar.py` from repo root.
+- PyInstaller spec: `backend/rhapsode-sidecar.spec`.
+- Output copied to `frontend/src-tauri/binaries/rhapsode-backend-<target-triple>`
+  (`.exe` suffix on Windows). Tauri `externalBin` should reference the base name
+  `binaries/rhapsode-backend`; Tauri appends the host triple automatically.
+- Entry point: the existing `rhapsode` CLI (`rhapsode.cli:main`) — migrate,
+  snapshot, seed defaults, then bind Uvicorn.
+
+### Runtime environment (set by Tauri before spawn)
+
+| Variable | Purpose |
+| --- | --- |
+| `RHAPSODE_HOST` | Bind address (default `127.0.0.1`) |
+| `RHAPSODE_PORT` | Loopback port chosen by the host |
+| `RHAPSODE_DATA_DIR` | App data root |
+| `RHAPSODE_DATABASE_URL` | SQLite URL, e.g. `sqlite:///<data>/rhapsode.db` |
+| `RHAPSODE_MEDIA_DIR` | Uploaded audio storage |
+| `RHAPSODE_BACKUP_DIR` | Startup/pre-migration snapshots |
+| `RHAPSODE_DESKTOP` | Set `1`/`true` to enable desktop CORS |
+| `RHAPSODE_CORS_ORIGINS` | Optional comma-separated override of default Tauri origins |
+
+When `RHAPSODE_DESKTOP=1`, the API adds CORS for `tauri://localhost`,
+`https://tauri.localhost`, and `http://tauri.localhost`. Override with
+`RHAPSODE_CORS_ORIGINS` if the webview origin differs.
+
+### Health check
+
+Poll `GET http://127.0.0.1:<RHAPSODE_PORT>/api/v1/health` until
+`{"status":"ok",...}`. All other routes remain under `/api/v1` as documented in
+`contracts/openapi.json`.
+
+### Frontend contract for Tauri mode
+
+1. Reserve or pick a free localhost port; export the env vars above (including
+   `RHAPSODE_DESKTOP=1`) before spawning the sidecar.
+2. Spawn `rhapsode-backend-<target-triple>` via Tauri `ShellExt::sidecar`.
+3. Expose the resolved API base (`http://127.0.0.1:<port>/api/v1`) to Svelte
+   through a Tauri command such as `api_base_url()`.
+4. In browser/dev mode, keep using relative `/api/v1` through the Vite proxy.
+5. Kill the sidecar on app shutdown.
+
+### Build matrix target triples
+
+- macOS Apple Silicon: `aarch64-apple-darwin`
+- macOS Intel: `x86_64-apple-darwin`
+- Windows x64: `x86_64-pc-windows-msvc`
+
+Cross-compile is not handled by the build script; CI should run the script on
+each platform runner with `--target-triple` matching that runner.
+
 ## Frontend Handoff Prompt
 
 ```text

@@ -1,0 +1,5 @@
+# Place PyInstaller output here before `npm run tauri:build`.
+# Expected filenames (target triple appended by Tauri):
+#   rhapsode-backend-aarch64-apple-darwin
+#   rhapsode-backend-x86_64-apple-darwin
+#   rhapsode-backend-x86_64-pc-windows-msvc.exe

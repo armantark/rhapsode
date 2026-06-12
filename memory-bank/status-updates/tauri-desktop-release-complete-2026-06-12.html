@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rhapsode Desktop Release — Reconciled</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0e12;
+      --surface: #161a21;
+      --surface-2: #1e232c;
+      --border: #2a3040;
+      --text: #e8ecf4;
+      --text-dim: #8b95a8;
+      --accent: #4f8cff;
+      --accent-glow: rgba(79, 140, 255, 0.15);
+      --red: #ff5c5c;
+      --green: #4ade80;
+      --amber: #fbbf24;
+      --purple: #a78bfa;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 10% -10%, rgba(79, 140, 255, 0.12), transparent),
+        radial-gradient(ellipse 60% 40% at 90% 100%, rgba(167, 139, 250, 0.08), transparent),
+        var(--bg);
+      color: var(--text);
+      font-family: Outfit, sans-serif;
+      line-height: 1.5;
+    }
+    main { max-width: 1100px; margin: 0 auto; padding: 48px 24px 80px; }
+    .badge, .tag, .label, .mono { font-family: "JetBrains Mono", monospace; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      color: var(--green); border: 1px solid #245c3d; background: #10291d;
+      border-radius: 999px; padding: 7px 12px; font-size: 0.68rem;
+      text-transform: uppercase; letter-spacing: 0.09em;
+    }
+    .badge .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; box-shadow: 0 0 12px var(--green); }
+    h1 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 700; margin: 20px 0 12px; line-height: 1.1; }
+    .lead { color: var(--text-dim); font-size: 1.02rem; max-width: 720px; margin-bottom: 36px; }
+    .metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 32px; }
+    .metric {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px; text-align: center;
+    }
+    .metric strong { display: block; font-size: 1.8rem; color: var(--green); }
+    .metric span { color: var(--text-dim); font-size: 0.72rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    @media (max-width: 900px) { .grid, .metrics { grid-template-columns: 1fr; } .metrics { grid-template-columns: repeat(2, 1fr); } }
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
+    .card h2 { margin: 8px 0; font-size: 1.15rem; }
+    .card p { color: var(--text-dim); font-size: 0.92rem; margin: 0; }
+    .label { font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; }
+    .label.critical { color: var(--red); }
+    .label.done { color: var(--green); }
+    .label.manual { color: var(--amber); }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .tag {
+      font-size: 0.62rem; background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 4px 8px; color: var(--accent);
+    }
+    .flow {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; margin-bottom: 24px;
+    }
+    .flow h3 { margin: 0 0 16px; font-size: 1rem; }
+    .pipeline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .step {
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 14px; font-size: 0.82rem;
+    }
+    .arrow { color: var(--text-dim); font-size: 1.2rem; }
+    .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 700px) { .compare { grid-template-columns: 1fr; } }
+    .pane {
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+      padding: 14px; font-size: 0.85rem;
+    }
+    .pane .pane-label { font-size: 0.6rem; color: var(--text-dim); letter-spacing: 0.1em; margin-bottom: 8px; }
+    .pane.before { border-color: rgba(255, 92, 92, 0.35); }
+    .pane.after { border-color: rgba(74, 222, 128, 0.35); }
+    .pane code { color: var(--amber); word-break: break-all; }
+    .checklist { list-style: none; padding: 0; margin: 0; }
+    .checklist li {
+      display: flex; align-items: flex-start; gap: 10px; padding: 10px 0;
+      border-bottom: 1px solid var(--border); color: var(--text-dim); font-size: 0.9rem;
+    }
+    .checklist li:last-child { border-bottom: none; }
+    .check { color: var(--green); flex-shrink: 0; }
+    .pending { color: var(--amber); flex-shrink: 0; }
+    .copy-row { margin-top: 16px; }
+    button {
+      background: var(--accent); color: #fff; border: none; border-radius: 8px;
+      padding: 10px 16px; font-family: Outfit, sans-serif; font-weight: 500;
+      cursor: pointer; font-size: 0.88rem;
+    }
+    button:hover { filter: brightness(1.1); }
+    button.copied { background: var(--green); }
+    pre#release-cmd {
+      display: none; background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px; margin-top: 10px; font-size: 0.75rem;
+      overflow-x: auto; color: var(--text-dim);
+    }
+  </style>
+</head>
+<body>
+<main>
+  <span class="badge"><span class="dot"></span> Desktop release reconciled</span>
+  <h1>Tauri + sidecar integration is wired.</h1>
+  <p class="lead">Backend and frontend desktop agents merged. CI builds the PyInstaller sidecar before Tauri, Rust sets <code>RHAPSODE_DESKTOP=1</code>, and a headless smoke script validates the packaged backend without a full OS install.</p>
+
+  <section class="metrics">
+    <div class="metric"><strong>57</strong><span>backend pytest</span></div>
+    <div class="metric"><strong>72</strong><span>frontend vitest</span></div>
+    <div class="metric"><strong>0</strong><span>svelte-check</span></div>
+    <div class="metric"><strong>✓</strong><span>cargo check</span></div>
+    <div class="metric"><strong>✓</strong><span>sidecar smoke</span></div>
+  </section>
+
+  <section class="flow">
+    <h3>Release pipeline (CI)</h3>
+    <div class="pipeline">
+      <span class="step">tag push</span><span class="arrow">→</span>
+      <span class="step">uv sync</span><span class="arrow">→</span>
+      <span class="step">build_backend_sidecar.py</span><span class="arrow">→</span>
+      <span class="step">npm ci + build</span><span class="arrow">→</span>
+      <span class="step">tauri build</span><span class="arrow">→</span>
+      <span class="step">draft GitHub Release</span>
+    </div>
+  </section>
+
+  <section class="grid">
+    <article class="card">
+      <span class="label done">Fixed</span>
+      <h2>Build script naming</h2>
+      <div class="compare">
+        <div class="pane before"><div class="pane-label">Before</div><code>scripts/build-backend-sidecar.sh</code> (missing)</div>
+        <div class="pane after"><div class="pane-label">After</div><code>uv run python scripts/build_backend_sidecar.py --target-triple …</code></div>
+      </div>
+      <div class="tags"><span class="tag">desktop-release.yml</span><span class="tag">frontend/README.md</span></div>
+    </article>
+    <article class="card">
+      <span class="label done">Fixed</span>
+      <h2>Desktop CORS</h2>
+      <p>Rust now sets <code>RHAPSODE_DESKTOP=1</code> when spawning the sidecar. Backend enables Tauri webview origins (<code>tauri://localhost</code>, etc.).</p>
+      <div class="tags"><span class="tag">lib.rs</span><span class="tag">config.py</span><span class="tag">test_desktop.py</span></div>
+    </article>
+    <article class="card">
+      <span class="label done">Aligned</span>
+      <h2>externalBin contract</h2>
+      <p><code>tauri.conf.json</code> → <code>binaries/rhapsode-backend</code>. Output → <code>binaries/rhapsode-backend-&lt;target-triple&gt;</code> (.exe on Windows).</p>
+      <div class="tags"><span class="tag">rhapsode-sidecar.spec</span><span class="tag">build_backend_sidecar.py</span></div>
+    </article>
+    <article class="card">
+      <span class="label done">Added</span>
+      <h2>Sidecar smoke (no Tauri install)</h2>
+      <p><code>scripts/desktop_sidecar_smoke.py --require-sidecar</code> spawns the frozen binary, polls health, lists passages, exits.</p>
+      <div class="tags"><span class="tag">desktop_sidecar_smoke.py</span></div>
+    </article>
+  </section>
+
+  <section class="card" style="margin-bottom:24px">
+    <span class="label manual">Manual next steps</span>
+    <h2>Signing & first release</h2>
+    <ul class="checklist">
+      <li><span class="check">✓</span> Git remote added: <code>https://github.com/armantark/rhapsode.git</code></li>
+      <li><span class="pending">○</span> Push branch + tags to GitHub (<code>git push -u origin HEAD</code> then <code>git tag desktop-v0.0.1 && git push origin desktop-v0.0.1</code>)</li>
+      <li><span class="pending">○</span> Review draft release artifacts in GitHub Actions (unsigned .dmg / Windows installer)</li>
+      <li><span class="pending">○</span> Optional: Apple Developer ID + notarization, Windows Authenticode signing</li>
+      <li><span class="pending">○</span> Manual install smoke: open artifact, create passage, practice, reload, resume</li>
+    </ul>
+    <div class="copy-row">
+      <button type="button" id="copy-btn">Copy release commands</button>
+      <pre id="release-cmd">git push -u origin HEAD
+git tag desktop-v0.0.1
+git push origin desktop-v0.0.1
+uv run python scripts/desktop_sidecar_smoke.py --require-sidecar</pre>
+    </div>
+  </section>
+
+  <section class="card">
+    <span class="label done">Plan todos</span>
+    <h2>All four desktop plan items complete</h2>
+    <ul class="checklist">
+      <li><span class="check">✓</span> Backend sidecar packaging, frozen paths, desktop CORS</li>
+      <li><span class="check">✓</span> Tauri v2 init, sidecar lifecycle, API base discovery</li>
+      <li><span class="check">✓</span> GitHub Actions matrix + draft release workflow</li>
+      <li><span class="check">✓</span> Verification gates + sidecar smoke (Tauri e2e deferred to manual install)</li>
+    </ul>
+  </section>
+</main>
+<script>
+document.getElementById('copy-btn').addEventListener('click', async () => {
+  const text = document.getElementById('release-cmd').textContent.trim();
+  await navigator.clipboard.writeText(text);
+  const btn = document.getElementById('copy-btn');
+  btn.textContent = 'Copied!';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'Copy release commands'; btn.classList.remove('copied'); }, 2000);
+});
+</script>
+</body>
+</html>

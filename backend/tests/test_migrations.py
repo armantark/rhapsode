@@ -5,6 +5,7 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
+from rhapsode.resources import build_alembic_config
 
 INITIAL_REVISION = "9306b49e8942"
 PRE_COLLECTION_REVISION = "a1f2c3d4e5f6"
@@ -12,11 +13,7 @@ PRE_PERSONAL_NOTE_REVISION = "b7c8d9e0f1a2"
 
 
 def migration_config(database_path: Path) -> Config:
-    config = Config("alembic.ini")
-    database_url = f"sqlite:///{database_path}"
-    config.attributes["database_url"] = database_url
-    config.set_main_option("sqlalchemy.url", database_url)
-    return config
+    return build_alembic_config(f"sqlite:///{database_path}")
 
 
 def test_cue_point_migration_preserves_existing_media(tmp_path: Path) -> None:

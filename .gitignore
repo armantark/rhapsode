@@ -7,6 +7,7 @@
 __pycache__/
 *.py[cod]
 backend/data/
+backend/build/
 backend/dist/
 backend/htmlcov/
 backend/.coverage

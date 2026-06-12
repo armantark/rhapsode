@@ -81,7 +81,8 @@ fn spawn_sidecar(
     let database_url = format!("sqlite:///{}", db_path.display());
     let sidecar = app
         .shell()
-        .sidecar("binaries/rhapsode-backend")
+        // externalBin source lives under binaries/, but bundled/spawn path is basename-only.
+        .sidecar("rhapsode-backend")
         .map_err(|error| format!("failed to locate rhapsode-backend sidecar: {error}"))?;
 
     let (mut rx, child) = sidecar

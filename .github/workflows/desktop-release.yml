@@ -65,7 +65,7 @@ jobs:
         run: uv run python scripts/build_backend_sidecar.py --target-triple "${{ matrix.target }}"
 
       - name: Build and draft release
-        uses: tauri-apps/tauri-action@v1
+        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

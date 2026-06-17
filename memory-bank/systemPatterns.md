@@ -9,6 +9,14 @@
 - All mutation endpoints accept `Idempotency-Key` and replay stored responses.
 - Service functions own domain behavior; API routers translate HTTP concerns.
 - Session plans and prompt items are persisted for restart-safe practice.
+- Active sessions are resumable for 24 idle hours. Backend lifecycle checks
+  move older unfinished sessions to `expired`; normal session listings omit
+  them, while direct reads preserve their plan and attempts for history.
+- Smart planning separates target triage from exercise selection. Weak segments
+  still receive priority, but each line receives the least-used useful exercise
+  for its mastery stage so weak-link/cue drills do not crowd out chaining,
+  random starts, or reference-audio shadowing. Junctures retain a narrower
+  transition-focused exercise set.
 - FSRS is wrapped by a scheduling service so library details do not leak.
 - Language and practice extensions use validated manifests and registries.
 - Python extensions can register through `rhapsode.language_plugins` and

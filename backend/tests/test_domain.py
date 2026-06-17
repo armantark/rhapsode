@@ -4,6 +4,7 @@ from pathlib import Path
 
 from rhapsode import models, schemas
 from rhapsode.services import prep
+from rhapsode.services import sessions as session_service
 from rhapsode.services.backup import (
     SNAPSHOT_RETENTION,
     snapshot_sqlite,
@@ -58,6 +59,105 @@ def test_smart_mode_ladder_fades_support_with_mastery() -> None:
     # segment still needs scaffolding before being drilled cold.
     assert smart_mode_for("review", difficult=True) == "weak_link"
     assert smart_mode_for(None, difficult=True) == "progressive_fading"
+    # Once a technique has been used, the coach deliberately introduces the
+    # least-practiced useful exercise instead of repeating the same label.
+    assert (
+        smart_mode_for("learning", difficult=False, mode_counts={"cue_recall": 1})
+        == "forward_chaining"
+    )
+    assert (
+        smart_mode_for(
+            "review",
+            difficult=True,
+            mode_counts={"weak_link": 5, "random_start": 1},
+        )
+        == "forward_chaining"
+    )
+    # Transition fragments stay on transition-appropriate drills.
+    assert (
+        smart_mode_for(
+            "learning",
+            difficult=False,
+            kind="juncture",
+            mode_counts={"cue_recall": 1},
+        )
+        == "progressive_fading"
+    )
+    assert (
+        smart_mode_for(
+            "learning",
+            difficult=False,
+            mode_counts={
+                "cue_recall": 1,
+                "forward_chaining": 1,
+                "backward_chaining": 1,
+                "progressive_fading": 1,
+            },
+            has_reference_audio=True,
+        )
+        == "shadowing"
+    )
+
+
+def test_smart_plan_rotates_line_exercises_and_builds_forward_context(
+    session_factory: object,
+) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="latin-rotation", name="Latin")
+        passage = models.Passage(title="Aeneid", language_profile=language)
+        revision = models.PassageRevision(
+            passage=passage, revision_number=1, source_text="..."
+        )
+        revision.segments = [
+            models.Segment(kind="line", ordinal=index, text=f"line {index}")
+            for index in range(3)
+        ]
+        db.add(passage)
+        db.flush()
+        history = models.PracticeSession(revision_id=revision.id, plan={})
+        db.add(history)
+        db.flush()
+        for index, segment in enumerate(revision.segments):
+            item = models.PracticeItem(
+                session_id=history.id,
+                revision_id=revision.id,
+                segment_id=segment.id,
+                position=index,
+                mode="cue_recall",
+                prompt={},
+            )
+            db.add(item)
+            db.flush()
+            db.add(
+                models.ReviewState(
+                    segment_id=segment.id,
+                    fsrs_card_json="{}",
+                    due_at=datetime.now(UTC),
+                    mastery_stage="learning",
+                    clean_count=0,
+                    attempt_count=2,
+                )
+            )
+            for mode in ("cue_recall", "progressive_fading"):
+                db.add(
+                    models.Attempt(
+                        session_id=history.id,
+                        item_id=item.id,
+                        segment_id=segment.id,
+                        mode=mode,
+                        rating="hesitant",
+                        review_snapshot=[],
+                    )
+                )
+        db.commit()
+
+        plan = build_smart_plan(db, revision, ["line"])
+        assert [item["mode"] for item in plan] == ["forward_chaining"] * 3
+        assert [item["prompt"]["chain"] for item in plan] == [
+            ["line 0"],
+            ["line 0", "line 1"],
+            ["line 0", "line 1", "line 2"],
+        ]
 
 
 def test_smart_plan_appends_full_passage_once_all_segments_graduate(
@@ -457,23 +557,70 @@ def test_minutes_budget_fills_short_passage_with_varied_repeats(
         assert [item["mode"] for item in standard] == ["progressive_fading"] * 3
 
         # 10 minutes (600s): the 3-line pass spends 3×75s = 225s, then the
-        # rotation [cue_recall (20s), random_start (30s)] fills the rest, two
-        # extra reps per line, in successive passage-order run-throughs.
+        # broader rotation fills the rest in successive passage-order
+        # run-throughs. The final random-start turn fits for only one line.
         plan = build_smart_plan(db, revision, ["line"], minutes=10)
         assert [item["mode"] for item in plan] == (
-            ["progressive_fading"] * 3 + ["cue_recall"] * 3 + ["random_start"] * 3
+            ["progressive_fading"] * 3
+            + ["forward_chaining"] * 3
+            + ["backward_chaining"] * 3
+            + ["cue_recall"] * 3
+            + ["random_start"]
         )
-        # Every line is drilled three times, each time a different way.
         per_segment = {segment.id: [] for segment in revision.segments}
         for item in plan:
             per_segment[item["segment_id"]].append(item["mode"])
-        for modes in per_segment.values():
-            assert sorted(modes) == ["cue_recall", "progressive_fading", "random_start"]
+        assert sorted(len(modes) for modes in per_segment.values()) == [4, 4, 5]
 
         # A huge budget cannot exceed the per-segment repetition cap: still the
-        # primary turn plus the two-mode rotation, never more.
+        # primary turn plus the four-mode rotation, never more.
         capped = build_smart_plan(db, revision, ["line"], minutes=120)
-        assert len(capped) == 9
+        assert len(capped) == 15
+
+
+def test_minutes_fill_never_assigns_chaining_to_junctures(session_factory: object) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="latin-juncture-fill", name="Latin")
+        passage = models.Passage(title="Aeneid", language_profile=language)
+        revision = models.PassageRevision(
+            passage=passage, revision_number=1, source_text="..."
+        )
+        revision.segments = [
+            models.Segment(kind="line", ordinal=0, text="line 0"),
+            models.Segment(kind="juncture", ordinal=1, text="line 1 opening"),
+            models.Segment(kind="line", ordinal=1, text="line 1"),
+        ]
+        db.add(passage)
+        db.commit()
+
+        plan = build_smart_plan(db, revision, None, minutes=120)
+        juncture_id = revision.segments[1].id
+        juncture_modes = {
+            item["mode"] for item in plan if item["segment_id"] == juncture_id
+        }
+        assert juncture_modes.isdisjoint({"forward_chaining", "backward_chaining"})
+
+
+def test_abandoned_sessions_expire_but_completed_history_does_not(
+    session_factory: object,
+) -> None:
+    now = datetime.now(UTC)
+    with session_factory() as db:  # type: ignore[operator]
+        stale = models.PracticeSession(plan={}, updated_at=now - timedelta(hours=25))
+        recent = models.PracticeSession(plan={}, updated_at=now - timedelta(hours=23))
+        completed = models.PracticeSession(
+            plan={},
+            status="completed",
+            updated_at=now - timedelta(days=7),
+            completed_at=now - timedelta(days=7),
+        )
+        db.add_all([stale, recent, completed])
+        db.commit()
+
+        assert session_service.expire_stale_sessions(db, now) == 1
+        assert stale.status == "expired"
+        assert recent.status == "active"
+        assert completed.status == "completed"
 
 
 def test_random_start_is_a_checkable_recall_with_an_endpoint() -> None:

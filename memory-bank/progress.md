@@ -87,6 +87,16 @@
   health + passage listing without launching Tauri.
 - All gates green (2026-06-12): 57 backend pytest, ruff, mypy, openapi check;
   72 frontend vitest, svelte-check, build; `cargo check`; sidecar smoke pass.
+- Added abandoned-session lifecycle and smart-exercise variety: active sessions
+  expire after 24 idle hours and leave the default list; direct stale links show
+  an expired state. Smart planning now balances least-used useful exercises per
+  line/mastery stage, including forward/backward chaining, random starts, and
+  reference-audio shadowing while keeping junctures transition-focused.
+- Verified the lifecycle/variety pass with 61 backend tests, Ruff, strict mypy,
+  contract check, 72 frontend tests, svelte-check, build, 12/12 Playwright, and
+  PinchTab against the real Iliad/dev database.
+  Four stale active sessions were expired and a fresh smart plan visibly
+  contained random-start and forward-chaining exercises.
 
 ## Remaining
 

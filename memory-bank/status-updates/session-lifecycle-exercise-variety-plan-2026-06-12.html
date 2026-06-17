@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Session lifecycle and exercise variety plan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#0c0e12;--surface:#161a21;--surface-2:#1e232c;--border:#2a3040;--text:#e8ecf4;--text-dim:#8b95a8;--accent:#4f8cff;--accent-glow:rgba(79,140,255,.15);--red:#ff5c5c;--green:#4ade80;--amber:#fbbf24;--purple:#a78bfa;--radius:12px}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0%,#1d2130 0,var(--bg) 38%);color:var(--text);font-family:Outfit,sans-serif}main{max-width:1120px;margin:auto;padding:48px 24px 64px}.badge,.label,.tag{font-family:"JetBrains Mono",monospace;text-transform:uppercase;letter-spacing:.09em}.badge{display:inline-block;padding:7px 11px;border:1px solid var(--accent);border-radius:999px;color:var(--accent);background:var(--accent-glow);font-size:.7rem}h1{font-size:2.5rem;margin:18px 0 8px}p{color:var(--text-dim);line-height:1.55}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:32px}.card{background:linear-gradient(145deg,var(--surface),#11151b);border:1px solid var(--border);border-radius:var(--radius);padding:22px}.label{font-size:.68rem;color:var(--amber)}h2{font-size:1.25rem;margin:10px 0}.flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:20px 0 4px}.node{padding:9px 12px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border);font-size:.8rem}.arrow{color:var(--text-dim)}.before{color:var(--red)}.after{color:var(--green)}ol{padding:0;list-style:none}.step{display:flex;gap:14px;margin:14px 0}.num{flex:0 0 28px;height:28px;border-radius:7px;display:grid;place-items:center;background:var(--accent);font-family:"JetBrains Mono";font-size:.75rem}.tag{display:inline-block;margin:5px 4px 0 0;padding:4px 7px;border-radius:6px;background:var(--surface-2);font-size:.58rem;color:var(--text-dim)}@media(max-width:800px){.grid{grid-template-columns:1fr}h1{font-size:2rem}}
+  </style>
+</head>
+<body><main>
+  <span class="badge">Pre-implementation plan</span>
+  <h1>Practice should feel current, not cluttered.</h1>
+  <p>Two related corrections: stale abandoned sessions stop occupying the active queue, and smart practice deliberately exposes the broader exercise repertoire as mastery grows.</p>
+  <section class="grid">
+    <article class="card">
+      <span class="label">Lifecycle</span><h2>Expire abandoned sessions</h2>
+      <p class="before">Before: every unfinished session remains active forever.</p>
+      <div class="flow"><span class="node">active</span><span class="arrow">→ idle threshold →</span><span class="node after">expired</span></div>
+      <p>Expiry will be enforced by the backend so desktop, browser, and future clients agree. Recently touched sessions remain resumable.</p>
+    </article>
+    <article class="card">
+      <span class="label">Coaching</span><h2>Broaden the learning progression</h2>
+      <p class="before">Before: new and learning material repeatedly maps to fading and cue recall.</p>
+      <div class="flow"><span class="node">shadow</span><span class="node">fade</span><span class="node">chain</span><span class="node">recall</span><span class="node">cold start</span></div>
+      <p>Smart sessions will rotate supported modes while preserving weak-link triage, session caps, and deterministic offline planning.</p>
+    </article>
+    <article class="card">
+      <span class="label">Backend work</span><h2>Policy and planner</h2>
+      <ol>
+        <li class="step"><span class="num">1</span><div>Add an explicit expired session state and idle cutoff.<br><span class="tag">models.py</span><span class="tag">router.py</span><span class="tag">planning.py</span></div></li>
+        <li class="step"><span class="num">2</span><div>Use attempt history to vary smart exercise choices at each stage.<br><span class="tag">planning.py</span><span class="tag">test_domain.py</span></div></li>
+      </ol>
+    </article>
+    <article class="card">
+      <span class="label">Verification</span><h2>Evidence before completion</h2>
+      <ol>
+        <li class="step"><span class="num">3</span><div>Cover lifecycle and variety with unit/API tests, then run full backend and frontend gates.</div></li>
+        <li class="step"><span class="num">4</span><div>Use PinchTab against the live app to confirm the active list and smart-session exercise labels.</div></li>
+      </ol>
+    </article>
+  </section>
+</main></body></html>

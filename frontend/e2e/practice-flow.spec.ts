@@ -12,7 +12,19 @@ async function createGreekPassage(page: Page, title: string): Promise<void> {
 	await page.getByRole('button', { name: 'Generate line segments' }).click();
 	await page.getByPlaceholder('recall cue').first().fill('Sing, goddess');
 	await page.getByRole('button', { name: 'Create passage' }).click();
-	await expect(page).toHaveURL(/\/passages\/[\w-]+/);
+	await expect(page).toHaveURL(/\/passages\/(?!new(?:$|\/))[\w-]+$/);
+	await expect(page.getByRole('heading', { name: title })).toBeVisible();
+}
+
+async function createSingleLinePassage(page: Page, title: string): Promise<void> {
+	await page.goto('/passages/new');
+	await page.getByLabel('Title').fill(title);
+	await page.getByLabel('Language').selectOption({ label: 'Ancient Greek' });
+	await page.getByLabel(/Source text/).fill(GREEK_LINE_1);
+	await page.getByRole('button', { name: 'Generate line segments' }).click();
+	await page.getByRole('button', { name: 'Create passage' }).click();
+	await expect(page).toHaveURL(/\/passages\/(?!new(?:$|\/))[\w-]+$/);
+	await expect(page.getByRole('heading', { name: title })).toBeVisible();
 }
 
 /** Manual mode selection lives behind a disclosure now that smart is the default. */
@@ -161,6 +173,26 @@ test('smart session scaffolds a fresh passage with progressive fading', async ({
 	await expect(page.getByText('2/3 items')).toBeVisible();
 	await page.keyboard.press('4');
 	await expect(page.getByText('Session complete')).toBeVisible();
+});
+
+test('smart sessions rotate a learning line through distinct exercises', async ({ page }) => {
+	const title = `Smart rotation e2e ${Date.now()}`;
+	await createSingleLinePassage(page, title);
+	const passageUrl = page.url();
+
+	for (const expectedMode of [
+		'progressive fading',
+		'cue recall',
+		'forward chaining',
+		'backward chaining'
+	]) {
+		await page.getByRole('button', { name: '✦ Smart session' }).click();
+		await expect(page).toHaveURL(/\/practice\/[\w-]+/);
+		await expect(page.getByText(expectedMode, { exact: true })).toBeVisible();
+		await page.keyboard.press('3'); // Good keeps the line in learning.
+		await expect(page.getByText('Session complete')).toBeVisible();
+		await page.goto(passageUrl);
+	}
 });
 
 test('recordings stay browser-local until explicitly saved as best', async ({ page }) => {

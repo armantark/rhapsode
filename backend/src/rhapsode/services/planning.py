@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from collections import defaultdict
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
@@ -224,17 +225,49 @@ def due_segment_ids(db: Session, segment_ids: list[str]) -> set[str]:
     )
 
 
-def smart_mode_for(stage: str | None, difficult: bool) -> str:
-    """The coach's mode ladder: support fades as mastery grows. Difficult
-    segments get weak_link drilling regardless of stage, except brand-new
-    ones which still need scaffolding first."""
+def smart_mode_for(
+    stage: str | None,
+    difficult: bool,
+    *,
+    kind: str = "line",
+    mode_counts: dict[str, int] | None = None,
+    has_reference_audio: bool = False,
+) -> str:
+    """Choose the least-used useful exercise for this mastery stage.
+
+    Triage still decides *which* segments deserve attention. Within a selected
+    line, rotating techniques prevents "weak link" from becoming the only way
+    difficult material is ever practiced. Junctures keep a narrower repertoire
+    because chaining a transition fragment is not a coherent exercise.
+    """
     if stage is None or stage == "new":
         return PracticeMode.progressive_fading.value
+    if kind == "juncture":
+        cycle = (
+            [PracticeMode.cue_recall.value, PracticeMode.progressive_fading.value]
+            if stage == "learning"
+            else [PracticeMode.random_start.value, PracticeMode.cue_recall.value]
+        )
+    elif stage == "learning":
+        cycle = [
+            PracticeMode.cue_recall.value,
+            PracticeMode.forward_chaining.value,
+            PracticeMode.backward_chaining.value,
+            PracticeMode.progressive_fading.value,
+        ]
+    else:
+        cycle = [
+            PracticeMode.random_start.value,
+            PracticeMode.forward_chaining.value,
+            PracticeMode.backward_chaining.value,
+            PracticeMode.cue_recall.value,
+        ]
+    if has_reference_audio and kind != "juncture" and (stage == "learning" or difficult):
+        cycle.append(PracticeMode.shadowing.value)
     if difficult:
-        return PracticeMode.weak_link.value
-    if stage == "learning":
-        return PracticeMode.cue_recall.value
-    return PracticeMode.random_start.value
+        cycle = [PracticeMode.weak_link.value, *cycle]
+    counts = mode_counts or {}
+    return min(cycle, key=lambda mode: (counts.get(mode, 0), cycle.index(mode)))
 
 
 # A smart session must end while momentum lasts. Long passages (epic verse)
@@ -252,6 +285,8 @@ SMART_SESSION_CAP = 12
 # ground to death when a long budget is picked.
 FILL_MODE_CYCLE = [
     PracticeMode.progressive_fading.value,
+    PracticeMode.forward_chaining.value,
+    PracticeMode.backward_chaining.value,
     PracticeMode.cue_recall.value,
     PracticeMode.random_start.value,
 ]
@@ -352,8 +387,27 @@ def build_smart_plan_for_revisions(
         )
     }
     difficult_ids = _difficult_segment_ids(db)
+    revisions_with_reference = {
+        revision.id
+        for revision, _segments in revision_segments
+        if _has_reference_audio(db, revision.id)
+    }
+    mode_counts: defaultdict[str, dict[str, int]] = defaultdict(dict)
+    for segment_id, mode, count in db.execute(
+        select(models.Attempt.segment_id, models.Attempt.mode, func.count(models.Attempt.id))
+        .where(models.Attempt.segment_id.in_([segment.id for segment in all_segments]))
+        .group_by(models.Attempt.segment_id, models.Attempt.mode)
+    ):
+        if segment_id is not None:
+            mode_counts[segment_id][mode] = count
     modes = {
-        segment.id: smart_mode_for(stages.get(segment.id), segment.id in difficult_ids)
+        segment.id: smart_mode_for(
+            stages.get(segment.id),
+            segment.id in difficult_ids,
+            kind=segment.kind,
+            mode_counts=mode_counts[segment.id],
+            has_reference_audio=segment.revision_id in revisions_with_reference,
+        )
         for segment in all_segments
     }
     # First exposure rides the recording when one exists (grill D2): hear a
@@ -361,7 +415,7 @@ def build_smart_plan_for_revisions(
     # are fragments and don't map onto the audio, so they skip the pass.
     shadow_first: set[str] = set()
     for revision, segments in revision_segments:
-        if _has_reference_audio(db, revision.id):
+        if revision.id in revisions_with_reference:
             shadow_first.update(
                 segment.id
                 for segment in segments
@@ -423,10 +477,21 @@ def build_smart_plan_for_revisions(
         # lines do; the per-segment rotation cap keeps it from over-drilling.
         if chosen and len(chosen) == len(triaged):
             for entry in triaged:
+                segment = entry[2]
                 fill_rotations[entry[2].id] = [
-                    mode for mode in FILL_MODE_CYCLE if mode != modes[entry[2].id]
+                    mode
+                    for mode in FILL_MODE_CYCLE
+                    if mode != modes[segment.id]
+                    and not (
+                        segment.kind == "juncture"
+                        and mode
+                        in {
+                            PracticeMode.forward_chaining.value,
+                            PracticeMode.backward_chaining.value,
+                        }
+                    )
                 ]
-                fill_reps[entry[2].id] = 0
+                fill_reps[segment.id] = 0
             progressed = True
             while progressed:
                 progressed = False
@@ -471,9 +536,35 @@ def build_smart_plan_for_revisions(
             }
         )
 
+    def context_for(
+        available: list[models.Segment],
+        selected: list[models.Segment],
+        index: int,
+        mode: str,
+    ) -> list[models.Segment]:
+        if mode in {
+            PracticeMode.forward_chaining.value,
+            PracticeMode.backward_chaining.value,
+        }:
+            chain = [segment for segment in available if segment.kind != "juncture"]
+            target_index = next(
+                position
+                for position, segment in enumerate(chain)
+                if segment.id == selected[index].id
+            )
+            if mode == PracticeMode.forward_chaining.value:
+                return chain[: target_index + 1]
+            return chain[target_index:]
+        return selected[index:]
+
     # Present survivors in collection-member order and passage order.
-    selected_by_revision: list[tuple[models.PassageRevision, list[models.Segment]]] = []
-    for revision, _segments in revision_segments:
+    selected_by_revision: list[
+        tuple[models.PassageRevision, list[models.Segment], list[models.Segment]]
+    ] = []
+    for revision, _available in revision_segments:
+        # Chaining must remain a continuous passage exercise even when triage
+        # or due-only filtering selected only a subset of targets.
+        available = _ordered_segments(revision, segment_kinds)
         selected = sorted(
             (
                 segment
@@ -482,27 +573,29 @@ def build_smart_plan_for_revisions(
             ),
             key=lambda segment: (segment.ordinal, segment.kind != "juncture"),
         )
-        selected_by_revision.append((revision, selected))
+        selected_by_revision.append((revision, available, selected))
 
     # Primary pass: each segment's stage-chosen mode, with a shadow lead-in on
     # first audio exposure.
-    for _revision, selected in selected_by_revision:
+    for _revision, available, selected in selected_by_revision:
         for index, target in enumerate(selected):
             if target.id in shadow_first:
                 emit(target, PracticeMode.shadowing.value, selected[index:])
-            emit(target, modes[target.id], selected[index:])
+            mode = modes[target.id]
+            emit(target, mode, context_for(available, selected, index, mode))
 
     # Budget-fill repetitions, presented as further run-throughs of the passage
     # rather than one segment drilled back to back.
     for round_index in range(max(fill_reps.values(), default=0)):
-        for _revision, selected in selected_by_revision:
+        for _revision, available, selected in selected_by_revision:
             for index, target in enumerate(selected):
                 if fill_reps.get(target.id, 0) > round_index:
-                    emit(target, fill_rotations[target.id][round_index], selected[index:])
+                    mode = fill_rotations[target.id][round_index]
+                    emit(target, mode, context_for(available, selected, index, mode))
 
     # The holistic finisher closes the session, once every targeted segment of
     # a passage has graduated.
-    for revision, selected in selected_by_revision:
+    for revision, _available, selected in selected_by_revision:
         if all_graduated[revision.id] and selected:
             emit(selected[0], PracticeMode.full_passage.value, selected)
     return items

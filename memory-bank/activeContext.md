@@ -33,6 +33,14 @@ Remaining work is manual release validation (signing, first tag push, install sm
   junctures), 12-item cap or an optional `minutes` budget converted via
   per-mode mean attempt latency (defaults until ≥5 samples). Finisher is
   budgeted first when the passage is fully graduated.
+- Smart exercise selection now rotates to the least-used useful mode at each
+  mastery stage. Difficult segments remain first in triage but no longer receive
+  `weak_link` forever: line cycles introduce random starts, forward/backward
+  chaining, cue recall, and shadowing when reference audio exists. Junctures
+  never receive chaining.
+- Unfinished sessions expire after 24 idle hours. Expired plans and attempts are
+  preserved but hidden from the default session list; stale direct links render
+  an explicit expired state and cannot submit or undo attempts.
 - `minutes` is a TARGET, not just a ceiling. When one full pass leaves budget
   on the clock (short passage, generous time), the leftover buys extra varied
   repetitions: each segment walks `FILL_MODE_CYCLE`
@@ -112,6 +120,14 @@ Remaining work is manual release validation (signing, first tag push, install sm
 - Frontend: 72 vitest, svelte-check 0/0, production build green.
 - Desktop: `cargo check` in `src-tauri` green; sidecar smoke
   (`scripts/desktop_sidecar_smoke.py --require-sidecar`) passes on macOS arm64.
+- Session lifecycle/exercise-variety pass: 61 backend pytest, Ruff, strict mypy,
+  contract check, 72 frontend tests, svelte-check, production build, and the new
+  Playwright smart-rotation flow pass; the final isolated full Playwright run
+  passed 12/12. Earlier navigation flakes were caused by the manual-verification
+  Vite server and Playwright's Vite server concurrently regenerating the same
+  `.svelte-kit` workspace. PinchTab against the real dev DB expired 4 stale
+  sessions (5 active → 1 active) and verified a new Iliad smart plan containing
+  random-start and forward-chaining cards.
 - Live Gemini call drafted 5 cues + 5 glosses + 5 translations onto the real
   Iliad passage; quality checked by hand (accurate glosses, natural
   translations).

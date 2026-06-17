@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///data/rhapsode.db"
     media_dir: Path = Path("data/media")
     backup_dir: Path = Path("data/backups")
+    # Restart recovery is for interrupted practice, not an indefinitely growing
+    # inbox. Abandoned sessions keep their history but leave the active queue.
+    session_expiry_hours: int = Field(default=24, ge=1, le=720)
     # Set by the Tauri host when spawning the sidecar so loopback CORS is enabled.
     desktop: bool = False
     cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)

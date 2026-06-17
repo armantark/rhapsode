@@ -87,6 +87,19 @@ is available at `http://127.0.0.1:8000/docs`.
   an inline editor on an already-created session, fetch the latest note for the
   current `segment_id` and prefer it over the persisted fallback prompt hint.
 
+## Session Lifecycle And Smart Variety (2026-06-12)
+
+- Active sessions expire after 24 idle hours. `GET /sessions` expires stale
+  rows and omits `status=expired` by default; `GET /sessions?status=expired`
+  exposes them when needed. Direct session reads still return the persisted
+  plan/items with `status: "expired"`.
+- Expired sessions reject new attempts and undo. Frontends should render them
+  as abandoned history, not as completed practice.
+- The API shape is unchanged. Smart plans now use attempt history to select the
+  least-used useful exercise for each line's mastery stage. Chaining prompts
+  always carry a continuous passage context, and junctures never receive
+  forward/backward chaining.
+
 ## Desktop / Tauri Sidecar (2026-06-12)
 
 The backend can run as a PyInstaller sidecar spawned by the Tauri host. Browser

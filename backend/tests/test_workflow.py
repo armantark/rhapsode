@@ -68,6 +68,48 @@ def test_smart_session_scaffolds_new_segments(
     assert {item["mode"] for item in session["items"]} == {"progressive_fading"}
 
 
+def test_session_listing_expires_abandoned_sessions(
+    client: TestClient,
+    session_factory: object,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from rhapsode import models
+
+    revision = passage["active_revision"]
+    stale = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "modes": ["cue_recall"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    ).json()
+    recent = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "modes": ["cue_recall"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    ).json()
+    with session_factory() as db:  # type: ignore[operator]
+        row = db.get(models.PracticeSession, stale["id"])
+        assert row is not None
+        row.updated_at = datetime.now(UTC) - timedelta(hours=25)
+        db.commit()
+
+    default_listing = client.get("/api/v1/sessions").json()
+    assert {session["id"] for session in default_listing} == {recent["id"]}
+    expired_listing = client.get("/api/v1/sessions?status=expired").json()
+    assert [session["id"] for session in expired_listing] == [stale["id"]]
+    assert client.get(f"/api/v1/sessions/{stale['id']}").json()["status"] == "expired"
+
+    rejected = client.post(
+        f"/api/v1/sessions/{stale['id']}/attempts",
+        json={"item_id": stale["items"][0]["id"], "rating": "clean"},
+        headers=mutation(),
+    )
+    assert rejected.status_code == 409
+    assert rejected.json()["detail"] == "Session is not active."
+
+
 def test_personal_note_overlay_updates_practiced_revision_hint(
     client: TestClient,
     mutation: Callable[..., dict[str, str]],
@@ -240,10 +282,11 @@ def test_due_only_session_targets_due_segments(
     assert due_session.status_code == 201, due_session.text
     body = due_session.json()
     assert body["plan"]["due_only"] is True
-    # Only the single graded-and-now-due segment is in the plan; its stage is
-    # "learning", so the smart planner picks cue recall.
+    # Only the single graded-and-now-due segment is in the plan. It is still
+    # learning, but cue recall was just used, so the rotation introduces
+    # forward chaining instead of repeating the same exercise.
     assert [item["segment_id"] for item in body["items"]] == [first["segment_id"]]
-    assert body["items"][0]["mode"] == "cue_recall"
+    assert body["items"][0]["mode"] == "forward_chaining"
 
 
 def _tokenized_passage(

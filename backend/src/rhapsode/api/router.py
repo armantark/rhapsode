@@ -15,6 +15,7 @@ from rhapsode.services import media as media_service
 from rhapsode.services import notes as note_service
 from rhapsode.services import passages as passage_service
 from rhapsode.services import planning, prep, scheduling
+from rhapsode.services import sessions as session_service
 
 router = APIRouter(prefix="/api/v1")
 Db = Annotated[Session, Depends(get_session)]
@@ -460,6 +461,7 @@ def delete_media(media_id: str, db: Db) -> dict[str, bool]:
 
 @router.post("/sessions", response_model=schemas.SessionRead, status_code=201, tags=["practice"])
 def create_session(payload: schemas.SessionCreate, db: Db) -> models.PracticeSession:
+    session_service.expire_stale_sessions(db)
     collection = None
     if payload.collection_id is not None:
         try:
@@ -534,6 +536,7 @@ def create_session(payload: schemas.SessionCreate, db: Db) -> models.PracticeSes
 
 @router.get("/sessions/{session_id}", response_model=schemas.SessionRead, tags=["practice"])
 def get_session_detail(session_id: str, db: Db) -> models.PracticeSession:
+    session_service.expire_stale_sessions(db)
     session = db.scalar(
         select(models.PracticeSession)
         .where(models.PracticeSession.id == session_id)
@@ -546,9 +549,12 @@ def get_session_detail(session_id: str, db: Db) -> models.PracticeSession:
 
 @router.get("/sessions", response_model=list[schemas.SessionRead], tags=["practice"])
 def list_sessions(db: Db, status: str | None = None) -> list[models.PracticeSession]:
+    session_service.expire_stale_sessions(db)
     query = select(models.PracticeSession).options(selectinload(models.PracticeSession.items))
     if status:
         query = query.where(models.PracticeSession.status == status)
+    else:
+        query = query.where(models.PracticeSession.status != "expired")
     return list(db.scalars(query.order_by(models.PracticeSession.updated_at.desc())))
 
 
@@ -561,6 +567,7 @@ def list_sessions(db: Db, status: str | None = None) -> list[models.PracticeSess
 def submit_attempt(
     session_id: str, payload: schemas.AttemptCreate, db: Db
 ) -> schemas.AttemptResult:
+    session_service.expire_stale_sessions(db)
     session = db.get(models.PracticeSession, session_id)
     if session is None:
         raise not_found("Session")
@@ -640,9 +647,12 @@ def submit_attempt(
     "/sessions/{session_id}/undo", response_model=schemas.SessionRead, tags=["practice"]
 )
 def undo_attempt(session_id: str, db: Db) -> schemas.SessionRead:
+    session_service.expire_stale_sessions(db)
     session = db.get(models.PracticeSession, session_id)
     if session is None:
         raise not_found("Session")
+    if session.status == "expired":
+        raise HTTPException(status_code=409, detail="Expired sessions cannot be reopened.")
     attempt = db.scalar(
         select(models.Attempt)
         .where(models.Attempt.session_id == session_id)

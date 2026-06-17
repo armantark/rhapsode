@@ -182,3 +182,14 @@ Frontend API discovery: browser dev unchanged (`/api/v1` proxy); Tauri awaits
 `initApiBase()` in `+layout.svelte` before rendering. CI:
 `.github/workflows/desktop-release.yml` builds the sidecar via
 `scripts/build_backend_sidecar.py` before `tauri build`.
+
+## Session Lifecycle UI (2026-06-12)
+
+- The existing `SessionRead.status` string is sufficient for expiry; no schema
+  addition was requested.
+- A direct link to an expired session now shows a dedicated "Session expired"
+  card and disables undo instead of reusing the completion celebration.
+- The normal Sessions page needs no filtering change because the backend omits
+  expired sessions from the default listing.
+- Playwright now covers the visible smart progression from progressive fading
+  to cue recall, forward chaining, and backward chaining on a learning line.

@@ -439,7 +439,7 @@
 			<button
 				class="ghost"
 				onclick={undo}
-				disabled={undoing || (doneCount === 0 && session.status !== 'completed')}
+				disabled={undoing || session.status === 'expired' || (doneCount === 0 && session.status !== 'completed')}
 				title="Undo last card (⌘Z)"
 			>
 				↶ Undo <kbd>⌘Z</kbd>
@@ -548,6 +548,19 @@
 		{#if lastFeedback}
 			<p class="feedback">{lastFeedback}</p>
 		{/if}
+	{:else if session.status === 'expired'}
+		<div class="card summary">
+			<span class="eyebrow">Session expired</span>
+			<h2>This interrupted session was idle for more than a day.</h2>
+			<p class="muted small">
+				Its completed attempts are still in review analytics. Start a fresh smart session so the
+				coach can plan from your current mastery.
+			</p>
+			<div class="row">
+				<a href="/"><button class="primary">Open library →</button></a>
+				<a href="/practice"><button>All sessions</button></a>
+			</div>
+		</div>
 	{:else}
 		<div class="card summary" class:celebrate>
 			<span class="eyebrow">Session complete</span>

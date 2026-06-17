@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from rhapsode.app import create_app
-from rhapsode.services import prep
+from rhapsode.services import planning, prep
 
 
 def test_end_to_end_recall_and_restart_recovery(
@@ -66,6 +66,51 @@ def test_smart_session_scaffolds_new_segments(
     assert session["plan"]["smart"] is True
     # Never-practiced segments all get maximum support.
     assert {item["mode"] for item in session["items"]} == {"progressive_fading"}
+
+
+def test_smart_session_random_start_targets_are_shuffled(
+    monkeypatch: pytest.MonkeyPatch,
+    client: TestClient,
+    session_factory: object,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    from datetime import UTC, datetime
+
+    from rhapsode import models
+
+    def reverse(items: list[models.Segment]) -> None:
+        items.reverse()
+
+    monkeypatch.setattr(planning.random, "shuffle", reverse)
+    revision = passage["active_revision"]
+    lines = [segment for segment in revision["segments"] if segment["kind"] == "line"]
+    with session_factory() as db:  # type: ignore[operator]
+        for segment in lines:
+            db.add(
+                models.ReviewState(
+                    segment_id=segment["id"],
+                    fsrs_card_json="{}",
+                    due_at=datetime.now(UTC),
+                    mastery_stage="review",
+                    clean_count=2,
+                    attempt_count=2,
+                )
+            )
+        db.commit()
+
+    created = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    )
+    assert created.status_code == 201, created.text
+    random_items = [
+        item for item in created.json()["items"] if item["mode"] == "random_start"
+    ]
+    assert [item["prompt"]["target_text"] for item in random_items] == [
+        segment["text"] for segment in reversed(lines)
+    ]
 
 
 def test_session_listing_expires_abandoned_sessions(

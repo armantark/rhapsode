@@ -2,8 +2,10 @@ import os
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import pytest
+
 from rhapsode import models, schemas
-from rhapsode.services import prep
+from rhapsode.services import planning, prep
 from rhapsode.services import sessions as session_service
 from rhapsode.services.backup import (
     SNAPSHOT_RETENTION,
@@ -47,6 +49,35 @@ def test_all_practice_modes_build_a_prompt(session_factory: object) -> None:
         plan = build_plan(db, revision, BUILT_IN_MODES, ["line"])
         assert {item["mode"] for item in plan} == set(BUILT_IN_MODES)
         assert all(item["prompt"]["instruction"] for item in plan)
+
+
+def test_manual_random_start_uses_shuffled_target_order(
+    monkeypatch: pytest.MonkeyPatch, session_factory: object
+) -> None:
+    def reverse(items: list[models.Segment]) -> None:
+        items.reverse()
+
+    monkeypatch.setattr(planning.random, "shuffle", reverse)
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="latin-manual-random", name="Latin")
+        passage = models.Passage(title="Aeneid", language_profile=language)
+        revision = models.PassageRevision(
+            passage=passage, revision_number=1, source_text="..."
+        )
+        revision.segments = [
+            models.Segment(kind="line", ordinal=index, text=f"line {index}")
+            for index in range(4)
+        ]
+        db.add(passage)
+        db.commit()
+
+        plan = build_plan(db, revision, ["random_start"], ["line"])
+        assert [item["prompt"]["target_text"] for item in plan] == [
+            "line 3",
+            "line 2",
+            "line 1",
+            "line 0",
+        ]
 
 
 def test_smart_mode_ladder_fades_support_with_mastery() -> None:
@@ -199,6 +230,49 @@ def test_smart_plan_appends_full_passage_once_all_segments_graduate(
             "random_start",
             "full_passage",
         ]
+
+
+def test_smart_random_start_targets_are_not_presented_in_passage_order(
+    monkeypatch: pytest.MonkeyPatch, session_factory: object
+) -> None:
+    def reverse(items: list[models.Segment]) -> None:
+        items.reverse()
+
+    monkeypatch.setattr(planning.random, "shuffle", reverse)
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="latin-smart-random", name="Latin")
+        passage = models.Passage(title="Aeneid", language_profile=language)
+        revision = models.PassageRevision(
+            passage=passage, revision_number=1, source_text="..."
+        )
+        revision.segments = [
+            models.Segment(kind="line", ordinal=index, text=f"line {index}")
+            for index in range(4)
+        ]
+        db.add(passage)
+        db.commit()
+        for segment in revision.segments:
+            db.add(
+                models.ReviewState(
+                    segment_id=segment.id,
+                    fsrs_card_json="{}",
+                    due_at=datetime.now(UTC),
+                    mastery_stage="review",
+                    clean_count=2,
+                    attempt_count=2,
+                )
+            )
+        db.commit()
+
+        plan = build_smart_plan(db, revision, ["line"])
+        random_items = [item for item in plan if item["mode"] == "random_start"]
+        assert [item["prompt"]["target_text"] for item in random_items] == [
+            "line 3",
+            "line 2",
+            "line 1",
+            "line 0",
+        ]
+        assert plan[-1]["mode"] == "full_passage"
 
 
 def test_smart_plan_caps_session_size_and_triages(session_factory: object) -> None:

@@ -71,6 +71,22 @@ test('full loop: create, render Unicode, practice, grade, review', async ({ page
 	await expect(page.getByText(GREEK_LINE_2).first()).toBeVisible();
 });
 
+test('manual random start does not begin at the first line', async ({ page }) => {
+	const title = `Random start e2e ${Date.now()}`;
+	await createGreekPassage(page, title);
+
+	await page.getByText('Choose modes manually').click();
+	await page.getByRole('button', { name: 'cue recall' }).click();
+	await page.getByRole('button', { name: 'random start' }).click();
+	await page.getByRole('button', { name: '▶ Start manual session' }).click();
+	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
+	await expect(page.getByText('0/2 items')).toBeVisible();
+	await expect(page.getByText('random start', { exact: true })).toBeVisible();
+
+	await page.getByRole('button', { name: /Show answer/ }).click();
+	await expect(page.getByText(GREEK_LINE_2).first()).toBeVisible();
+});
+
 test('an interrupted session resumes at the persisted cursor after reload', async ({ page }) => {
 	const title = `Recovery e2e ${Date.now()}`;
 	await createGreekPassage(page, title);

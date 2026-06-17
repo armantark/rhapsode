@@ -189,6 +189,36 @@ def _ordered_segments(
     return segments
 
 
+def _random_start_order(targets: list[models.Segment]) -> list[models.Segment]:
+    """Shuffle cold-start targets without ever falling back to plain passage order."""
+    shuffled = list(targets)
+    if len(shuffled) < 2:
+        return shuffled
+    natural_order = [segment.id for segment in shuffled]
+    for _ in range(5):
+        random.shuffle(shuffled)
+        if [segment.id for segment in shuffled] != natural_order:
+            return shuffled
+    return shuffled[1:] + shuffled[:1]
+
+
+def _shuffle_random_start_turns(
+    turns: list[tuple[models.Segment, str]],
+) -> list[tuple[models.Segment, str]]:
+    random_targets = [
+        target for target, mode in turns if mode == PracticeMode.random_start.value
+    ]
+    if len(random_targets) < 2:
+        return turns
+    shuffled_targets = iter(_random_start_order(random_targets))
+    return [
+        (next(shuffled_targets), mode)
+        if mode == PracticeMode.random_start.value
+        else (target, mode)
+        for target, mode in turns
+    ]
+
+
 # A weak link counts as repaired after this many consecutive cleans since the
 # last difficult attempt (grill B1): once could be luck, twice is demonstrated.
 REPAIR_STREAK = 2
@@ -539,7 +569,7 @@ def build_smart_plan_for_revisions(
     def context_for(
         available: list[models.Segment],
         selected: list[models.Segment],
-        index: int,
+        target: models.Segment,
         mode: str,
     ) -> list[models.Segment]:
         if mode in {
@@ -550,12 +580,15 @@ def build_smart_plan_for_revisions(
             target_index = next(
                 position
                 for position, segment in enumerate(chain)
-                if segment.id == selected[index].id
+                if segment.id == target.id
             )
             if mode == PracticeMode.forward_chaining.value:
                 return chain[: target_index + 1]
             return chain[target_index:]
-        return selected[index:]
+        target_index = next(
+            position for position, segment in enumerate(selected) if segment.id == target.id
+        )
+        return selected[target_index:]
 
     # Present survivors in collection-member order and passage order.
     selected_by_revision: list[
@@ -578,20 +611,36 @@ def build_smart_plan_for_revisions(
     # Primary pass: each segment's stage-chosen mode, with a shadow lead-in on
     # first audio exposure.
     for _revision, available, selected in selected_by_revision:
-        for index, target in enumerate(selected):
+        turns = _shuffle_random_start_turns(
+            [(target, modes[target.id]) for target in selected]
+        )
+        for target, mode in turns:
             if target.id in shadow_first:
-                emit(target, PracticeMode.shadowing.value, selected[index:])
-            mode = modes[target.id]
-            emit(target, mode, context_for(available, selected, index, mode))
+                emit(
+                    target,
+                    PracticeMode.shadowing.value,
+                    context_for(
+                        available,
+                        selected,
+                        target,
+                        PracticeMode.shadowing.value,
+                    ),
+                )
+            emit(target, mode, context_for(available, selected, target, mode))
 
     # Budget-fill repetitions, presented as further run-throughs of the passage
     # rather than one segment drilled back to back.
     for round_index in range(max(fill_reps.values(), default=0)):
         for _revision, available, selected in selected_by_revision:
-            for index, target in enumerate(selected):
-                if fill_reps.get(target.id, 0) > round_index:
-                    mode = fill_rotations[target.id][round_index]
-                    emit(target, mode, context_for(available, selected, index, mode))
+            turns = _shuffle_random_start_turns(
+                [
+                    (target, fill_rotations[target.id][round_index])
+                    for target in selected
+                    if fill_reps.get(target.id, 0) > round_index
+                ]
+            )
+            for target, mode in turns:
+                emit(target, mode, context_for(available, selected, target, mode))
 
     # The holistic finisher closes the session, once every targeted segment of
     # a passage has graduated.
@@ -619,19 +668,21 @@ def build_plan(
     for mode in modes:
         targets = segments
         if mode == PracticeMode.random_start.value:
-            targets = list(segments)
-            random.Random(revision.id).shuffle(targets)
+            targets = _random_start_order(segments)
         elif mode == PracticeMode.weak_link.value:
             targets = [segment for segment in segments if segment.id in difficult_ids] or segments[
                 :1
             ]
         elif mode == PracticeMode.full_passage.value:
             targets = segments[:1]
-        for index, target in enumerate(targets):
+        for target in targets:
+            target_index = next(
+                position for position, segment in enumerate(segments) if segment.id == target.id
+            )
             context = (
-                segments[: index + 1]
+                segments[: target_index + 1]
                 if mode == PracticeMode.forward_chaining.value
-                else segments[index:]
+                else segments[target_index:]
             )
             items.append(
                 {

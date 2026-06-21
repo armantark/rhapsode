@@ -676,7 +676,7 @@ def test_prep_suggestions_fill_gaps_without_overwriting(
     )
     assert response.status_code == 200
     # Both lines already had authored cues; line 1 already had a translation.
-    assert response.json()["written"] == {"cue": 0, "gloss": 2, "translation": 1}
+    assert response.json()["written"] == {"cue": 0, "gloss": 2, "translation": 1, "reading": 0}
 
     refreshed = client.get(f"/api/v1/revisions/{revision['id']}").json()
     lines = sorted(

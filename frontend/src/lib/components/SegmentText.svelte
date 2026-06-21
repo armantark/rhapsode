@@ -28,6 +28,9 @@
 	// makes a five-line passage scroll like fifty.
 	const tokenChildren = $derived(node.children.filter((child) => child.kind === 'token'));
 	const blockChildren = $derived(node.children.filter((child) => child.kind !== 'token'));
+	const renderTokensAsPrimary = $derived(
+		node.kind === 'line' && tokenChildren.length > 0 && profile?.slug === 'japanese'
+	);
 	// Quantity marks render OVER each syllable of a token (ruby) when the
 	// annotation carries the syllable breakdown and it aligns to this text.
 	const meterSpans = $derived.by(() => {
@@ -52,15 +55,17 @@
 		{#if showCues && node.cue}
 			<span class="cue" title="Recall cue">{node.cue}</span>
 		{/if}
-		<span class="passage-text" lang={langCode(profile)} {dir} style:font-family={fontStack(profile)}>
-			{#if reading}
-				<ruby>{node.text}<rt>{reading}</rt></ruby>
-			{:else if meterSpans}
-				{#each meterSpans as span, index (index)}<ruby>{span.text}<rt class="meter-mark">{span.mark}</rt></ruby>{/each}
-			{:else}
-				{node.text}
-			{/if}
-		</span>
+		{#if !renderTokensAsPrimary}
+			<span class="passage-text" lang={langCode(profile)} {dir} style:font-family={fontStack(profile)}>
+				{#if reading}
+					<ruby>{node.text}<rt>{reading}</rt></ruby>
+				{:else if meterSpans}
+					{#each meterSpans as span, index (index)}<ruby>{span.text}<rt class="meter-mark">{span.mark}</rt></ruby>{/each}
+				{:else}
+					{node.text}
+				{/if}
+			</span>
+		{/if}
 	</div>
 	{#each annotations as annotation (annotation.layer + annotation.value)}
 		{#if node.kind === 'token'}
@@ -73,7 +78,7 @@
 		{/if}
 	{/each}
 	{#if tokenChildren.length}
-		<div class="token-row" lang={langCode(profile)} {dir}>
+		<div class="token-row" class:primary-tokens={renderTokensAsPrimary} lang={langCode(profile)} {dir}>
 			{#each tokenChildren as child (child.id)}
 				<SegmentText node={child} {profile} {layers} {showRuby} {showCues} depth={0} />
 			{/each}
@@ -125,11 +130,22 @@
 		margin: 4px 0 4px 18px;
 	}
 
+	.primary-tokens {
+		gap: 10px 14px;
+		margin: 2px 0 6px;
+		align-items: flex-end;
+	}
+
 	/* Token chips inside the row are inline words, not stacked blocks; any
 	   token-level annotations render under their word, interlinear style. */
 	.token-row :global(.segment) {
 		margin-bottom: 0 !important;
 		margin-inline-start: 0 !important;
+	}
+
+	.primary-tokens :global(.kind-token > .body .passage-text) {
+		color: var(--text);
+		font-size: 1.35rem;
 	}
 
 	.word-label {

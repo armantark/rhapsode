@@ -97,6 +97,13 @@
   PinchTab against the real Iliad/dev database.
   Four stale active sessions were expired and a fresh smart plan visibly
   contained random-start and forward-chaining exercises.
+- Japanese reading/prep improvements shipped: Gemini prep structured output now
+  supports lexical tokens plus hiragana readings, safe token creation for lines
+  without authored tokens, token-level reading/gloss annotations, and a
+  Japanese reading surface that shows token ruby as the primary line display.
+  Verified with 66 backend tests, Ruff, strict mypy, OpenAPI check, regenerated
+  frontend client with no diff, 73 frontend tests, svelte-check, build, 13/13
+  Playwright e2e, and PinchTab smoke on an isolated Japanese passage.
 
 ## Remaining
 

@@ -193,3 +193,16 @@ Frontend API discovery: browser dev unchanged (`/api/v1` proxy); Tauri awaits
   expired sessions from the default listing.
 - Playwright now covers the visible smart progression from progressive fading
   to cue recall, forward chaining, and backward chaining on a learning line.
+
+## Japanese Reading UI (2026-06-21)
+
+- No API shape change was needed. The frontend consumes existing `SegmentRead`
+  token children and `AnnotationRead.data.render === "ruby"`.
+- For Japanese line nodes with token children, `SegmentText` now hides the
+  duplicate whole-line surface and renders the token row as the primary reading
+  surface. Each token can show ruby from its own `reading` annotation and gloss
+  underneath when the gloss layer is enabled.
+- Whole-line ruby remains as a fallback for older Japanese passages with a
+  line-level `reading` annotation and no token children.
+- Manual smoke used an isolated local backend/frontend and verified a seeded
+  Japanese passage rendered token-level furigana and glosses through PinchTab.

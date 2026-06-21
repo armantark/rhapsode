@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Japanese Reading Prep Complete</title>
+  <style>
+    :root {
+      --bg: #0c0e12;
+      --surface: #161a21;
+      --surface-2: #1e232c;
+      --border: #2a3040;
+      --text: #e8ecf4;
+      --text-dim: #8b95a8;
+      --accent: #4f8cff;
+      --accent-glow: rgba(79, 140, 255, 0.15);
+      --red: #ff5c5c;
+      --green: #4ade80;
+      --amber: #fbbf24;
+      --purple: #a78bfa;
+      --gold: #f3a712;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(90deg, rgba(243, 167, 18, 0.12) 1px, transparent 1px) 0 0 / 42px 42px,
+        radial-gradient(circle at 78% 16%, rgba(79, 140, 255, 0.18), transparent 28%),
+        #0c0e12;
+      color: var(--text);
+      font-family: Outfit, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { width: min(1160px, calc(100vw - 32px)); margin: 0 auto; padding: 34px 0 48px; }
+    .badge {
+      display: inline-flex;
+      padding: 7px 10px;
+      border: 1px solid rgba(74, 222, 128, 0.45);
+      border-radius: 999px;
+      background: rgba(74, 222, 128, 0.09);
+      color: var(--green);
+      font: 800 0.7rem JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1 { margin: 18px 0 10px; max-width: 880px; font-size: clamp(2.1rem, 5vw, 4.4rem); line-height: 0.96; letter-spacing: 0; }
+    .lede { color: var(--text-dim); font-size: 1.03rem; line-height: 1.65; max-width: 820px; }
+    .grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 18px; margin-top: 26px; }
+    .card {
+      background: linear-gradient(180deg, rgba(22, 26, 33, 0.96), rgba(16, 19, 25, 0.98));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: 0 22px 60px rgba(0, 0, 0, 0.25);
+    }
+    .label { color: var(--gold); font: 800 0.67rem JetBrains Mono, ui-monospace, monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+    h2 { margin: 0 0 14px; font-size: 1.02rem; }
+    .mock {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #121720;
+      padding: 18px;
+      overflow: hidden;
+    }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+    .tool { border: 1px solid var(--border); background: var(--surface-2); color: var(--text-dim); border-radius: 7px; padding: 6px 10px; font-size: 0.78rem; }
+    .tool.active { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 0 3px rgba(243, 167, 18, 0.12); }
+    .reading { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; padding: 8px 2px 14px; }
+    .tok { display: inline-flex; flex-direction: column; align-items: center; min-width: 2ch; }
+    .word { font-family: "Noto Serif JP", "Yu Mincho", serif; font-size: 1.38rem; color: var(--text); }
+    rt { color: var(--text-dim); font-size: 0.55em; }
+    .gloss { color: var(--text-dim); font-size: 0.69rem; text-align: center; margin-top: 4px; max-width: 12ch; line-height: 1.25; }
+    .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .metric { background: rgba(79, 140, 255, 0.08); border: 1px solid rgba(79, 140, 255, 0.25); border-radius: 10px; padding: 14px; }
+    .metric strong { display: block; color: var(--text); font-size: 1.35rem; }
+    .metric span { color: var(--text-dim); font-size: 0.78rem; }
+    .flow { display: grid; gap: 10px; }
+    .step { display: grid; grid-template-columns: 32px 1fr; gap: 10px; padding: 11px; border: 1px solid var(--border); border-radius: 10px; background: rgba(255,255,255,0.025); }
+    .num { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: rgba(74, 222, 128, 0.1); color: var(--green); font: 800 0.75rem JetBrains Mono, ui-monospace, monospace; }
+    .step p { margin: 0; color: var(--text-dim); line-height: 1.5; }
+    .files { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .file { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 4px 7px; font: 700 0.62rem JetBrains Mono, ui-monospace, monospace; }
+    @media (max-width: 900px) {
+      .grid, .metrics { grid-template-columns: 1fr; }
+      main { width: min(100vw - 22px, 760px); padding-top: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <span class="badge">Completed</span>
+    <h1>Japanese prep now produces word-level reading support.</h1>
+    <p class="lede">Gemini prep can create safe token children with hiragana readings and glosses, and the reading view now makes those tokens the primary Japanese surface. The practice loop, scheduler, grading, and Gemini model id are unchanged.</p>
+
+    <section class="grid">
+      <div class="card">
+        <h2><span class="label">Manual smoke result</span></h2>
+        <div class="mock">
+          <div class="toolbar">
+            <span class="label">Reading View</span>
+            <span class="tool">reading</span>
+            <span class="tool active">gloss</span>
+            <span class="tool active">ruby</span>
+          </div>
+          <div class="reading">
+            <span class="tok"><ruby><span class="word">空</span><rt>そら</rt></ruby><span class="gloss">sky</span></span>
+            <span class="tok"><ruby><span class="word">こぼれ落ちた</span><rt>こぼれおちた</rt></ruby><span class="gloss">spilled down</span></span>
+            <span class="tok"><ruby><span class="word">ふたつ</span><rt>ふたつ</rt></ruby><span class="gloss">two</span></span>
+            <span class="tok"><ruby><span class="word">の</span><rt>の</rt></ruby><span class="gloss">genitive particle</span></span>
+            <span class="tok"><ruby><span class="word">星</span><rt>ほし</rt></ruby><span class="gloss">star</span></span>
+            <span class="tok"><ruby><span class="word">が</span><rt>が</rt></ruby><span class="gloss">subject particle</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="label">Verification</span></h2>
+        <div class="metrics">
+          <div class="metric"><strong>66</strong><span>backend pytest</span></div>
+          <div class="metric"><strong>73</strong><span>frontend tests</span></div>
+          <div class="metric"><strong>13/13</strong><span>Playwright e2e</span></div>
+        </div>
+        <div class="flow" style="margin-top: 12px;">
+          <div class="step"><div class="num">✓</div><p>Ruff, strict mypy, OpenAPI check, svelte-check, and production build passed.</p></div>
+          <div class="step"><div class="num">✓</div><p>TypeScript client regenerated from OpenAPI and produced no diff.</p></div>
+          <div class="step"><div class="num">✓</div><p>PinchTab smoke verified token ruby and gloss display on an isolated Japanese passage.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2><span class="label">Backend</span></h2>
+        <div class="flow">
+          <div class="step"><div class="num">B1</div><p>Structured prep output now accepts optional token suggestions with `text`, `reading`, and `gloss`.</p></div>
+          <div class="step"><div class="num">B2</div><p>The Gemini prompt is XML-tagged and explicitly guides Japanese lexical tokenization and hiragana furigana.</p></div>
+          <div class="step"><div class="num">B3</div><p>Prep creates token children only when a line has none and the suggested token text reassembles to the original line.</p></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2><span class="label">Frontend</span></h2>
+        <div class="flow">
+          <div class="step"><div class="num">F1</div><p>Japanese line nodes with token children render the token row as the primary text surface.</p></div>
+          <div class="step"><div class="num">F2</div><p>Token-level `reading` annotations render as ruby; token glosses stay interlinear underneath.</p></div>
+          <div class="step"><div class="num">F3</div><p>Older whole-line ruby passages still use the existing fallback.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top: 18px;">
+      <h2><span class="label">Touched files</span></h2>
+      <div class="files">
+        <span class="file">backend/src/rhapsode/services/prep.py</span>
+        <span class="file">backend/src/rhapsode/schemas.py</span>
+        <span class="file">backend/tests/test_domain.py</span>
+        <span class="file">backend/tests/test_workflow.py</span>
+        <span class="file">frontend/src/lib/components/SegmentText.svelte</span>
+        <span class="file">frontend/src/lib/components/SegmentText.test.ts</span>
+        <span class="file">frontend/src/lib/utils/ruby.ts</span>
+        <span class="file">frontend/src/routes/passages/[id]/+page.svelte</span>
+        <span class="file">memory-bank/*</span>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

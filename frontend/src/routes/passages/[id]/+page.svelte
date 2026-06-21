@@ -370,7 +370,7 @@
 			<div class="toolbar">
 				<span class="eyebrow">Segments &amp; annotations</span>
 				<button onclick={() => (editing = !editing)}>{editing ? 'Close editor' : 'Edit'}</button>
-				<button disabled={suggesting} onclick={suggestPrep} title="Gemini drafts cues, glosses, and translations for lines that don't have them yet. Nothing you wrote is touched.">
+				<button disabled={suggesting} onclick={suggestPrep} title="Gemini drafts cues, word splits, readings, glosses, and translations for lines that don't have them yet. Nothing you wrote is touched.">
 					{suggesting ? 'Drafting…' : '✦ Draft prep'}
 				</button>
 				{#if editing}

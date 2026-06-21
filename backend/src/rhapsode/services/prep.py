@@ -10,15 +10,17 @@ call plus runtime validation on our side; no string heuristics anywhere.
 """
 
 from collections.abc import Callable
+from html import escape
+from typing import Any
 
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel, Field, TypeAdapter
 from sqlalchemy.orm import Session
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from rhapsode import models
 from rhapsode.config import get_settings
 
-PREP_LAYERS = ("cue", "gloss", "translation")
+PREP_LAYERS = ("cue", "gloss", "translation", "reading")
 
 
 class WordGloss(BaseModel):
@@ -26,11 +28,19 @@ class WordGloss(BaseModel):
     gloss: str
 
 
+class TokenSuggestion(BaseModel):
+    text: str
+    reading: str = ""
+    gloss: str = ""
+
+
 class LineSuggestion(BaseModel):
     index: int
     cue: str
-    glosses: list[WordGloss]
+    glosses: list[WordGloss] = Field(default_factory=list)
     translation: str
+    reading: str = ""
+    tokens: list[TokenSuggestion] = Field(default_factory=list)
 
 
 _suggestions_adapter = TypeAdapter(list[LineSuggestion])
@@ -41,29 +51,55 @@ class PrepUnavailableError(RuntimeError):
 
 
 def _prompt(language_name: str, lines: list[str]) -> str:
-    numbered = "\n".join(
-        f'<line index="{line_index}">\n'
-        + "\n".join(
-            f'<word index="{word_index}">{word}</word>'
-            for word_index, word in enumerate(text.split())
+    def line_xml(line_index: int, text: str) -> str:
+        words = text.split()
+        whitespace_words = ""
+        if len(words) > 1:
+            whitespace_words = (
+                "\n<whitespace_words>\n"
+                + "\n".join(
+                    f'<word index="{word_index}">{escape(word)}</word>'
+                    for word_index, word in enumerate(words)
+                )
+                + "\n</whitespace_words>"
+            )
+        return (
+            f'<line index="{line_index}">\n'
+            f"<text>{escape(text)}</text>"
+            f"{whitespace_words}\n"
+            "</line>"
         )
-        + "\n</line>"
-        for line_index, text in enumerate(lines)
-    )
+
+    numbered = "\n".join(line_xml(line_index, text) for line_index, text in enumerate(lines))
     return (
         "<task>\n"
         f"For each line of this {language_name} passage being memorized for oral "
-        "recitation, provide:\n"
+        "recitation, draft learner-editable preparation support.\n"
+        "</task>\n"
+        "<output_contract>\n"
+        "Return one object per line with its index and these fields:\n"
         "- cue: a 2-4 word recall cue in the original language, evocative of the "
         "line's content without quoting its opening words\n"
-        "- glosses: one entry per word that is not basic vocabulary, keyed by the "
-        "word's index. Each gloss is for a reader who knows grammar terminology "
-        "well: lemma, concise morphological parse, and meaning, noting anything "
-        "dialectal, contracted, or elided. Do not repeat the surface form; the "
-        "gloss is displayed directly under the word\n"
+        "- glosses: for lines that include <whitespace_words>, one entry per "
+        "non-basic word keyed by that word's index. Each gloss is for a reader "
+        "who knows grammar terminology well: lemma, concise morphology, and "
+        "meaning, noting anything dialectal, contracted, or elided. Do not repeat "
+        "the surface form; the gloss is displayed directly under the word\n"
         "- translation: a natural English translation\n"
-        "Return one object per line with its index.\n"
-        "</task>\n"
+        "- reading: a whole-line reading only when that is useful for the language; "
+        "for Japanese, use hiragana\n"
+        "- tokens: for Japanese and other text whose word boundaries are not encoded "
+        "by spaces, split the line into lexical tokens suitable for memorization. "
+        "Each token text must be exact surface text from the line, in order; the "
+        "token readings should be hiragana for Japanese, and token glosses should "
+        "be concise learner-facing English. Do not split Japanese into individual "
+        "characters unless a character is genuinely an independent token\n"
+        "</output_contract>\n"
+        "<quality_bar>\n"
+        "Prefer a few high-signal glosses over exhaustive dictionary noise. Preserve "
+        "the original text exactly in token text; the app will reject tokenization "
+        "that cannot be reassembled into the line.\n"
+        "</quality_bar>\n"
         f"<passage>\n{numbered}\n</passage>"
     )
 
@@ -123,30 +159,19 @@ def suggest_prep(
             and "translation" not in present_layers
             and suggestion.translation.strip()
         ):
-            db.add(
-                models.Annotation(
-                    segment_id=segment.id,
-                    layer="translation",
-                    value=suggestion.translation.strip(),
-                )
-            )
+            _add_annotation(db, segment, "translation", suggestion.translation.strip())
             written["translation"] += 1
-        if "gloss" in layers:
-            written["gloss"] += _apply_glosses(db, revision, segment, suggestion)
+        if "gloss" in layers or "reading" in layers:
+            layer_counts = _apply_reading_layers(db, revision, segment, suggestion, layers)
+            for layer in ("gloss", "reading"):
+                if layer in written:
+                    written[layer] += layer_counts[layer]
     db.commit()
     return written
 
 
-def _apply_glosses(
-    db: Session,
-    revision: models.PassageRevision,
-    line: models.Segment,
-    suggestion: LineSuggestion,
-) -> int:
-    """Glosses live ON the word: they attach to the line's token segments so
-    the reading view renders them interlinearly. A line without tokens falls
-    back to one line-level annotation."""
-    tokens = sorted(
+def _line_tokens(revision: models.PassageRevision, line: models.Segment) -> list[models.Segment]:
+    return sorted(
         (
             segment
             for segment in revision.segments
@@ -154,27 +179,168 @@ def _apply_glosses(
         ),
         key=lambda segment: segment.ordinal,
     )
-    written = 0
-    if not tokens:
-        if any(annotation.layer == "gloss" for annotation in line.annotations):
-            return 0
-        joined = "; ".join(
-            f"{word.gloss.strip()}" for word in suggestion.glosses if word.gloss.strip()
+
+
+def _compact(text: str) -> str:
+    return "".join(text.split())
+
+
+def _suggested_tokens_match_line(
+    line: models.Segment, suggestions: list[TokenSuggestion]
+) -> bool:
+    return bool(suggestions) and _compact("".join(token.text for token in suggestions)) == _compact(
+        line.text
+    )
+
+
+def _suggestions_align_tokens(
+    tokens: list[models.Segment], suggestions: list[TokenSuggestion]
+) -> bool:
+    return len(tokens) == len(suggestions) and all(
+        _compact(token.text) == _compact(suggestion.text)
+        for token, suggestion in zip(tokens, suggestions, strict=True)
+    )
+
+
+def _has_layer(segment: models.Segment, layer: str) -> bool:
+    return any(annotation.layer == layer for annotation in segment.annotations)
+
+
+def _add_annotation(
+    db: Session,
+    segment: models.Segment,
+    layer: str,
+    value: str,
+    data: dict[str, Any] | None = None,
+) -> None:
+    annotation = models.Annotation(
+        segment_id=segment.id,
+        layer=layer,
+        value=value,
+        data=data or {},
+    )
+    db.add(annotation)
+    segment.annotations.append(annotation)
+
+
+def _ensure_suggested_tokens(
+    db: Session,
+    revision: models.PassageRevision,
+    line: models.Segment,
+    suggestion: LineSuggestion,
+) -> list[models.Segment]:
+    tokens = _line_tokens(revision, line)
+    if tokens or not _suggested_tokens_match_line(line, suggestion.tokens):
+        return tokens
+
+    created: list[models.Segment] = []
+    for index, token_suggestion in enumerate(suggestion.tokens):
+        text = token_suggestion.text.strip()
+        if not text:
+            continue
+        token = models.Segment(
+            revision=revision,
+            parent_id=line.id,
+            kind="token",
+            ordinal=index,
+            text=text,
+            cue=None,
+            metadata_json={},
         )
-        if joined:
-            db.add(models.Annotation(segment_id=line.id, layer="gloss", value=joined))
-            written += 1
-        return written
-    for word in suggestion.glosses:
+        db.add(token)
+        created.append(token)
+    db.flush()
+    return created
+
+
+def _apply_reading_layers(
+    db: Session,
+    revision: models.PassageRevision,
+    line: models.Segment,
+    suggestion: LineSuggestion,
+    layers: list[str],
+) -> dict[str, int]:
+    """Readings and glosses live on tokens when token boundaries are known.
+
+    The line remains the recall target; token children are support structure for
+    interlinear reading, and authored tokenization wins over model output.
+    """
+    counts = {"gloss": 0, "reading": 0}
+    tokens = _ensure_suggested_tokens(db, revision, line, suggestion)
+    aligned_token_suggestions = (
+        suggestion.tokens if tokens and _suggestions_align_tokens(tokens, suggestion.tokens) else []
+    )
+
+    if "reading" in layers and aligned_token_suggestions:
+        counts["reading"] += _apply_token_readings(db, tokens, aligned_token_suggestions)
+    elif "reading" in layers and not tokens and suggestion.reading.strip() and not _has_layer(
+        line, "reading"
+    ):
+        _add_annotation(
+            db,
+            line,
+            "reading",
+            suggestion.reading.strip(),
+            {"render": "ruby"},
+        )
+        counts["reading"] += 1
+
+    if "gloss" not in layers:
+        return counts
+
+    if tokens:
+        if aligned_token_suggestions:
+            counts["gloss"] += _apply_token_glosses(db, tokens, aligned_token_suggestions)
+        counts["gloss"] += _apply_word_glosses(db, tokens, suggestion.glosses)
+        return counts
+
+    if _has_layer(line, "gloss"):
+        return counts
+    joined = "; ".join(word.gloss.strip() for word in suggestion.glosses if word.gloss.strip())
+    if joined:
+        _add_annotation(db, line, "gloss", joined)
+        counts["gloss"] += 1
+    return counts
+
+
+def _apply_token_readings(
+    db: Session, tokens: list[models.Segment], suggestions: list[TokenSuggestion]
+) -> int:
+    written = 0
+    for token, suggestion in zip(tokens, suggestions, strict=True):
+        reading = suggestion.reading.strip()
+        if not reading or _has_layer(token, "reading"):
+            continue
+        _add_annotation(db, token, "reading", reading, {"render": "ruby"})
+        written += 1
+    return written
+
+
+def _apply_token_glosses(
+    db: Session, tokens: list[models.Segment], suggestions: list[TokenSuggestion]
+) -> int:
+    written = 0
+    for token, suggestion in zip(tokens, suggestions, strict=True):
+        gloss = suggestion.gloss.strip()
+        if not gloss or _has_layer(token, "gloss"):
+            continue
+        _add_annotation(db, token, "gloss", gloss)
+        written += 1
+    return written
+
+
+def _apply_word_glosses(
+    db: Session,
+    tokens: list[models.Segment],
+    glosses: list[WordGloss],
+) -> int:
+    written = 0
+    for word in glosses:
         if not (0 <= word.word_index < len(tokens)) or not word.gloss.strip():
             continue
         token = tokens[word.word_index]
-        if any(annotation.layer == "gloss" for annotation in token.annotations):
+        if _has_layer(token, "gloss"):
             continue
-        db.add(
-            models.Annotation(
-                segment_id=token.id, layer="gloss", value=word.gloss.strip()
-            )
-        )
+        _add_annotation(db, token, "gloss", word.gloss.strip())
         written += 1
     return written

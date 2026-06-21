@@ -102,6 +102,16 @@ Remaining work is manual release validation (signing, first tag push, install sm
   3.1 Pro), key from repo-root `.env` as `GEMINI_API_KEY`. Prep-only: drafts
   cue/gloss/translation, never overwrites authored content, practice loop has
   no LLM dependency.
+- Japanese prep now asks Gemini for lexical tokens plus hiragana readings in
+  the same structured prep response. When a line has no authored token
+  children and the suggested token text reassembles to the line, prep adds
+  token support segments with `reading` ruby annotations and token glosses;
+  authored tokenization/readings/glosses are never overwritten. The line
+  remains the recall target, and the Gemini model id is unchanged.
+- Japanese reading view renders token children as the primary line surface, so
+  furigana appears over each token and glosses sit underneath; older passages
+  with only a whole-line `reading` ruby annotation still render through the
+  existing fallback.
 - Collections group existing passages without owning revisions. Reads and
   session launches resolve member passages' active revisions; collection
   sessions persist that revision snapshot and apply one shared smart cap or
@@ -128,6 +138,10 @@ Remaining work is manual release validation (signing, first tag push, install sm
   `.svelte-kit` workspace. PinchTab against the real dev DB expired 4 stale
   sessions (5 active → 1 active) and verified a new Iliad smart plan containing
   random-start and forward-chaining cards.
+- Japanese reading/prep pass: 66 backend pytest, Ruff, strict mypy, OpenAPI
+  check, regenerated TypeScript client with no diff, 73 frontend tests,
+  svelte-check, production build, 13/13 Playwright e2e, and PinchTab smoke on
+  an isolated Japanese passage with token-level furigana and glosses.
 - Live Gemini call drafted 5 cues + 5 glosses + 5 translations onto the real
   Iliad passage; quality checked by hand (accurate glosses, natural
   translations).

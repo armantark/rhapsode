@@ -1,9 +1,9 @@
 import type { Segment } from '$lib/api/types';
 
 /**
- * A "reading" annotation flagged with data.render === "ruby" covers the whole
- * segment. Per-character furigana alignment is a language-plugin concern on
- * the backend, so the frontend deliberately renders segment-level ruby only.
+ * A "reading" annotation flagged with data.render === "ruby" covers the
+ * segment it is attached to. Japanese prep can attach readings to token
+ * children, while older passages can still use one whole-line reading.
  */
 export function rubyReading(segment: Pick<Segment, 'annotations'>): string | null {
 	const annotation = (segment.annotations ?? []).find(

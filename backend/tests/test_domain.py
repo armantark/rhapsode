@@ -565,6 +565,123 @@ def test_prep_glosses_attach_to_tokens(session_factory: object) -> None:
         assert prep.suggest_prep(db, revision, ["gloss"], generate=stub) == {"gloss": 0}
 
 
+def test_prep_prompt_guides_japanese_token_readings() -> None:
+    prompt = prep._prompt("Japanese", ["空こぼれ落ちたふたつの星が"])  # noqa: SLF001
+
+    assert "for Japanese, use hiragana" in prompt
+    assert "split the line into lexical tokens" in prompt
+    assert "Do not split Japanese into individual characters" in prompt
+    assert "<text>空こぼれ落ちたふたつの星が</text>" in prompt
+    assert "<word index=" not in prompt
+
+
+def test_prep_creates_japanese_tokens_with_readings(session_factory: object) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="japanese-token-prep", name="Japanese")
+        passage = models.Passage(title="Sono Chi no Sadame", language_profile=language)
+        db.add(passage)
+        db.flush()
+        revision = create_revision(
+            db,
+            passage,
+            schemas.RevisionInput(
+                source_text="空こぼれ落ちたふたつの星が",
+                segments=[
+                    schemas.SegmentInput(
+                        kind="line",
+                        ordinal=0,
+                        text="空こぼれ落ちたふたつの星が",
+                        client_id="l0",
+                    ),
+                ],
+            ),
+        )
+
+        def stub(language_name: str, lines: list[str]) -> list[prep.LineSuggestion]:
+            assert language_name == "Japanese"
+            assert lines == ["空こぼれ落ちたふたつの星が"]
+            return [
+                prep.LineSuggestion(
+                    index=0,
+                    cue="ふたつの星",
+                    translation="Two stars spilled out from the sky",
+                    tokens=[
+                        prep.TokenSuggestion(text="空", reading="そら", gloss="sky"),
+                        prep.TokenSuggestion(
+                            text="こぼれ落ちた",
+                            reading="こぼれおちた",
+                            gloss="spilled down",
+                        ),
+                        prep.TokenSuggestion(text="ふたつ", reading="ふたつ", gloss="two"),
+                        prep.TokenSuggestion(text="の", reading="の", gloss="genitive particle"),
+                        prep.TokenSuggestion(text="星", reading="ほし", gloss="star"),
+                        prep.TokenSuggestion(text="が", reading="が", gloss="subject particle"),
+                    ],
+                )
+            ]
+
+        written = prep.suggest_prep(
+            db, revision, ["cue", "gloss", "translation", "reading"], generate=stub
+        )
+        assert written == {"cue": 1, "gloss": 6, "translation": 1, "reading": 6}
+
+        db.expire_all()
+        line = next(segment for segment in revision.segments if segment.kind == "line")
+        assert line.cue == "ふたつの星"
+        assert [(a.layer, a.value) for a in line.annotations] == [
+            ("translation", "Two stars spilled out from the sky")
+        ]
+
+        tokens = sorted(
+            (segment for segment in revision.segments if segment.kind == "token"),
+            key=lambda segment: segment.ordinal,
+        )
+        assert [token.text for token in tokens] == [
+            "空",
+            "こぼれ落ちた",
+            "ふたつ",
+            "の",
+            "星",
+            "が",
+        ]
+        assert {
+            token.text: [
+                (annotation.layer, annotation.value, annotation.data)
+                for annotation in token.annotations
+            ]
+            for token in tokens
+        } == {
+            "空": [
+                ("reading", "そら", {"render": "ruby"}),
+                ("gloss", "sky", {}),
+            ],
+            "こぼれ落ちた": [
+                ("reading", "こぼれおちた", {"render": "ruby"}),
+                ("gloss", "spilled down", {}),
+            ],
+            "ふたつ": [
+                ("reading", "ふたつ", {"render": "ruby"}),
+                ("gloss", "two", {}),
+            ],
+            "の": [
+                ("reading", "の", {"render": "ruby"}),
+                ("gloss", "genitive particle", {}),
+            ],
+            "星": [
+                ("reading", "ほし", {"render": "ruby"}),
+                ("gloss", "star", {}),
+            ],
+            "が": [
+                ("reading", "が", {"render": "ruby"}),
+                ("gloss", "subject particle", {}),
+            ],
+        }
+
+        assert prep.suggest_prep(
+            db, revision, ["cue", "gloss", "translation", "reading"], generate=stub
+        ) == {"cue": 0, "gloss": 0, "translation": 0, "reading": 0}
+
+
 def test_minutes_budget_sizes_session_and_prioritizes_finisher(
     session_factory: object,
 ) -> None:

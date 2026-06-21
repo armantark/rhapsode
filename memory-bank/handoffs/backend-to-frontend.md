@@ -100,6 +100,24 @@ is available at `http://127.0.0.1:8000/docs`.
   always carry a continuous passage context, and junctures never receive
   forward/backward chaining.
 
+## Japanese Prep Tokens And Ruby (2026-06-21)
+
+- `POST /api/v1/revisions/{revision_id}/prep-suggestions` still returns the
+  same `{ written }` shape and remains prep-only; the generated OpenAPI contract
+  did not change.
+- The default prep layers now include `reading` in addition to `cue`, `gloss`,
+  and `translation`. `written.reading` counts newly attached ruby readings.
+- Gemini structured output can include lexical token suggestions with token
+  text, hiragana reading, and concise gloss. When a line has no token children
+  and the suggested token text reassembles to the line, the backend creates
+  `kind="token"` children under that line and attaches:
+  `reading` annotations with `{ "render": "ruby" }`, plus token-level `gloss`
+  annotations.
+- Authored token children, readings, and glosses are not overwritten. Existing
+  passages with only line-level reading annotations continue to work.
+- These tokens remain support structure for reading/interlinear display; the
+  line remains the practice recall target and the Gemini model id is unchanged.
+
 ## Desktop / Tauri Sidecar (2026-06-12)
 
 The backend can run as a PyInstaller sidecar spawned by the Tauri host. Browser

@@ -86,6 +86,62 @@ describe('ruby rendering', () => {
 		expect(container.querySelector('ruby')).toBeNull();
 		expect(screen.getByText('祇園精舎の鐘の声')).toBeInTheDocument();
 	});
+
+	it('renders Japanese token children as the primary ruby reading surface', () => {
+		const { container } = render(SegmentText, {
+			node: node({
+				text: '空こぼれ落ちた星',
+				children: [
+					node({
+						id: 'tok-1',
+						parent_id: 'seg-1',
+						kind: 'token',
+						ordinal: 0,
+						text: '空',
+						annotations: [
+							{ id: 'r1', segment_id: 'tok-1', layer: 'reading', value: 'そら', data: { render: 'ruby' } },
+							{ id: 'g1', segment_id: 'tok-1', layer: 'gloss', value: 'sky', data: {} }
+						]
+					}),
+					node({
+						id: 'tok-2',
+						parent_id: 'seg-1',
+						kind: 'token',
+						ordinal: 1,
+						text: 'こぼれ落ちた',
+						annotations: [
+							{
+								id: 'r2',
+								segment_id: 'tok-2',
+								layer: 'reading',
+								value: 'こぼれおちた',
+								data: { render: 'ruby' }
+							},
+							{ id: 'g2', segment_id: 'tok-2', layer: 'gloss', value: 'spilled down', data: {} }
+						]
+					}),
+					node({
+						id: 'tok-3',
+						parent_id: 'seg-1',
+						kind: 'token',
+						ordinal: 2,
+						text: '星',
+						annotations: [
+							{ id: 'r3', segment_id: 'tok-3', layer: 'reading', value: 'ほし', data: { render: 'ruby' } },
+							{ id: 'g3', segment_id: 'tok-3', layer: 'gloss', value: 'star', data: {} }
+						]
+					})
+				]
+			}),
+			profile: profile({ slug: 'japanese' }),
+			layers: ['gloss']
+		});
+
+		expect(screen.queryByText('空こぼれ落ちた星')).toBeNull();
+		expect(container.querySelectorAll('ruby')).toHaveLength(3);
+		expect(container.querySelectorAll('rt')[1]?.textContent).toBe('こぼれおちた');
+		expect(screen.getByText('spilled down')).toBeInTheDocument();
+	});
 });
 
 describe('annotations and structure', () => {

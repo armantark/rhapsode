@@ -163,7 +163,7 @@ class AnnotationCreate(AnnotationInput):
 
 
 class PrepSuggestInput(BaseModel):
-    layers: list[str] = Field(default_factory=lambda: ["cue", "gloss", "translation"])
+    layers: list[str] = Field(default_factory=lambda: ["cue", "gloss", "translation", "reading"])
 
 
 class PrepSuggestResult(BaseModel):

@@ -138,6 +138,10 @@
   3 active prompts updated, 284 token children, 0 kanji tokens missing ruby).
   Targeted backend domain tests, backend Ruff, backend `mypy src`, targeted
   frontend Vitest, and svelte-check pass.
+- Chaining instruction clarity fix (2026-06-23): forward/backward chaining now
+  describe the numbered display directly instead of saying "chain" or "top";
+  active incomplete chaining prompts were rewritten in the local dev DB. Backend
+  domain tests, Ruff, and strict mypy pass.
 
 ## Remaining
 

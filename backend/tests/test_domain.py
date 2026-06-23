@@ -1171,8 +1171,8 @@ def test_every_mode_states_its_recitation_extent() -> None:
     endpoint_phrase = {
         "shadowing": "line",
         "progressive_fading": "line",
-        "forward_chaining": "last line",
-        "backward_chaining": "ending",
+        "forward_chaining": "final number",
+        "backward_chaining": "final number",
         "cue_recall": "to the end",
         "random_start": "to the end",
         "weak_link": "to the end",
@@ -1194,6 +1194,18 @@ def test_every_mode_states_its_recitation_extent() -> None:
     fade_instruction = prompt_for("progressive_fading", juncture, [juncture])["instruction"].lower()
     assert "opening" in fade_instruction, fade_instruction
     assert "whole line" not in fade_instruction
+
+
+def test_chaining_modes_explain_numbered_display() -> None:
+    line = models.Segment(kind="line", ordinal=0, text="alpha beta gamma delta")
+    following = models.Segment(kind="line", ordinal=1, text="epsilon zeta eta theta")
+    context = [line, following]
+
+    for mode in ("forward_chaining", "backward_chaining"):
+        instruction = prompt_for(mode, line, context)["instruction"].lower()
+        assert "numbered lines" in instruction, (mode, instruction)
+        assert "starting at 1" in instruction, (mode, instruction)
+        assert "final number" in instruction, (mode, instruction)
 
 
 def test_mastery_stages() -> None:

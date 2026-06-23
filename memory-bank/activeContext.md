@@ -153,6 +153,10 @@ Remaining work is manual release validation (signing, first tag push, install sm
   shortened, active prompt JSON updated for 3 incomplete items, 284 current
   token children, and zero kanji tokens missing ruby. A second backup is at
   `backend/data/backups/manual/rhapsode-before-japanese-cue-refresh-20260623.db`.
+- Chaining prompt copy is display-driven: forward/backward chaining tells the
+  learner to recite the numbered lines shown, starting at 1 and stopping after
+  the final number. Active incomplete chaining prompts in the dev DB were
+  rewritten to use the clarified instruction.
 - Collections group existing passages without owning revisions. Reads and
   session launches resolve member passages' active revisions; collection
   sessions persist that revision snapshot and apply one shared smart cap or

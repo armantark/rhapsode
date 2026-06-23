@@ -140,12 +140,18 @@ def prompt_for(
             }
         case "forward_chaining":
             return {
-                "instruction": "Recite the chain from the top through to the last line.",
+                "instruction": (
+                    "Recite the numbered lines shown here, starting at 1 and stopping "
+                    "after the final number."
+                ),
                 "chain": texts,
             }
         case "backward_chaining":
             return {
-                "instruction": "Recite from the first line straight through to the ending.",
+                "instruction": (
+                    "Recite the numbered lines shown here, starting at 1 and stopping "
+                    "after the final number."
+                ),
                 "chain": list(reversed(texts)),
             }
         case "cue_recall":

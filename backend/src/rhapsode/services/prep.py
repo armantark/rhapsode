@@ -13,7 +13,7 @@ from collections.abc import Callable
 from html import escape
 from typing import Any
 
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from sqlalchemy.orm import Session
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -30,8 +30,15 @@ class WordGloss(BaseModel):
 
 class TokenSuggestion(BaseModel):
     text: str
-    reading: str = ""
+    reading: str
     gloss: str = ""
+
+    @field_validator("reading")
+    @classmethod
+    def require_reading(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("token reading is required")
+        return value
 
 
 class LineSuggestion(BaseModel):
@@ -90,10 +97,12 @@ def _prompt(language_name: str, lines: list[str]) -> str:
         "for Japanese, use hiragana\n"
         "- tokens: for Japanese and other text whose word boundaries are not encoded "
         "by spaces, split the line into lexical tokens suitable for memorization. "
-        "Each token text must be exact surface text from the line, in order; the "
-        "token readings should be hiragana for Japanese, and token glosses should "
-        "be concise learner-facing English. Do not split Japanese into individual "
-        "characters unless a character is genuinely an independent token\n"
+        "Each token text must be exact surface text from the line, in order; every "
+        "Japanese token must include a non-empty hiragana reading, including "
+        "kana-only tokens, and token glosses should be concise learner-facing "
+        "English. Do not split Japanese into individual characters unless a "
+        "character is genuinely an independent token, and do not emit standalone "
+        "punctuation tokens\n"
         "</output_contract>\n"
         "<quality_bar>\n"
         "Prefer a few high-signal glosses over exhaustive dictionary noise. Preserve "

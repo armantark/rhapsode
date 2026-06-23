@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from rhapsode import models, schemas
 from rhapsode.services import planning, prep
@@ -569,10 +570,17 @@ def test_prep_prompt_guides_japanese_token_readings() -> None:
     prompt = prep._prompt("Japanese", ["空こぼれ落ちたふたつの星が"])  # noqa: SLF001
 
     assert "for Japanese, use hiragana" in prompt
+    assert "every Japanese token must include a non-empty hiragana reading" in prompt
     assert "split the line into lexical tokens" in prompt
     assert "Do not split Japanese into individual characters" in prompt
+    assert "do not emit standalone punctuation tokens" in prompt
     assert "<text>空こぼれ落ちたふたつの星が</text>" in prompt
     assert "<word index=" not in prompt
+
+
+def test_prep_rejects_blank_token_readings() -> None:
+    with pytest.raises(ValidationError):
+        prep.TokenSuggestion(text="空", reading=" ", gloss="sky")
 
 
 def test_prep_creates_japanese_tokens_with_readings(session_factory: object) -> None:

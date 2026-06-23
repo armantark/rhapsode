@@ -107,7 +107,9 @@ Remaining work is manual release validation (signing, first tag push, install sm
   children and the suggested token text reassembles to the line, prep adds
   token support segments with `reading` ruby annotations and token glosses;
   authored tokenization/readings/glosses are never overwritten. The line
-  remains the recall target, and the Gemini model id is unchanged.
+  remains the recall target, and the Gemini model id is unchanged. Token
+  suggestions now require non-blank readings so incomplete Gemini output is
+  rejected instead of creating furigana gaps.
 - Japanese reading view renders token children as the primary line surface, so
   furigana appears over each token and glosses sit underneath; older passages
   with only a whole-line `reading` ruby annotation still render through the
@@ -142,6 +144,9 @@ Remaining work is manual release validation (signing, first tag push, install sm
   check, regenerated TypeScript client with no diff, 73 frontend tests,
   svelte-check, production build, 13/13 Playwright e2e, and PinchTab smoke on
   an isolated Japanese passage with token-level furigana and glosses.
+- Japanese ruby repair (2026-06-23): the dev `Sono Chi no Sadame` revision was
+  backfilled from 84/188 to 188/188 token ruby readings after the validator fix.
+  Targeted backend prep tests pass; browser verification was left to manual QA.
 - Live Gemini call drafted 5 cues + 5 glosses + 5 translations onto the real
   Iliad passage; quality checked by hand (accurate glosses, natural
   translations).

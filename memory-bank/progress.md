@@ -104,6 +104,9 @@
   Verified with 66 backend tests, Ruff, strict mypy, OpenAPI check, regenerated
   frontend client with no diff, 73 frontend tests, svelte-check, build, 13/13
   Playwright e2e, and PinchTab smoke on an isolated Japanese passage.
+- Japanese ruby completeness fix: token suggestions now reject blank readings,
+  and the dev `Sono Chi no Sadame` revision has been repaired to 188/188 token
+  ruby readings. Targeted backend prep tests pass.
 
 ## Remaining
 

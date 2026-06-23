@@ -138,10 +138,12 @@
   3 active prompts updated, 284 token children, 0 kanji tokens missing ruby).
   Targeted backend domain tests, backend Ruff, backend `mypy src`, targeted
   frontend Vitest, and svelte-check pass.
-- Chaining instruction clarity fix (2026-06-23): forward/backward chaining now
-  describe the numbered display directly instead of saying "chain" or "top";
-  active incomplete chaining prompts were rewritten in the local dev DB. Backend
-  domain tests, Ruff, and strict mypy pass.
+- Chaining recall correction (2026-06-23): forward/backward chaining now hide
+  lyrics until check, prompt from explicit line ranges, cap smart chains at the
+  contiguous learned prefix, and grade every segment included in the chain. The
+  local dev DB's active incomplete chaining prompts were rewritten from whole-
+  song/visible-answer payloads to bounded range payloads. Full backend pytest,
+  backend Ruff, backend `mypy src`, frontend Vitest, and svelte-check pass.
 
 ## Remaining
 

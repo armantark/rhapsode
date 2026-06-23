@@ -206,6 +206,82 @@ def test_smart_plan_rotates_line_exercises_and_builds_forward_context(
             ["line 0", "line 1"],
             ["line 0", "line 1", "line 2"],
         ]
+        assert [item["prompt"]["range_label"] for item in plan] == [
+            "line 1",
+            "lines 1-2",
+            "lines 1-3",
+        ]
+        assert [item["prompt"]["chain_segment_ids"] for item in plan] == [
+            [revision.segments[0].id],
+            [revision.segments[0].id, revision.segments[1].id],
+            [revision.segments[0].id, revision.segments[1].id, revision.segments[2].id],
+        ]
+
+
+def test_smart_plan_backward_chaining_uses_current_learned_prefix(
+    session_factory: object,
+) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="latin-backward-prefix", name="Latin")
+        passage = models.Passage(title="Aeneid", language_profile=language)
+        revision = models.PassageRevision(
+            passage=passage, revision_number=1, source_text="..."
+        )
+        revision.segments = [
+            models.Segment(kind="line", ordinal=index, text=f"line {index}")
+            for index in range(4)
+        ]
+        db.add(passage)
+        db.flush()
+        history = models.PracticeSession(revision_id=revision.id, plan={})
+        db.add(history)
+        db.flush()
+        for index, segment in enumerate(revision.segments[:3]):
+            item = models.PracticeItem(
+                session_id=history.id,
+                revision_id=revision.id,
+                segment_id=segment.id,
+                position=index,
+                mode="cue_recall",
+                prompt={},
+            )
+            db.add(item)
+            db.flush()
+            db.add(
+                models.ReviewState(
+                    segment_id=segment.id,
+                    fsrs_card_json="{}",
+                    due_at=datetime.now(UTC),
+                    mastery_stage="learning",
+                    clean_count=0,
+                    attempt_count=2,
+                )
+            )
+            for mode in ("cue_recall", "forward_chaining"):
+                db.add(
+                    models.Attempt(
+                        session_id=history.id,
+                        item_id=item.id,
+                        segment_id=segment.id,
+                        mode=mode,
+                        rating="hesitant",
+                        review_snapshot=[],
+                    )
+                )
+        db.commit()
+
+        plan = build_smart_plan(db, revision, ["line"])
+        backward = [item for item in plan if item["mode"] == "backward_chaining"]
+        assert [item["prompt"]["chain"] for item in backward] == [
+            ["line 0", "line 1", "line 2"],
+            ["line 1", "line 2"],
+            ["line 2"],
+        ]
+        assert [item["prompt"]["range_label"] for item in backward] == [
+            "lines 1-3",
+            "lines 2-3",
+            "line 3",
+        ]
 
 
 def test_smart_plan_appends_full_passage_once_all_segments_graduate(
@@ -1171,8 +1247,8 @@ def test_every_mode_states_its_recitation_extent() -> None:
     endpoint_phrase = {
         "shadowing": "line",
         "progressive_fading": "line",
-        "forward_chaining": "final number",
-        "backward_chaining": "final number",
+        "forward_chaining": "then check",
+        "backward_chaining": "then check",
         "cue_recall": "to the end",
         "random_start": "to the end",
         "weak_link": "to the end",
@@ -1196,16 +1272,20 @@ def test_every_mode_states_its_recitation_extent() -> None:
     assert "whole line" not in fade_instruction
 
 
-def test_chaining_modes_explain_numbered_display() -> None:
+def test_chaining_modes_explain_memory_range() -> None:
     line = models.Segment(kind="line", ordinal=0, text="alpha beta gamma delta")
     following = models.Segment(kind="line", ordinal=1, text="epsilon zeta eta theta")
     context = [line, following]
 
     for mode in ("forward_chaining", "backward_chaining"):
-        instruction = prompt_for(mode, line, context)["instruction"].lower()
-        assert "numbered lines" in instruction, (mode, instruction)
-        assert "starting at 1" in instruction, (mode, instruction)
-        assert "final number" in instruction, (mode, instruction)
+        prompt = prompt_for(mode, line, context, line_numbers=[1, 2])
+        instruction = prompt["instruction"].lower()
+        assert "from memory" in instruction, (mode, instruction)
+        assert "lines 1-2" in instruction, (mode, instruction)
+        assert prompt["range_label"] == "lines 1-2"
+        assert prompt["line_start"] == 1
+        assert prompt["line_end"] == 2
+        assert prompt["chain_segment_ids"] == [line.id, following.id]
 
 
 def test_mastery_stages() -> None:

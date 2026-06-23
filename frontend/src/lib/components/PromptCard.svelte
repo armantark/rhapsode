@@ -56,6 +56,11 @@
 	const instruction = $derived(typeof prompt.instruction === 'string' ? prompt.instruction : '');
 	const stages = $derived(Array.isArray(prompt.stages) ? (prompt.stages as string[]) : []);
 	const chain = $derived(Array.isArray(prompt.chain) ? (prompt.chain as string[]) : []);
+	const isChaining = $derived(item.mode === 'forward_chaining' || item.mode === 'backward_chaining');
+	const chainRange = $derived.by(() => {
+		if (typeof prompt.range_label === 'string') return prompt.range_label;
+		return chain.length === 1 ? 'line 1' : `lines 1-${chain.length}`;
+	});
 	const hint = $derived(typeof prompt.hint === 'string' ? prompt.hint : '');
 	// A live personal note outranks the session's drafted-cue hint, which was
 	// frozen at plan time. Editing the note updates the card without rebuilding
@@ -270,18 +275,8 @@
 				Fade further
 			</button>
 		</div>
-	{:else if item.mode === 'forward_chaining' || item.mode === 'backward_chaining'}
-		<ol class="chain">
-			{#each chainDisplays as link (link.text)}
-				{#if link.node}
-					<li class="passage-text chain-rich">
-						<SegmentText node={link.node} {profile} layers={[]} showRuby={readingEnabled} />
-					</li>
-				{:else}
-					<li class="passage-text" {lang} style:font-family={fonts}>{link.text}</li>
-				{/if}
-			{/each}
-		</ol>
+	{:else if isChaining}
+		<p class="muted blank">Recite {chainRange} from memory.</p>
 	{:else if item.mode === 'cue_recall' || item.mode === 'weak_link' || item.mode === 'random_start'}
 		<div class="cue-line">
 			{#if leadInNode}
@@ -354,8 +349,20 @@
 		<pre class="plugin-prompt">{JSON.stringify(item.prompt, null, 2)}</pre>
 	{/if}
 
-	{#if revealed && revealText}
-		{#if annotated && node}
+	{#if revealed && (revealText || isChaining)}
+		{#if isChaining && chainDisplays.length}
+			<ol class="chain revealed-text revealed-chain">
+				{#each chainDisplays as link (link.text)}
+					{#if link.node}
+						<li class="passage-text chain-rich">
+							<SegmentText node={link.node} {profile} {layers} showRuby={readingEnabled} />
+						</li>
+					{:else}
+						<li class="passage-text" {lang} style:font-family={fonts}>{link.text}</li>
+					{/if}
+				{/each}
+			</ol>
+		{:else if annotated && node}
 			<div class="revealed-text annotated">
 				<SegmentText {node} {profile} {layers} showRuby={readingEnabled} />
 			</div>
@@ -370,7 +377,7 @@
 		{/if}
 	{/if}
 
-	{#if !revealed && (item.mode === 'cue_recall' || item.mode === 'weak_link' || item.mode === 'random_start' || item.mode === 'full_passage')}
+	{#if !revealed && (item.mode === 'cue_recall' || item.mode === 'weak_link' || item.mode === 'random_start' || item.mode === 'full_passage' || isChaining)}
 		<button class="reveal" onclick={onReveal}>Show answer to check</button>
 	{/if}
 </div>

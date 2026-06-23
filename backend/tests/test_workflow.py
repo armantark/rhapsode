@@ -113,6 +113,40 @@ def test_smart_session_random_start_targets_are_shuffled(
     ]
 
 
+def test_chaining_attempt_reviews_every_line_in_the_chain(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    revision = passage["active_revision"]
+    created = client.post(
+        "/api/v1/sessions",
+        json={
+            "revision_id": revision["id"],
+            "modes": ["forward_chaining"],
+            "segment_kinds": ["line"],
+        },
+        headers=mutation(),
+    )
+    assert created.status_code == 201, created.text
+    session = created.json()
+    chained = next(item for item in session["items"] if len(item["prompt"]["chain"]) > 1)
+    chain_segment_ids = set(chained["prompt"]["chain_segment_ids"])
+
+    attempted = client.post(
+        f"/api/v1/sessions/{session['id']}/attempts",
+        json={"item_id": chained["id"], "rating": "clean"},
+        headers=mutation(),
+    )
+    assert attempted.status_code == 201, attempted.text
+
+    reviewed = {
+        state["segment_id"]
+        for state in client.get("/api/v1/analytics/mastery").json()["items"]
+    }
+    assert chain_segment_ids.issubset(reviewed)
+
+
 def test_session_listing_expires_abandoned_sessions(
     client: TestClient,
     session_factory: object,

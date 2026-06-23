@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from typing import Any
 
@@ -112,13 +112,35 @@ def _recall_prompt(
     }
 
 
+def _range_label(start: int, end: int) -> str:
+    return f"line {start}" if start == end else f"lines {start}-{end}"
+
+
+def _chain_prompt(
+    context: list[models.Segment], line_numbers: list[int] | None = None
+) -> dict[str, Any]:
+    numbers = line_numbers or list(range(1, len(context) + 1))
+    start = numbers[0] if numbers else 1
+    end = numbers[-1] if numbers else start
+    label = _range_label(start, end)
+    return {
+        "instruction": f"From memory, recite {label}, then check.",
+        "chain": [segment.text for segment in context],
+        "chain_segment_ids": [segment.id for segment in context],
+        "line_start": start,
+        "line_end": end,
+        "prefix_length": end,
+        "range_label": label,
+    }
+
+
 def prompt_for(
     mode: str,
     target: models.Segment,
     context: list[models.Segment],
     hint: str | None = None,
+    line_numbers: list[int] | None = None,
 ) -> dict[str, Any]:
-    texts = [segment.text for segment in context]
     effective_hint = target.cue if hint is None else hint
     match mode:
         case "shadowing":
@@ -139,21 +161,9 @@ def prompt_for(
                 "stages": progressive_masks(target.text),
             }
         case "forward_chaining":
-            return {
-                "instruction": (
-                    "Recite the numbered lines shown here, starting at 1 and stopping "
-                    "after the final number."
-                ),
-                "chain": texts,
-            }
+            return _chain_prompt(context, line_numbers)
         case "backward_chaining":
-            return {
-                "instruction": (
-                    "Recite the numbered lines shown here, starting at 1 and stopping "
-                    "after the final number."
-                ),
-                "chain": list(reversed(texts)),
-            }
+            return _chain_prompt(context, line_numbers)
         case "cue_recall":
             return _recall_prompt(target, "Recite this line to the end.", effective_hint)
         case "random_start":
@@ -422,6 +432,40 @@ def _triage_rank(stage: str | None, difficult: bool) -> int:
     return 3
 
 
+def _line_segments(segments: list[models.Segment]) -> list[models.Segment]:
+    return [segment for segment in segments if segment.kind == "line"]
+
+
+def _line_number_map(segments: list[models.Segment]) -> dict[str, int]:
+    return {segment.id: index for index, segment in enumerate(_line_segments(segments), start=1)}
+
+
+def _line_numbers(
+    context: list[models.Segment], line_numbers_by_id: dict[str, int]
+) -> list[int] | None:
+    numbers = [line_numbers_by_id.get(segment.id) for segment in context]
+    if any(number is None for number in numbers):
+        return None
+    return [number for number in numbers if number is not None]
+
+
+def _started_stage(stage: str | None) -> bool:
+    return stage not in (None, "new")
+
+
+def _learned_prefix(
+    lines: list[models.Segment],
+    stages: Mapping[str, str | None],
+) -> list[models.Segment]:
+    prefix: list[models.Segment] = []
+    for line in lines:
+        if _started_stage(stages.get(line.id)):
+            prefix.append(line)
+            continue
+        break
+    return prefix
+
+
 def build_smart_plan(
     db: Session,
     revision: models.PassageRevision,
@@ -459,6 +503,10 @@ def build_smart_plan_for_revisions(
                 models.ReviewState.segment_id.in_([segment.id for segment in all_segments])
             )
         )
+    }
+    line_numbers_by_revision = {
+        revision.id: _line_number_map(_ordered_segments(revision, None))
+        for revision, _segments in revision_segments
     }
     difficult_ids = _difficult_segment_ids(db)
     revisions_with_reference = {
@@ -599,13 +647,26 @@ def build_smart_plan_for_revisions(
     def emit(target: models.Segment, mode: str, context: list[models.Segment]) -> None:
         # The revision snapshot on each item keeps full-passage grading scoped
         # correctly, so the target's own revision id rides along.
+        line_numbers = (
+            _line_numbers(context, line_numbers_by_revision[target.revision_id])
+            if mode
+            in {
+                PracticeMode.forward_chaining.value,
+                PracticeMode.backward_chaining.value,
+            }
+            else None
+        )
         items.append(
             {
                 "revision_id": target.revision_id,
                 "segment_id": target.id,
                 "mode": mode,
                 "prompt": prompt_for(
-                    mode, target, context, personal_notes.get(target.id, target.cue)
+                    mode,
+                    target,
+                    context,
+                    personal_notes.get(target.id, target.cue),
+                    line_numbers,
                 ),
             }
         )
@@ -620,15 +681,18 @@ def build_smart_plan_for_revisions(
             PracticeMode.forward_chaining.value,
             PracticeMode.backward_chaining.value,
         }:
-            chain = [segment for segment in available if segment.kind != "juncture"]
+            chain = _line_segments(available)
+            learned_prefix = _learned_prefix(chain, stages)
+            if target.id not in {segment.id for segment in learned_prefix}:
+                return [target]
             target_index = next(
                 position
-                for position, segment in enumerate(chain)
+                for position, segment in enumerate(learned_prefix)
                 if segment.id == target.id
             )
             if mode == PracticeMode.forward_chaining.value:
-                return chain[: target_index + 1]
-            return chain[target_index:]
+                return learned_prefix[: target_index + 1]
+            return learned_prefix[target_index:]
         target_index = next(
             position for position, segment in enumerate(selected) if segment.id == target.id
         )
@@ -708,6 +772,7 @@ def build_plan(
         return []
     personal_notes = _personal_note_texts(db, [segment.id for segment in segments])
     difficult_ids = _difficult_segment_ids(db)
+    line_numbers_by_id = _line_number_map(_ordered_segments(revision, None))
     items: list[dict[str, Any]] = []
     for mode in modes:
         targets = segments
@@ -728,6 +793,15 @@ def build_plan(
                 if mode == PracticeMode.forward_chaining.value
                 else segments[target_index:]
             )
+            line_numbers = (
+                _line_numbers(context, line_numbers_by_id)
+                if mode
+                in {
+                    PracticeMode.forward_chaining.value,
+                    PracticeMode.backward_chaining.value,
+                }
+                else None
+            )
             items.append(
                 {
                     "revision_id": revision.id,
@@ -738,6 +812,7 @@ def build_plan(
                         target,
                         context,
                         personal_notes.get(target.id, target.cue),
+                        line_numbers,
                     ),
                 }
             )

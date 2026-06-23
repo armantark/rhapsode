@@ -602,6 +602,21 @@ def submit_attempt(
             ]
         else:
             affected_ids = []
+    elif item.mode in {
+        schemas.PracticeMode.forward_chaining.value,
+        schemas.PracticeMode.backward_chaining.value,
+    }:
+        prompt = item.prompt if isinstance(item.prompt, dict) else {}
+        chain_segment_ids = prompt.get("chain_segment_ids")
+        affected_ids = (
+            [
+                segment_id
+                for segment_id in chain_segment_ids
+                if isinstance(segment_id, str)
+            ]
+            if isinstance(chain_segment_ids, list)
+            else ([item.segment_id] if item.segment_id else [])
+        )
     elif item.segment_id:
         affected_ids = [item.segment_id]
     else:

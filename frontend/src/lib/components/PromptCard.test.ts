@@ -159,13 +159,46 @@ describe('built-in mode rendering', () => {
 		expect(screen.getByText('stage 5/5')).toBeInTheDocument();
 	});
 
-	it('forward chaining lists the chain in order', () => {
-		render(PromptCard, {
-			item: item('forward_chaining', { instruction: 'Recite this growing chain.', chain: ['first', 'second'] }),
-			onReveal: vi.fn()
+	it('forward chaining hides the chain until the learner checks it', async () => {
+		const onReveal = vi.fn();
+		const { rerender } = render(PromptCard, {
+			item: item('forward_chaining', {
+				instruction: 'From memory, recite lines 1-2, then check.',
+				chain: ['first', 'second'],
+				range_label: 'lines 1-2'
+			}),
+			onReveal
 		});
+		expect(screen.getByText('Recite lines 1-2 from memory.')).toBeInTheDocument();
+		expect(screen.queryByText('first')).toBeNull();
+		expect(screen.queryByText('second')).toBeNull();
+		await fireEvent.click(screen.getByRole('button', { name: /Show answer/ }));
+		expect(onReveal).toHaveBeenCalledOnce();
+		await rerender({ revealed: true });
 		const links = screen.getAllByRole('listitem');
 		expect(links.map((node) => node.textContent)).toEqual(['first', 'second']);
+	});
+
+	it('revealed Japanese chaining answers show ruby when reading is enabled', () => {
+		const { container } = render(PromptCard, {
+			item: item('forward_chaining', {
+				instruction: 'From memory, recite line 1, then check.',
+				chain: ['空こぼれ落ちたふたつの星が'],
+				range_label: 'line 1'
+			}),
+			node: japaneseRubyNode(),
+			nodes: [japaneseRubyNode()],
+			profile: japaneseProfile,
+			layers: ['reading'],
+			revealed: true,
+			onReveal: vi.fn()
+		});
+		const revealed = container.querySelector('.revealed-chain');
+		expect([...revealed!.querySelectorAll('rt')].map((node) => node.textContent)).toEqual([
+			'そら',
+			'お',
+			'ほし'
+		]);
 	});
 
 	it('cue recall hides the answer until revealed, then shows parent-supplied text', async () => {

@@ -69,15 +69,16 @@ Remaining work is manual release validation (signing, first tag push, install sm
   passage's reference audio: play, tap `M` at each line start, save per-line cue
   spans via `PUT /media/{id}/cues` (client `setMediaCues`).
 - Every practice instruction states its recitation EXTENT (no open-ended
-  "continue"): shadowing/fading recite the whole line; chaining goes through to
-  the last line / the ending; cue-recall, weak-link and random-start recite the
-  line to the end; junctures recite only into the next line's opening (their
-  target is the head); full-passage is start to finish. `random_start` is now a
-  CHECKABLE cold start — it reuses the recall shape (`_recall_prompt`): a short
-  lead-in is shown, the full line is the revealed answer, framed as an arbitrary
-  drop-in entry point to break serial-order dependence (it was previously a
-  full-line display with no reveal). The card renders it like cue_recall and it
-  is in the reveal/Space allow-lists.
+  "continue"): shadowing/fading recite the whole line; chaining is a recall
+  card for an explicit line range inside the learned prefix; cue-recall,
+  weak-link and random-start recite the line to the end; junctures recite only
+  into the next line's opening (their target is the head); full-passage is start
+  to finish. `random_start` is now a CHECKABLE cold start — it reuses the recall
+  shape (`_recall_prompt`): a short lead-in is shown, the full line is the
+  revealed answer, framed as an arbitrary drop-in entry point to break
+  serial-order dependence (it was previously a full-line display with no
+  reveal). The card renders it like cue_recall and it is in the reveal/Space
+  allow-lists.
 - Recall cues are POSITIONAL+VERBATIM, not LLM-authored: `_lead_in` in
   `planning.py` slices the line's opening words (keeps δ᾽/elisions exact). The
   evocative phrase (often LLM-drafted) is demoted to an optional `hint` the
@@ -153,10 +154,12 @@ Remaining work is manual release validation (signing, first tag push, install sm
   shortened, active prompt JSON updated for 3 incomplete items, 284 current
   token children, and zero kanji tokens missing ruby. A second backup is at
   `backend/data/backups/manual/rhapsode-before-japanese-cue-refresh-20260623.db`.
-- Chaining prompt copy is display-driven: forward/backward chaining tells the
-  learner to recite the numbered lines shown, starting at 1 and stopping after
-  the final number. Active incomplete chaining prompts in the dev DB were
-  rewritten to use the clarified instruction.
+- Chaining is recall-first: the prompt shows only a bounded line range such as
+  "lines 1-3"; the lyrics are hidden until check. Forward/backward chaining
+  prompts carry chain segment ids and line-range metadata, smart planning caps
+  chains at the persisted contiguous learned prefix, and grading a chain updates
+  every segment in that chain. Active incomplete chaining prompts in the dev DB
+  were rewritten to the corrected range payloads.
 - Collections group existing passages without owning revisions. Reads and
   session launches resolve member passages' active revisions; collection
   sessions persist that revision snapshot and apply one shared smart cap or

@@ -202,6 +202,10 @@ Frontend API discovery: browser dev unchanged (`/api/v1` proxy); Tauri awaits
   duplicate whole-line surface and renders the token row as the primary reading
   surface. Each token can show ruby from its own `reading` annotation and gloss
   underneath when the gloss layer is enabled.
+- Practice cards treat Japanese ruby as baseline reading support, not a
+  translation/gloss toggle. Progressive fading renders the full-support stage
+  through `SegmentText`, and checked Japanese answers render ruby even when no
+  support layers are enabled.
 - Whole-line ruby remains as a fallback for older Japanese passages with a
   line-level `reading` annotation and no token children.
 - Manual smoke used an isolated local backend/frontend and verified a seeded

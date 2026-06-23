@@ -2,6 +2,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from rhapsode import models, schemas
+from rhapsode.services import furigana
 
 
 class PracticedRevisionError(ValueError):
@@ -93,6 +94,7 @@ def add_segments(
             )
         created.append(segment)
     created.extend(add_junctures(db, revision.id, created))
+    furigana.apply_local_readings(db, revision)
     return created
 
 

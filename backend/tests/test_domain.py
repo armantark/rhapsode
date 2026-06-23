@@ -569,13 +569,16 @@ def test_prep_glosses_attach_to_tokens(session_factory: object) -> None:
 def test_prep_prompt_guides_japanese_token_readings() -> None:
     prompt = prep._prompt("Japanese", ["空こぼれ落ちたふたつの星が"])  # noqa: SLF001
 
-    assert "for Japanese, use hiragana" in prompt
-    assert "every Japanese token must include a non-empty hiragana reading" in prompt
-    assert "split the line into lexical tokens" in prompt
+    assert "leave blank for Japanese" in prompt
+    assert "app attaches Japanese ruby readings locally" in prompt
+    assert "for lines that include <words>" in prompt
+    assert '<word index="0">空</word>' in prompt
+    assert '<word index="1">こぼれ落ち</word>' in prompt
+    assert '<word index="2">た</word>' in prompt
+    assert '<word index="6">星</word>' in prompt
     assert "Do not split Japanese into individual characters" in prompt
     assert "do not emit standalone punctuation tokens" in prompt
     assert "<text>空こぼれ落ちたふたつの星が</text>" in prompt
-    assert "<word index=" not in prompt
 
 
 def test_prep_rejects_blank_token_readings() -> None:
@@ -583,7 +586,181 @@ def test_prep_rejects_blank_token_readings() -> None:
         prep.TokenSuggestion(text="空", reading=" ", gloss="sky")
 
 
-def test_prep_creates_japanese_tokens_with_readings(session_factory: object) -> None:
+def test_create_revision_adds_local_japanese_tokens_with_kanji_ruby(
+    session_factory: object,
+) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="japanese-local-ruby", name="Japanese")
+        passage = models.Passage(title="Sono Chi no Sadame", language_profile=language)
+        db.add(passage)
+        db.flush()
+        revision = create_revision(
+            db,
+            passage,
+            schemas.RevisionInput(
+                source_text="空こぼれ落ちたふたつの星が",
+                segments=[
+                    schemas.SegmentInput(
+                        kind="line",
+                        ordinal=0,
+                        text="空こぼれ落ちたふたつの星が",
+                        client_id="l0",
+                    ),
+                ],
+            ),
+        )
+
+        tokens = sorted(
+            (segment for segment in revision.segments if segment.kind == "token"),
+            key=lambda segment: segment.ordinal,
+        )
+        assert [token.text for token in tokens] == [
+            "空",
+            "こぼれ落ち",
+            "た",
+            "ふた",
+            "つ",
+            "の",
+            "星",
+            "が",
+        ]
+        readings = {
+            token.text: [
+                annotation.value
+                for annotation in token.annotations
+                if annotation.layer == "reading"
+            ]
+            for token in tokens
+        }
+        assert readings == {
+            "空": ["そら"],
+            "こぼれ落ち": ["こぼれおち"],
+            "た": [],
+            "ふた": [],
+            "つ": [],
+            "の": [],
+            "星": ["ほし"],
+            "が": [],
+        }
+
+
+def test_create_revision_preserves_authored_japanese_token_readings(
+    session_factory: object,
+) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="japanese-authored-ruby", name="Japanese")
+        passage = models.Passage(title="Sono Chi no Sadame", language_profile=language)
+        db.add(passage)
+        db.flush()
+        revision = create_revision(
+            db,
+            passage,
+            schemas.RevisionInput(
+                source_text="その血の運命",
+                segments=[
+                    schemas.SegmentInput(
+                        kind="line",
+                        ordinal=0,
+                        text="その血の運命",
+                        client_id="l0",
+                    ),
+                    schemas.SegmentInput(
+                        kind="token",
+                        ordinal=1,
+                        text="その",
+                        parent_client_id="l0",
+                        client_id="t0",
+                    ),
+                    schemas.SegmentInput(
+                        kind="token",
+                        ordinal=2,
+                        text="血",
+                        parent_client_id="l0",
+                        client_id="t1",
+                    ),
+                    schemas.SegmentInput(
+                        kind="token",
+                        ordinal=3,
+                        text="の",
+                        parent_client_id="l0",
+                        client_id="t2",
+                    ),
+                    schemas.SegmentInput(
+                        kind="token",
+                        ordinal=4,
+                        text="運命",
+                        parent_client_id="l0",
+                        client_id="t3",
+                        annotations=[
+                            schemas.AnnotationInput(
+                                layer="reading",
+                                value="さだめ",
+                                data={"render": "ruby"},
+                            )
+                        ],
+                    ),
+                ],
+            ),
+        )
+
+        tokens = sorted(
+            (segment for segment in revision.segments if segment.kind == "token"),
+            key=lambda segment: segment.ordinal,
+        )
+        assert [token.text for token in tokens] == ["その", "血", "の", "運命"]
+        readings = {
+            token.text: [
+                annotation.value
+                for annotation in token.annotations
+                if annotation.layer == "reading"
+            ]
+            for token in tokens
+        }
+        assert readings == {"その": [], "血": ["ち"], "の": [], "運命": ["さだめ"]}
+
+
+def test_prep_backfills_japanese_ruby_without_llm(session_factory: object) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="japanese-ruby-backfill", name="Japanese")
+        passage = models.Passage(title="Sono Chi no Sadame", language_profile=language)
+        revision = models.PassageRevision(
+            passage=passage,
+            revision_number=1,
+            source_text="空こぼれ落ちたふたつの星が",
+        )
+        revision.segments = [
+            models.Segment(
+                kind="line",
+                ordinal=0,
+                text="空こぼれ落ちたふたつの星が",
+            )
+        ]
+        db.add(passage)
+        db.commit()
+
+        def should_not_generate(language_name: str, lines: list[str]) -> list[prep.LineSuggestion]:
+            raise AssertionError("reading prep should not call the LLM")
+
+        written = prep.suggest_prep(db, revision, ["reading"], generate=should_not_generate)
+        assert written == {"reading": 3}
+
+        tokens = sorted(
+            (segment for segment in revision.segments if segment.kind == "token"),
+            key=lambda segment: segment.ordinal,
+        )
+        assert [token.text for token in tokens] == [
+            "空",
+            "こぼれ落ち",
+            "た",
+            "ふた",
+            "つ",
+            "の",
+            "星",
+            "が",
+        ]
+
+
+def test_prep_glosses_japanese_local_tokens(session_factory: object) -> None:
     with session_factory() as db:  # type: ignore[operator]
         language = models.LanguageProfile(slug="japanese-token-prep", name="Japanese")
         passage = models.Passage(title="Sono Chi no Sadame", language_profile=language)
@@ -613,17 +790,11 @@ def test_prep_creates_japanese_tokens_with_readings(session_factory: object) -> 
                     index=0,
                     cue="ふたつの星",
                     translation="Two stars spilled out from the sky",
-                    tokens=[
-                        prep.TokenSuggestion(text="空", reading="そら", gloss="sky"),
-                        prep.TokenSuggestion(
-                            text="こぼれ落ちた",
-                            reading="こぼれおちた",
-                            gloss="spilled down",
-                        ),
-                        prep.TokenSuggestion(text="ふたつ", reading="ふたつ", gloss="two"),
-                        prep.TokenSuggestion(text="の", reading="の", gloss="genitive particle"),
-                        prep.TokenSuggestion(text="星", reading="ほし", gloss="star"),
-                        prep.TokenSuggestion(text="が", reading="が", gloss="subject particle"),
+                    glosses=[
+                        prep.WordGloss(word_index=0, gloss="sky"),
+                        prep.WordGloss(word_index=1, gloss="spill/fall"),
+                        prep.WordGloss(word_index=3, gloss="two"),
+                        prep.WordGloss(word_index=6, gloss="star"),
                     ],
                 )
             ]
@@ -631,7 +802,7 @@ def test_prep_creates_japanese_tokens_with_readings(session_factory: object) -> 
         written = prep.suggest_prep(
             db, revision, ["cue", "gloss", "translation", "reading"], generate=stub
         )
-        assert written == {"cue": 1, "gloss": 6, "translation": 1, "reading": 6}
+        assert written == {"cue": 1, "gloss": 4, "translation": 1, "reading": 0}
 
         db.expire_all()
         line = next(segment for segment in revision.segments if segment.kind == "line")
@@ -646,8 +817,10 @@ def test_prep_creates_japanese_tokens_with_readings(session_factory: object) -> 
         )
         assert [token.text for token in tokens] == [
             "空",
-            "こぼれ落ちた",
-            "ふたつ",
+            "こぼれ落ち",
+            "た",
+            "ふた",
+            "つ",
             "の",
             "星",
             "が",
@@ -663,26 +836,21 @@ def test_prep_creates_japanese_tokens_with_readings(session_factory: object) -> 
                 ("reading", "そら", {"render": "ruby"}),
                 ("gloss", "sky", {}),
             ],
-            "こぼれ落ちた": [
-                ("reading", "こぼれおちた", {"render": "ruby"}),
-                ("gloss", "spilled down", {}),
+            "こぼれ落ち": [
+                ("reading", "こぼれおち", {"render": "ruby"}),
+                ("gloss", "spill/fall", {}),
             ],
-            "ふたつ": [
-                ("reading", "ふたつ", {"render": "ruby"}),
+            "た": [],
+            "ふた": [
                 ("gloss", "two", {}),
             ],
-            "の": [
-                ("reading", "の", {"render": "ruby"}),
-                ("gloss", "genitive particle", {}),
-            ],
+            "つ": [],
+            "の": [],
             "星": [
                 ("reading", "ほし", {"render": "ruby"}),
                 ("gloss", "star", {}),
             ],
-            "が": [
-                ("reading", "が", {"render": "ruby"}),
-                ("gloss", "subject particle", {}),
-            ],
+            "が": [],
         }
 
         assert prep.suggest_prep(

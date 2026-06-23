@@ -105,16 +105,17 @@ is available at `http://127.0.0.1:8000/docs`.
 - `POST /api/v1/revisions/{revision_id}/prep-suggestions` still returns the
   same `{ written }` shape and remains prep-only; the generated OpenAPI contract
   did not change.
-- The default prep layers now include `reading` in addition to `cue`, `gloss`,
-  and `translation`. `written.reading` counts newly attached ruby readings.
-- Gemini structured output can include lexical token suggestions with token
-  text, hiragana reading, and concise gloss. When a line has no token children
-  and the suggested token text reassembles to the line, the backend creates
-  `kind="token"` children under that line and attaches:
-  `reading` annotations with `{ "render": "ruby" }`, plus token-level `gloss`
-  annotations.
-- Authored token children, readings, and glosses are not overwritten. Existing
-  passages with only line-level reading annotations continue to work.
+- The default prep layers still include `reading` in addition to `cue`, `gloss`,
+  and `translation`, but Japanese ruby no longer requires Gemini. Revision
+  create/replace and prep `reading` use local fugashi + unidic-lite tokenization
+  to fill `reading` annotations with `{ "render": "ruby" }` for
+  kanji-containing Japanese tokens.
+- Gemini structured output remains useful for token/word glosses and
+  translations, but the prompt now lists local Japanese token boundaries in
+  `<words>` so glosses can attach by word index. Authored token children,
+  readings, and glosses are not overwritten; authored readings are the override
+  for dictionary-mismatched lyric/name readings.
+- Existing passages with only line-level reading annotations continue to work.
 - These tokens remain support structure for reading/interlinear display; the
   line remains the practice recall target and the Gemini model id is unchanged.
 

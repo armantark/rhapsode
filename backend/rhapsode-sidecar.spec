@@ -1,8 +1,12 @@
 """PyInstaller spec for the Tauri backend sidecar."""
 
+# ruff: noqa: F821
+
 from __future__ import annotations
 
 from pathlib import Path
+
+from PyInstaller.utils.hooks import collect_data_files
 
 block_cipher = None
 backend_dir = Path(SPECPATH)
@@ -23,6 +27,8 @@ hiddenimports = [
     "uvicorn.lifespan.on",
     "uvicorn.lifespan.off",
     "multipart",
+    "fugashi",
+    "unidic_lite",
     "rhapsode.app",
     "rhapsode.migrations",
     "rhapsode.resources",
@@ -36,6 +42,7 @@ a = Analysis(
     datas=[
         (str(backend_dir / "alembic.ini"), "."),
         (str(backend_dir / "alembic"), "alembic"),
+        *collect_data_files("unidic_lite"),
     ],
     hiddenimports=hiddenimports,
     hookspath=[],

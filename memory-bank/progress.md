@@ -107,6 +107,12 @@
 - Japanese ruby completeness fix: token suggestions now reject blank readings,
   and the dev `Sono Chi no Sadame` revision has been repaired to 188/188 token
   ruby readings. Targeted backend prep tests pass.
+- Local Japanese ruby shipped (2026-06-23): fugashi + unidic-lite now generate
+  kanji furigana without Gemini, revision create/replace auto-fill token ruby,
+  prep `reading` backfills skip the LLM, and Japanese practice cards render
+  ruby by default on the full-support prompt and checked answer. Verified with
+  70 backend tests, backend Ruff, backend `mypy src`, 75 frontend Vitest tests,
+  and svelte-check.
 
 ## Remaining
 

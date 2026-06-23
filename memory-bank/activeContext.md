@@ -102,18 +102,21 @@ Remaining work is manual release validation (signing, first tag push, install sm
   3.1 Pro), key from repo-root `.env` as `GEMINI_API_KEY`. Prep-only: drafts
   cue/gloss/translation, never overwrites authored content, practice loop has
   no LLM dependency.
-- Japanese prep now asks Gemini for lexical tokens plus hiragana readings in
-  the same structured prep response. When a line has no authored token
-  children and the suggested token text reassembles to the line, prep adds
-  token support segments with `reading` ruby annotations and token glosses;
-  authored tokenization/readings/glosses are never overwritten. The line
-  remains the recall target, and the Gemini model id is unchanged. Token
-  suggestions now require non-blank readings so incomplete Gemini output is
-  rejected instead of creating furigana gaps.
+- Japanese ruby/furigana is now local dictionary support via fugashi +
+  unidic-lite, not a Gemini task. Revision create/replace and prep reading
+  backfills create/fill token-level `reading` ruby annotations for
+  kanji-containing Japanese tokens without an API call; authored readings win
+  for lyric/name overrides such as `運命` read as `さだめ`. Gemini remains
+  prep-only for cue/gloss/translation and receives the local token boundaries
+  so glosses can attach by word index. Token suggestions still reject blank
+  readings if a model emits them for non-local fallback paths.
 - Japanese reading view renders token children as the primary line surface, so
   furigana appears over each token and glosses sit underneath; older passages
   with only a whole-line `reading` ruby annotation still render through the
   existing fallback.
+- Japanese practice cards show ruby by default too: progressive fading uses
+  the rich token renderer on the full-support stage, and checked Japanese
+  answers render ruby even when translation/gloss support layers are off.
 - Collections group existing passages without owning revisions. Reads and
   session launches resolve member passages' active revisions; collection
   sessions persist that revision snapshot and apply one shared smart cap or

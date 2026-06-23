@@ -1,8 +1,19 @@
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 import PromptCard from './PromptCard.svelte';
-import type { PracticeItem } from '$lib/api/types';
+import type { LanguageProfile, PracticeItem } from '$lib/api/types';
 import type { SegmentNode } from '$lib/utils/segments';
+
+const japaneseProfile: LanguageProfile = {
+	id: 'jp',
+	slug: 'japanese',
+	name: 'Japanese',
+	direction: 'ltr',
+	fonts: [],
+	annotation_schemas: [],
+	segmentation_defaults: {},
+	display_options: {}
+};
 
 function lineNode(text: string): SegmentNode {
 	return {
@@ -16,6 +27,71 @@ function lineNode(text: string): SegmentNode {
 		annotations: [],
 		metadata_json: {},
 		children: []
+	};
+}
+
+function japaneseRubyNode(): SegmentNode {
+	return {
+		...lineNode('空こぼれ落ちたふたつの星が'),
+		children: [
+			{
+				...lineNode('空'),
+				id: 'tok-1',
+				parent_id: 'seg-1',
+				kind: 'token',
+				annotations: [
+					{ id: 'a1', segment_id: 'tok-1', layer: 'reading', value: 'そら', data: { render: 'ruby' } }
+				]
+			},
+			{
+				...lineNode('こぼれ'),
+				id: 'tok-2',
+				parent_id: 'seg-1',
+				kind: 'token'
+			},
+			{
+				...lineNode('落ち'),
+				id: 'tok-3',
+				parent_id: 'seg-1',
+				kind: 'token',
+				annotations: [
+					{ id: 'a3', segment_id: 'tok-3', layer: 'reading', value: 'おち', data: { render: 'ruby' } }
+				]
+			},
+			{
+				...lineNode('た'),
+				id: 'tok-4',
+				parent_id: 'seg-1',
+				kind: 'token'
+			},
+			{
+				...lineNode('ふたつ'),
+				id: 'tok-5',
+				parent_id: 'seg-1',
+				kind: 'token'
+			},
+			{
+				...lineNode('の'),
+				id: 'tok-6',
+				parent_id: 'seg-1',
+				kind: 'token'
+			},
+			{
+				...lineNode('星'),
+				id: 'tok-7',
+				parent_id: 'seg-1',
+				kind: 'token',
+				annotations: [
+					{ id: 'a7', segment_id: 'tok-7', layer: 'reading', value: 'ほし', data: { render: 'ruby' } }
+				]
+			},
+			{
+				...lineNode('が'),
+				id: 'tok-8',
+				parent_id: 'seg-1',
+				kind: 'token'
+			}
+		]
 	};
 }
 
@@ -59,6 +135,26 @@ describe('built-in mode rendering', () => {
 		expect(screen.getByText('full text here')).toBeInTheDocument();
 	});
 
+	it('progressive fading shows Japanese ruby on the full-support stage', async () => {
+		const { container } = render(PromptCard, {
+			item: item('progressive_fading', {
+				instruction: 'Recite as support fades.',
+				stages: ['空こぼれ落ちたふたつの星が', '…こぼれ…たふたつの星が']
+			}),
+			node: japaneseRubyNode(),
+			profile: japaneseProfile,
+			onReveal: vi.fn()
+		});
+		expect([...container.querySelectorAll('rt')].map((node) => node.textContent)).toEqual([
+			'そら',
+			'おち',
+			'ほし'
+		]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Fade further' }));
+		expect(container.querySelector('rt')).toBeNull();
+		expect(screen.getByText('…こぼれ…たふたつの星が')).toBeInTheDocument();
+	});
+
 	it('forward chaining lists the chain in order', () => {
 		render(PromptCard, {
 			item: item('forward_chaining', { instruction: 'Recite this growing chain.', chain: ['first', 'second'] }),
@@ -81,6 +177,22 @@ describe('built-in mode rendering', () => {
 		await rerender({ revealed: true });
 		expect(screen.getByText('μῆνιν ἄειδε θεὰ Πηληϊάδεω Ἀχιλῆος')).toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: /Show answer/ })).toBeNull();
+	});
+
+	it('revealed Japanese answers show ruby even when support layers are off', () => {
+		const { container } = render(PromptCard, {
+			item: item('cue_recall', { instruction: 'Continue from the cue.', cue: 'ふたつの星' }),
+			node: japaneseRubyNode(),
+			profile: japaneseProfile,
+			revealed: true,
+			revealText: '空こぼれ落ちたふたつの星が',
+			onReveal: vi.fn()
+		});
+		expect([...container.querySelectorAll('rt')].map((node) => node.textContent)).toEqual([
+			'そら',
+			'おち',
+			'ほし'
+		]);
 	});
 
 	it('full passage starts blank with a reveal escape hatch', () => {

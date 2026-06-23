@@ -19,6 +19,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from rhapsode import models
 from rhapsode.config import get_settings
+from rhapsode.services import furigana
 
 PREP_LAYERS = ("cue", "gloss", "translation", "reading")
 
@@ -58,22 +59,30 @@ class PrepUnavailableError(RuntimeError):
 
 
 def _prompt(language_name: str, lines: list[str]) -> str:
+    def words_for_line(text: str) -> list[str]:
+        whitespace_words = text.split()
+        if len(whitespace_words) > 1:
+            return whitespace_words
+        if language_name.casefold() == "japanese":
+            return furigana.token_texts(text)
+        return []
+
     def line_xml(line_index: int, text: str) -> str:
-        words = text.split()
-        whitespace_words = ""
+        words = words_for_line(text)
+        indexed_words = ""
         if len(words) > 1:
-            whitespace_words = (
-                "\n<whitespace_words>\n"
+            indexed_words = (
+                "\n<words>\n"
                 + "\n".join(
                     f'<word index="{word_index}">{escape(word)}</word>'
                     for word_index, word in enumerate(words)
                 )
-                + "\n</whitespace_words>"
+                + "\n</words>"
             )
         return (
             f'<line index="{line_index}">\n'
             f"<text>{escape(text)}</text>"
-            f"{whitespace_words}\n"
+            f"{indexed_words}\n"
             "</line>"
         )
 
@@ -87,16 +96,18 @@ def _prompt(language_name: str, lines: list[str]) -> str:
         "Return one object per line with its index and these fields:\n"
         "- cue: a 2-4 word recall cue in the original language, evocative of the "
         "line's content without quoting its opening words\n"
-        "- glosses: for lines that include <whitespace_words>, one entry per "
+        "- glosses: for lines that include <words>, one entry per "
         "non-basic word keyed by that word's index. Each gloss is for a reader "
         "who knows grammar terminology well: lemma, concise morphology, and "
         "meaning, noting anything dialectal, contracted, or elided. Do not repeat "
         "the surface form; the gloss is displayed directly under the word\n"
         "- translation: a natural English translation\n"
-        "- reading: a whole-line reading only when that is useful for the language; "
-        "for Japanese, use hiragana\n"
+        "- reading: leave blank for Japanese because the app attaches Japanese "
+        "ruby readings locally; for other languages, include a whole-line "
+        "reading only when useful\n"
         "- tokens: for Japanese and other text whose word boundaries are not encoded "
-        "by spaces, split the line into lexical tokens suitable for memorization. "
+        "by spaces and not already listed in <words>, split the line into lexical tokens "
+        "suitable for memorization. "
         "Each token text must be exact surface text from the line, in order; every "
         "Japanese token must include a non-empty hiragana reading, including "
         "kana-only tokens, and token glosses should be concise learner-facing "
@@ -149,29 +160,40 @@ def suggest_prep(
     )
     if not lines:
         return {layer: 0 for layer in layers}
-    language_name = revision.passage.language_profile.name
-    suggestions = {
-        suggestion.index: suggestion
-        for suggestion in generate(language_name, [line.text for line in lines])
-    }
     written = {layer: 0 for layer in layers}
+    llm_layers = list(layers)
+    if "reading" in layers and furigana.is_japanese_revision(revision):
+        written["reading"] = furigana.apply_local_readings(db, revision)
+        llm_layers = [layer for layer in layers if layer != "reading"]
+    if not llm_layers:
+        db.commit()
+        return written
+    language_name = revision.passage.language_profile.name
+    try:
+        generated = generate(language_name, [line.text for line in lines])
+    except PrepUnavailableError:
+        if any(written.values()):
+            db.commit()
+            return written
+        raise
+    suggestions = {suggestion.index: suggestion for suggestion in generated}
     for index, segment in enumerate(lines):
         suggestion = suggestions.get(index)
         if suggestion is None:
             continue
-        if "cue" in layers and not segment.cue and suggestion.cue.strip():
+        if "cue" in llm_layers and not segment.cue and suggestion.cue.strip():
             segment.cue = suggestion.cue.strip()
             written["cue"] += 1
         present_layers = {annotation.layer for annotation in segment.annotations}
         if (
-            "translation" in layers
+            "translation" in llm_layers
             and "translation" not in present_layers
             and suggestion.translation.strip()
         ):
             _add_annotation(db, segment, "translation", suggestion.translation.strip())
             written["translation"] += 1
-        if "gloss" in layers or "reading" in layers:
-            layer_counts = _apply_reading_layers(db, revision, segment, suggestion, layers)
+        if "gloss" in llm_layers or "reading" in llm_layers:
+            layer_counts = _apply_reading_layers(db, revision, segment, suggestion, llm_layers)
             for layer in ("gloss", "reading"):
                 if layer in written:
                     written[layer] += layer_counts[layer]

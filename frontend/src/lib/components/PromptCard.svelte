@@ -38,9 +38,11 @@
 		onSaveNote?: (text: string) => void | Promise<void>;
 	} = $props();
 
-	// Render the rich interlinear view only when there is a segment subtree and
-	// at least one layer is on; otherwise plain text keeps the card calm.
-	const annotated = $derived(!!node && layers.length > 0);
+	const practiceRuby = $derived(profile?.slug === 'japanese' && !!node);
+	// Render the rich interlinear view when support layers are on, or when the
+	// Japanese line can carry ruby. Ruby is baseline reading support, not a gloss
+	// toggle.
+	const annotated = $derived(!!node && (layers.length > 0 || practiceRuby));
 
 	// Prompt payloads are mode-shaped on the backend (see services/planning.py)
 	// and intentionally open-ended for plugin modes, hence the JSON fallback.
@@ -130,7 +132,13 @@
 			{String(prompt.target_text ?? prompt.start ?? '')}
 		</p>
 	{:else if item.mode === 'progressive_fading' && stages.length}
-		<p class="passage-text" {lang} style:font-family={fonts}>{stages[stageIndex]}</p>
+		{#if practiceRuby && node && stageIndex === 0}
+			<div class="passage-text rich-prompt">
+				<SegmentText {node} {profile} layers={[]} />
+			</div>
+		{:else}
+			<p class="passage-text" {lang} style:font-family={fonts}>{stages[stageIndex]}</p>
+		{/if}
 		<div class="stage-controls">
 			<button disabled={stageIndex === 0} onclick={() => (stageIndex -= 1)}>More support</button>
 			<span class="muted">stage {stageIndex + 1}/{stages.length}</span>
@@ -208,7 +216,7 @@
 	{#if revealed && revealText}
 		{#if annotated && node}
 			<div class="revealed-text annotated">
-				<SegmentText {node} {profile} {layers} showRuby={false} />
+				<SegmentText {node} {profile} {layers} />
 			</div>
 		{:else}
 			<p class="passage-text revealed-text" {lang} style:font-family={fonts}>{revealText}</p>
@@ -242,6 +250,10 @@
 		display: flex;
 		align-items: center;
 		gap: 12px;
+	}
+
+	.rich-prompt {
+		margin: 0;
 	}
 
 	.chain {

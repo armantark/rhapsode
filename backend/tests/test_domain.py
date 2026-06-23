@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from rhapsode import models, schemas
-from rhapsode.services import planning, prep
+from rhapsode.services import furigana, planning, prep
 from rhapsode.services import sessions as session_service
 from rhapsode.services.backup import (
     SNAPSHOT_RETENTION,
@@ -32,9 +32,9 @@ def test_progressive_masks_remove_support() -> None:
     masks = progressive_masks("arma virumque cano")
     assert masks == [
         "arma virumque cano",
-        "… virumque cano",
-        "… cano",
-        "…",
+        "•••• virumque cano",
+        "•••• •••••••• cano",
+        "•••• •••••••• ••••",
     ]
 
 
@@ -43,10 +43,10 @@ def test_progressive_masks_handle_no_space_scripts_gradually() -> None:
 
     assert masks == [
         "空こぼれ落ちた",
-        "…ぼれ落ちた",
-        "…落ちた",
-        "…ちた",
-        "…",
+        "••ぼれ落ちた",
+        "••••落ちた",
+        "•••••ちた",
+        "•••••••",
     ]
 
 
@@ -589,9 +589,9 @@ def test_prep_prompt_guides_japanese_token_readings() -> None:
     assert "app attaches Japanese ruby readings locally" in prompt
     assert "for lines that include <words>" in prompt
     assert '<word index="0">空</word>' in prompt
-    assert '<word index="1">こぼれ落ち</word>' in prompt
-    assert '<word index="2">た</word>' in prompt
-    assert '<word index="6">星</word>' in prompt
+    assert '<word index="1">こぼれ落ちた</word>' in prompt
+    assert '<word index="2">ふたつ</word>' in prompt
+    assert '<word index="4">星</word>' in prompt
     assert "Do not split Japanese into individual characters" in prompt
     assert "do not emit standalone punctuation tokens" in prompt
     assert "<text>空こぼれ落ちたふたつの星が</text>" in prompt
@@ -632,10 +632,8 @@ def test_create_revision_adds_local_japanese_tokens_with_kanji_ruby(
         )
         assert [token.text for token in tokens] == [
             "空",
-            "こぼれ落ち",
-            "た",
-            "ふた",
-            "つ",
+            "こぼれ落ちた",
+            "ふたつ",
             "の",
             "星",
             "が",
@@ -650,13 +648,76 @@ def test_create_revision_adds_local_japanese_tokens_with_kanji_ruby(
         }
         assert readings == {
             "空": ["そら"],
-            "こぼれ落ち": ["こぼれおち"],
-            "た": [],
-            "ふた": [],
-            "つ": [],
+            "こぼれ落ちた": ["こぼれおちた"],
+            "ふたつ": [],
             "の": [],
             "星": ["ほし"],
             "が": [],
+        }
+
+
+def test_create_revision_adds_local_japanese_juncture_tokens(
+    session_factory: object,
+) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="japanese-juncture-ruby", name="Japanese")
+        passage = models.Passage(title="Sono Chi no Sadame", language_profile=language)
+        db.add(passage)
+        db.flush()
+        revision = create_revision(
+            db,
+            passage,
+            schemas.RevisionInput(
+                source_text="空こぼれ落ちたふたつの星が\n光と闇の水面 吸い込まれてゆく",
+                segments=[
+                    schemas.SegmentInput(
+                        kind="line",
+                        ordinal=0,
+                        text="空こぼれ落ちたふたつの星が",
+                        client_id="l0",
+                    ),
+                    schemas.SegmentInput(
+                        kind="line",
+                        ordinal=1,
+                        text="光と闇の水面 吸い込まれてゆく",
+                        client_id="l1",
+                    ),
+                ],
+            ),
+        )
+
+        juncture = next(segment for segment in revision.segments if segment.kind == "juncture")
+        tokens = sorted(
+            (
+                segment
+                for segment in revision.segments
+                if segment.parent_id == juncture.id and segment.kind == "token"
+            ),
+            key=lambda segment: segment.ordinal,
+        )
+        assert [token.text for token in tokens] == [
+            "光",
+            "と",
+            "闇",
+            "の",
+            "水面",
+            "吸い込まれてゆく",
+        ]
+        readings = {
+            token.text: [
+                annotation.value
+                for annotation in token.annotations
+                if annotation.layer == "reading"
+            ]
+            for token in tokens
+        }
+        assert readings == {
+            "光": ["ひかり"],
+            "と": [],
+            "闇": ["やみ"],
+            "の": [],
+            "水面": ["すいめん"],
+            "吸い込まれてゆく": ["すいこまれてゆく"],
         }
 
 
@@ -735,6 +796,64 @@ def test_create_revision_preserves_authored_japanese_token_readings(
         assert readings == {"その": [], "血": ["ち"], "の": [], "運命": ["さだめ"]}
 
 
+def test_retokenize_revision_preserves_existing_song_readings(
+    session_factory: object,
+) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="japanese-retokenize-ruby", name="Japanese")
+        passage = models.Passage(title="Sono Chi no Sadame", language_profile=language)
+        revision = models.PassageRevision(
+            passage=passage,
+            revision_number=1,
+            source_text="光と闇の水面 吸い込まれてゆく",
+        )
+        line = models.Segment(
+            id="line-retokenize",
+            kind="line",
+            ordinal=0,
+            text="光と闇の水面 吸い込まれてゆく",
+        )
+        water = models.Segment(
+            parent_id="line-retokenize",
+            kind="token",
+            ordinal=0,
+            text="水面",
+        )
+        water.annotations = [
+            models.Annotation(layer="reading", value="みなも", data={"render": "ruby"})
+        ]
+        revision.segments = [line, water]
+        db.add(passage)
+        db.flush()
+
+        stats = furigana.retokenize_revision(db, revision)
+        db.flush()
+        db.expire(revision, ["segments"])
+
+        assert stats["targets"] == 1
+        tokens = sorted(
+            (segment for segment in revision.segments if segment.kind == "token"),
+            key=lambda segment: segment.ordinal,
+        )
+        assert [token.text for token in tokens] == [
+            "光",
+            "と",
+            "闇",
+            "の",
+            "水面",
+            "吸い込まれてゆく",
+        ]
+        readings = {
+            token.text: [
+                annotation.value
+                for annotation in token.annotations
+                if annotation.layer == "reading"
+            ]
+            for token in tokens
+        }
+        assert readings["水面"] == ["みなも"]
+
+
 def test_prep_backfills_japanese_ruby_without_llm(session_factory: object) -> None:
     with session_factory() as db:  # type: ignore[operator]
         language = models.LanguageProfile(slug="japanese-ruby-backfill", name="Japanese")
@@ -766,10 +885,8 @@ def test_prep_backfills_japanese_ruby_without_llm(session_factory: object) -> No
         )
         assert [token.text for token in tokens] == [
             "空",
-            "こぼれ落ち",
-            "た",
-            "ふた",
-            "つ",
+            "こぼれ落ちた",
+            "ふたつ",
             "の",
             "星",
             "が",
@@ -809,8 +926,8 @@ def test_prep_glosses_japanese_local_tokens(session_factory: object) -> None:
                     glosses=[
                         prep.WordGloss(word_index=0, gloss="sky"),
                         prep.WordGloss(word_index=1, gloss="spill/fall"),
-                        prep.WordGloss(word_index=3, gloss="two"),
-                        prep.WordGloss(word_index=6, gloss="star"),
+                        prep.WordGloss(word_index=2, gloss="two"),
+                        prep.WordGloss(word_index=4, gloss="star"),
                     ],
                 )
             ]
@@ -833,10 +950,8 @@ def test_prep_glosses_japanese_local_tokens(session_factory: object) -> None:
         )
         assert [token.text for token in tokens] == [
             "空",
-            "こぼれ落ち",
-            "た",
-            "ふた",
-            "つ",
+            "こぼれ落ちた",
+            "ふたつ",
             "の",
             "星",
             "が",
@@ -852,15 +967,13 @@ def test_prep_glosses_japanese_local_tokens(session_factory: object) -> None:
                 ("reading", "そら", {"render": "ruby"}),
                 ("gloss", "sky", {}),
             ],
-            "こぼれ落ち": [
-                ("reading", "こぼれおち", {"render": "ruby"}),
+            "こぼれ落ちた": [
+                ("reading", "こぼれおちた", {"render": "ruby"}),
                 ("gloss", "spill/fall", {}),
             ],
-            "た": [],
-            "ふた": [
+            "ふたつ": [
                 ("gloss", "two", {}),
             ],
-            "つ": [],
             "の": [],
             "星": [
                 ("reading", "ほし", {"render": "ruby"}),

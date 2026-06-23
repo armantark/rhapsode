@@ -119,6 +119,15 @@
   keeps word boundaries and ruby. Backend masks now use unique quarter-step
   stages for spaced and no-space text. Verified with 71 backend tests, backend
   Ruff, backend `mypy src`, 78 frontend Vitest tests, and svelte-check.
+- Japanese ruby/fading repair pass (2026-06-23): local tokenization now merges
+  Japanese auxiliaries/suffixes/connective particles/non-independent verbs into
+  learner-facing tokens, generated junctures receive ruby token children, and
+  junctures inherit landing-line readings for lyric overrides. Progressive
+  fading now displays dot placeholders for each hidden unit instead of a single
+  collapsed ellipsis. The live dev `Sono Chi no Sadame` revision was repaired
+  with 364 token children and zero kanji tokens missing ruby; targeted backend
+  domain tests, backend Ruff, backend `mypy src`, targeted frontend Vitest, and
+  svelte-check pass.
 
 ## Remaining
 

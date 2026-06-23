@@ -125,6 +125,20 @@ Remaining work is manual release validation (signing, first tag push, install sm
   progressive masks now use unique quarter-step masks for spaced text and
   character fallback for no-space text so small Greek/Japanese lines do not
   duplicate stages or jump straight to blank.
+- Japanese ruby/fading second pass: local UniDic output is post-processed into
+  learner-facing tokens by merging auxiliaries, suffixes, connective particles,
+  and non-independent verbs into the preceding content token while leaving core
+  particles such as の/が separate. Generated junctures now get token children
+  too, and inherit the landing line's ruby readings so context-specific song
+  readings such as 水面=みなも stay consistent on "next line opening" cards.
+  Progressive fading masks hidden units with dot placeholders instead of one
+  collapsed ellipsis, including Greek/Latin spaced text and Japanese token
+  rows.
+- The dev `Sono Chi no Sadame` revision was retokenized with
+  `scripts/retokenize_japanese_ruby.py`: 69 targets (35 lines + 34 junctures),
+  364 token children, 203 ruby readings, zero kanji tokens missing ruby, and
+  zero junctures without token children. A manual SQLite backup was written to
+  `backend/data/backups/manual/rhapsode-before-japanese-retokenize-20260623.db`.
 - Collections group existing passages without owning revisions. Reads and
   session launches resolve member passages' active revisions; collection
   sessions persist that revision snapshot and apply one shared smart cap or

@@ -44,50 +44,44 @@ function japaneseRubyNode(): SegmentNode {
 				]
 			},
 			{
-				...lineNode('こぼれ'),
+				...lineNode('こぼれ落ちた'),
 				id: 'tok-2',
-				parent_id: 'seg-1',
-				kind: 'token'
-			},
-			{
-				...lineNode('落ち'),
-				id: 'tok-3',
 				parent_id: 'seg-1',
 				kind: 'token',
 				annotations: [
-					{ id: 'a3', segment_id: 'tok-3', layer: 'reading', value: 'おち', data: { render: 'ruby' } }
+					{
+						id: 'a2',
+						segment_id: 'tok-2',
+						layer: 'reading',
+						value: 'こぼれおちた',
+						data: { render: 'ruby' }
+					}
 				]
 			},
 			{
-				...lineNode('た'),
-				id: 'tok-4',
-				parent_id: 'seg-1',
-				kind: 'token'
-			},
-			{
 				...lineNode('ふたつ'),
-				id: 'tok-5',
+				id: 'tok-3',
 				parent_id: 'seg-1',
 				kind: 'token'
 			},
 			{
 				...lineNode('の'),
-				id: 'tok-6',
+				id: 'tok-4',
 				parent_id: 'seg-1',
 				kind: 'token'
 			},
 			{
 				...lineNode('星'),
-				id: 'tok-7',
+				id: 'tok-5',
 				parent_id: 'seg-1',
 				kind: 'token',
 				annotations: [
-					{ id: 'a7', segment_id: 'tok-7', layer: 'reading', value: 'ほし', data: { render: 'ruby' } }
+					{ id: 'a5', segment_id: 'tok-5', layer: 'reading', value: 'ほし', data: { render: 'ruby' } }
 				]
 			},
 			{
 				...lineNode('が'),
-				id: 'tok-8',
+				id: 'tok-6',
 				parent_id: 'seg-1',
 				kind: 'token'
 			}
@@ -151,15 +145,16 @@ describe('built-in mode rendering', () => {
 			'ほし'
 		]);
 		await fireEvent.click(screen.getByRole('button', { name: 'Fade further' }));
-		expect(screen.getByText('…')).toBeInTheDocument();
-		expect([...container.querySelectorAll('rt')].map((node) => node.textContent)).toEqual([
-			'お',
-			'ほし'
+		expect([...container.querySelectorAll('.fade-token-mask')].map((node) => node.textContent)).toEqual([
+			'•',
+			'••••••'
 		]);
+		expect([...container.querySelectorAll('rt')].map((node) => node.textContent)).toEqual(['ほし']);
 		await fireEvent.click(screen.getByRole('button', { name: 'Fade further' }));
 		await fireEvent.click(screen.getByRole('button', { name: 'Fade further' }));
 		await fireEvent.click(screen.getByRole('button', { name: 'Fade further' }));
 		expect(container.querySelector('rt')).toBeNull();
+		expect(container.querySelectorAll('.fade-token-mask')).toHaveLength(6);
 		expect(screen.getByText('stage 5/5')).toBeInTheDocument();
 	});
 

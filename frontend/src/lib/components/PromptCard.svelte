@@ -124,10 +124,13 @@
 	);
 	const japaneseStages = $derived.by(() => {
 		if (!practiceRuby || japaneseTokens.length < 2) return [];
-		return [0, ...hiddenCounts(japaneseTokens.length)].map((hidden) => ({
-			hidden,
-			visible: japaneseTokens.slice(hidden)
-		}));
+		return [0, ...hiddenCounts(japaneseTokens.length)].map((hidden) =>
+			japaneseTokens.map((token, index) => ({
+				token,
+				hidden: index < hidden,
+				mask: dotMask(token.text)
+			}))
+		);
 	});
 	const stageCount = $derived(japaneseStages.length || stages.length);
 
@@ -135,6 +138,10 @@
 		return [...new Set([0.25, 0.5, 0.75, 1].map((ratio) => Math.max(1, Math.round(total * ratio))))].sort(
 			(a, b) => a - b
 		);
+	}
+
+	function dotMask(text: string): string {
+		return [...text].map((char) => (/\s/.test(char) ? char : '•')).join('');
 	}
 </script>
 
@@ -151,11 +158,12 @@
 	{:else if item.mode === 'progressive_fading' && stages.length}
 		{#if japaneseStages.length}
 			<div class="passage-text rich-prompt fade-token-row">
-				{#if japaneseStages[stageIndex]?.hidden}
-					<span class="fade-gap">…</span>
-				{/if}
-				{#each japaneseStages[stageIndex]?.visible ?? [] as token (token.id)}
-					<SegmentText node={token} {profile} layers={[]} />
+				{#each japaneseStages[stageIndex] ?? [] as piece (piece.token.id)}
+					{#if piece.hidden}
+						<span class="fade-token-mask" {lang} style:font-family={fonts}>{piece.mask}</span>
+					{:else}
+						<SegmentText node={piece.token} {profile} layers={[]} />
+					{/if}
 				{/each}
 			</div>
 		{:else if practiceRuby && node && stageIndex === 0}
@@ -289,8 +297,9 @@
 		gap: 10px 14px;
 	}
 
-	.fade-gap {
+	.fade-token-mask {
 		color: var(--text-dim);
+		opacity: 0.82;
 	}
 
 	.chain {

@@ -32,7 +32,9 @@
 	const tokenChildren = $derived(node.children.filter((child) => child.kind === 'token'));
 	const blockChildren = $derived(node.children.filter((child) => child.kind !== 'token'));
 	const renderTokensAsPrimary = $derived(
-		node.kind === 'line' && tokenChildren.length > 0 && profile?.slug === 'japanese'
+		(node.kind === 'line' || node.kind === 'juncture') &&
+			tokenChildren.length > 0 &&
+			profile?.slug === 'japanese'
 	);
 	// Quantity marks render OVER each syllable of a token (ruby) when the
 	// annotation carries the syllable breakdown and it aligns to this text.

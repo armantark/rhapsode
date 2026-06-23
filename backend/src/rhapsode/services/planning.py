@@ -32,16 +32,21 @@ def progressive_masks(text: str) -> list[str]:
         units = [char for char in text if not char.isspace()]
         joiner = ""
     if len(units) <= 1:
-        return [text, "…"]
+        return [text, _dot_mask(text)]
     stages = [text]
     for hidden in _progressive_hidden_counts(len(units)):
+        masked = [_dot_mask(unit) for unit in units[:hidden]]
         visible = units[hidden:]
-        stages.append("…" if not visible else joiner.join(["…", *visible]))
+        stages.append(joiner.join([*masked, *visible]))
     return stages
 
 
 def _progressive_hidden_counts(total: int) -> list[int]:
     return sorted({max(1, round(total * ratio)) for ratio in (0.25, 0.5, 0.75, 1.0)})
+
+
+def _dot_mask(text: str) -> str:
+    return "".join("•" if not char.isspace() else char for char in text)
 
 
 def _lead_in(text: str, words: int = 2) -> str:

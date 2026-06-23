@@ -147,6 +147,44 @@ describe('ruby rendering', () => {
 		expect(screen.getByText('spilled down')).toBeInTheDocument();
 	});
 
+	it('renders Japanese juncture token children as the primary ruby reading surface', () => {
+		const { container } = render(SegmentText, {
+			node: node({
+				text: '光と闇の水面 吸い込まれてゆく',
+				kind: 'juncture',
+				children: [
+					node({
+						id: 'tok-1',
+						parent_id: 'seg-1',
+						kind: 'token',
+						ordinal: 0,
+						text: '光',
+						annotations: [
+							{ id: 'r1', segment_id: 'tok-1', layer: 'reading', value: 'ひかり', data: { render: 'ruby' } }
+						]
+					}),
+					node({
+						id: 'tok-2',
+						parent_id: 'seg-1',
+						kind: 'token',
+						ordinal: 1,
+						text: '水面',
+						annotations: [
+							{ id: 'r2', segment_id: 'tok-2', layer: 'reading', value: 'みなも', data: { render: 'ruby' } }
+						]
+					})
+				]
+			}),
+			profile: profile({ slug: 'japanese' })
+		});
+
+		expect(screen.queryByText('光と闇の水面 吸い込まれてゆく')).toBeNull();
+		expect([...container.querySelectorAll('rt')].map((node) => node.textContent)).toEqual([
+			'ひかり',
+			'みなも'
+		]);
+	});
+
 	it('does not render kana-only Japanese readings as ruby', () => {
 		const { container } = render(SegmentText, {
 			node: node({

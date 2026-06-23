@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 
 from rhapsode import models
 from rhapsode.database import SessionLocal
+from rhapsode.services import passages
 from rhapsode.services.furigana import retokenize_revision
 
 
@@ -33,6 +34,7 @@ def main() -> None:
 
     with SessionLocal() as db:
         revision = _load_revision(db, revision_id=args.revision_id, title=args.title)
+        junctures = passages.refresh_junctures(db, revision)
         stats = retokenize_revision(db, revision)
         if args.dry_run:
             db.rollback()
@@ -43,7 +45,8 @@ def main() -> None:
         print(
             f"{revision.id}: {action} {stats['targets']} targets, "
             f"deleted {stats['deleted']} tokens, created {stats['created']} tokens, "
-            f"wrote {stats['readings']} readings"
+            f"wrote {stats['readings']} readings, "
+            f"refreshed {junctures['updated']} junctures"
         )
 
 

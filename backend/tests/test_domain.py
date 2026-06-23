@@ -687,6 +687,8 @@ def test_create_revision_adds_local_japanese_juncture_tokens(
         )
 
         juncture = next(segment for segment in revision.segments if segment.kind == "juncture")
+        assert juncture.text == "光と闇 …"
+        assert juncture.cue == "… の星が"
         tokens = sorted(
             (
                 segment
@@ -699,9 +701,6 @@ def test_create_revision_adds_local_japanese_juncture_tokens(
             "光",
             "と",
             "闇",
-            "の",
-            "水面",
-            "吸い込まれてゆく",
         ]
         readings = {
             token.text: [
@@ -715,9 +714,6 @@ def test_create_revision_adds_local_japanese_juncture_tokens(
             "光": ["ひかり"],
             "と": [],
             "闇": ["やみ"],
-            "の": [],
-            "水面": ["すいめん"],
-            "吸い込まれてゆく": ["すいこまれてゆく"],
         }
 
 
@@ -852,6 +848,35 @@ def test_retokenize_revision_preserves_existing_song_readings(
             for token in tokens
         }
         assert readings["水面"] == ["みなも"]
+
+
+def test_japanese_recall_prompt_uses_token_lead_in(session_factory: object) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="japanese-recall-lead-in", name="Japanese")
+        passage = models.Passage(title="Sono Chi no Sadame", language_profile=language)
+        db.add(passage)
+        db.flush()
+        revision = create_revision(
+            db,
+            passage,
+            schemas.RevisionInput(
+                source_text="空こぼれ落ちたふたつの星が",
+                segments=[
+                    schemas.SegmentInput(
+                        kind="line",
+                        ordinal=0,
+                        text="空こぼれ落ちたふたつの星が",
+                        client_id="l0",
+                    ),
+                ],
+            ),
+        )
+        line = next(segment for segment in revision.segments if segment.kind == "line")
+
+        prompt = prompt_for("cue_recall", line, [line])
+
+        assert prompt["lead_in"] == "空こぼれ落ちた"
+        assert prompt["lead_in"] != line.text
 
 
 def test_prep_backfills_japanese_ruby_without_llm(session_factory: object) -> None:

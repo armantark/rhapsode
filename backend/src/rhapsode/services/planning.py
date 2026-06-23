@@ -49,12 +49,36 @@ def _dot_mask(text: str) -> str:
     return "".join("•" if not char.isspace() else char for char in text)
 
 
-def _lead_in(text: str, words: int = 2) -> str:
-    """The first couple of words, verbatim, as a retrieval trigger. Recitation
+def _lead_in(target: models.Segment, words: int = 2) -> str:
+    """The first couple of tokens, verbatim, as a retrieval trigger. Recitation
     is chained — each phrase fires the next — so the most effective cue for
-    verbatim recall is the line's own opening, sliced straight from the text so
-    diacritics and elided particles stay exact (no LLM paraphrase drift)."""
-    return " ".join(text.split()[:words])
+    verbatim recall is the line's own opening, sliced straight from the segment
+    tree so Japanese does not collapse into a whole-line cue."""
+    tokens = _token_children(target)
+    if tokens:
+        return "".join(token.text for token in tokens[:words])
+    return " ".join(target.text.split()[:words])
+
+
+def _token_children(target: models.Segment) -> list[models.Segment]:
+    revision = target.revision
+    if revision is None:
+        return []
+    return sorted(
+        (
+            segment
+            for segment in revision.segments
+            if segment.parent_id == target.id and segment.kind == "token"
+        ),
+        key=lambda segment: segment.ordinal,
+    )
+
+
+def _recall_units(target: models.Segment) -> list[str]:
+    tokens = _token_children(target)
+    if tokens:
+        return [token.text for token in tokens]
+    return [word for word in target.text.split() if word != "…"]
 
 
 def _recall_prompt(
@@ -68,20 +92,19 @@ def _recall_prompt(
         # words plus an ellipsis. "Opening" left the stop point ambiguous, so we
         # name the exact word count — the one mode that stops mid-line needs the
         # clearest endpoint of all.
-        opening_words = [word for word in target.text.split() if word != "…"]
-        count = len(opening_words)
+        count = len(_recall_units(target))
         plural = "s" if count != 1 else ""
         return {
             "instruction": (
                 "Carry on into the next line — recite just its first "
                 f"{count} word{plural}, then stop."
             ),
-            "lead_in": target.cue or _lead_in(target.text),
+            "lead_in": target.cue or _lead_in(target),
             "target_text": target.text,
         }
     return {
         "instruction": line_instruction,
-        "lead_in": _lead_in(target.text),
+        "lead_in": _lead_in(target),
         # A learner-authored mnemonic is the strongest optional nudge. The
         # revision-owned cue remains the fallback and is never mutated.
         "hint": hint,

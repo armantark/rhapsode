@@ -10,6 +10,7 @@
 		revealed = false,
 		revealText = null,
 		node = null,
+		nodes = [],
 		layers = [],
 		note = null,
 		onReveal,
@@ -27,6 +28,10 @@
 		 *  gloss / translation / meter interlinearly (the learner is still
 		 *  acquiring the vocabulary). */
 		node?: SegmentNode | null;
+		/** All revision segment subtrees. Japanese prompt strings are rendered
+		 *  through these nodes so every kanji-bearing target surface can carry
+		 *  furigana instead of falling back to raw text. */
+		nodes?: SegmentNode[];
 		/** Annotation layers the learner toggled on for the flashcard. */
 		layers?: string[];
 		/** The learner's live personal note for this segment, fetched by the
@@ -38,11 +43,12 @@
 		onSaveNote?: (text: string) => void | Promise<void>;
 	} = $props();
 
-	const practiceRuby = $derived(profile?.slug === 'japanese' && !!node);
+	const japanese = $derived(profile?.slug === 'japanese');
+	const readingEnabled = $derived(!japanese || layers.includes('reading'));
+	const practiceRuby = $derived(japanese && !!node);
 	// Render the rich interlinear view when support layers are on, or when the
-	// Japanese line can carry ruby. Ruby is baseline reading support, not a gloss
-	// toggle.
-	const annotated = $derived(!!node && (layers.length > 0 || practiceRuby));
+	// Japanese line can carry token boundaries. The Reading layer controls ruby.
+	const annotated = $derived(!!node && (layers.length > 0 || japanese));
 
 	// Prompt payloads are mode-shaped on the backend (see services/planning.py)
 	// and intentionally open-ended for plugin modes, hence the JSON fallback.
@@ -77,6 +83,29 @@
 		(typeof prompt.lead_in === 'string' && prompt.lead_in) ||
 			firstWords(lineText, 2) ||
 			(typeof prompt.cue === 'string' ? prompt.cue : '')
+	);
+	const leadInNode = $derived.by(() => {
+		if (!japanese) return null;
+		if (node && node.kind !== 'juncture' && japaneseTokens.length) {
+			return tokenSubsetNode(node, japaneseTokens.slice(0, 2), 'lead-in');
+		}
+		return leadIn ? nodeForText(leadIn) : null;
+	});
+	const shadowNode = $derived.by(() => {
+		if (!japanese) return null;
+		const text = String(prompt.target_text ?? prompt.start ?? '');
+		return nodeForText(text) ?? node;
+	});
+	const chainDisplays = $derived.by(() =>
+		chain.map((text) => ({ text, node: japanese ? nodeForText(text) : null }))
+	);
+	const hintNode = $derived.by(() =>
+		japanese && effectiveHint ? nodeForText(effectiveHint) : null
+	);
+	const fullPassageNodes = $derived.by(() =>
+		japanese && item.mode === 'full_passage'
+			? nodes.filter((candidate) => candidate.kind === 'line').sort((a, b) => a.ordinal - b.ordinal)
+			: []
 	);
 
 	let showHint = $state(false);
@@ -120,7 +149,7 @@
 	const lang = $derived(langCode(profile));
 	const fonts = $derived(fontStack(profile));
 	const japaneseTokens = $derived(
-		profile?.slug === 'japanese' ? (node?.children ?? []).filter((child) => child.kind === 'token') : []
+		japanese ? tokenChildren(node) : []
 	);
 	const japaneseStages = $derived.by(() => {
 		if (!practiceRuby || japaneseTokens.length < 2) return [];
@@ -143,6 +172,61 @@
 	function dotMask(text: string): string {
 		return [...text].map((char) => (/\s/.test(char) ? char : '•')).join('');
 	}
+
+	function tokenChildren(source: SegmentNode | null): SegmentNode[] {
+		return (source?.children ?? []).filter((child) => child.kind === 'token');
+	}
+
+	function normalizeText(text: string): string {
+		return text.replaceAll(/[…\s]/g, '');
+	}
+
+	function nodeForText(text: string): SegmentNode | null {
+		const normalized = normalizeText(text);
+		if (!normalized) return null;
+		for (const candidate of uniqueNodes([node, ...nodes])) {
+			if (normalizeText(candidate.text) === normalized) return candidate;
+			const window = tokenWindowNode(candidate, normalized);
+			if (window) return window;
+		}
+		return null;
+	}
+
+	function uniqueNodes(candidates: Array<SegmentNode | null>): SegmentNode[] {
+		const seen = new Set<string>();
+		const unique: SegmentNode[] = [];
+		for (const candidate of candidates) {
+			if (!candidate || seen.has(candidate.id)) continue;
+			seen.add(candidate.id);
+			unique.push(candidate);
+		}
+		return unique;
+	}
+
+	function tokenWindowNode(source: SegmentNode, normalizedText: string): SegmentNode | null {
+		const tokens = tokenChildren(source);
+		for (let start = 0; start < tokens.length; start += 1) {
+			let text = '';
+			for (let end = start; end < tokens.length; end += 1) {
+				text += normalizeText(tokens[end].text);
+				if (text === normalizedText) {
+					return tokenSubsetNode(source, tokens.slice(start, end + 1), `window-${start}-${end}`);
+				}
+				if (text.length >= normalizedText.length) break;
+			}
+		}
+		return null;
+	}
+
+	function tokenSubsetNode(source: SegmentNode, tokens: SegmentNode[], suffix: string): SegmentNode | null {
+		if (!tokens.length) return null;
+		return {
+			...source,
+			id: `${source.id}-${suffix}`,
+			text: tokens.map((token) => token.text).join(''),
+			children: tokens
+		};
+	}
 </script>
 
 <div class="prompt card">
@@ -152,9 +236,15 @@
 	</div>
 
 	{#if item.mode === 'shadowing'}
-		<p class="passage-text" {lang} style:font-family={fonts}>
-			{String(prompt.target_text ?? prompt.start ?? '')}
-		</p>
+		{#if shadowNode}
+			<div class="passage-text rich-prompt">
+				<SegmentText node={shadowNode} {profile} layers={[]} showRuby={readingEnabled} />
+			</div>
+		{:else}
+			<p class="passage-text" {lang} style:font-family={fonts}>
+				{String(prompt.target_text ?? prompt.start ?? '')}
+			</p>
+		{/if}
 	{:else if item.mode === 'progressive_fading' && stages.length}
 		{#if japaneseStages.length}
 			<div class="passage-text rich-prompt fade-token-row">
@@ -162,13 +252,13 @@
 					{#if piece.hidden}
 						<span class="fade-token-mask" {lang} style:font-family={fonts}>{piece.mask}</span>
 					{:else}
-						<SegmentText node={piece.token} {profile} layers={[]} />
+						<SegmentText node={piece.token} {profile} layers={[]} showRuby={readingEnabled} />
 					{/if}
 				{/each}
 			</div>
 		{:else if practiceRuby && node && stageIndex === 0}
 			<div class="passage-text rich-prompt">
-				<SegmentText {node} {profile} layers={[]} />
+				<SegmentText {node} {profile} layers={[]} showRuby={readingEnabled} />
 			</div>
 		{:else}
 			<p class="passage-text" {lang} style:font-family={fonts}>{stages[stageIndex]}</p>
@@ -182,24 +272,34 @@
 		</div>
 	{:else if item.mode === 'forward_chaining' || item.mode === 'backward_chaining'}
 		<ol class="chain">
-			{#each chain as link (link)}
-				<li class="passage-text" {lang} style:font-family={fonts}>{link}</li>
+			{#each chainDisplays as link (link.text)}
+				{#if link.node}
+					<li class="passage-text chain-rich">
+						<SegmentText node={link.node} {profile} layers={[]} showRuby={readingEnabled} />
+					</li>
+				{:else}
+					<li class="passage-text" {lang} style:font-family={fonts}>{link.text}</li>
+				{/if}
 			{/each}
 		</ol>
 	{:else if item.mode === 'cue_recall' || item.mode === 'weak_link' || item.mode === 'random_start'}
-		<p class="cue-line">
-			{#if leadIn}
+		<div class="cue-line">
+			{#if leadInNode}
+				<div class="cue rich-cue">
+					<SegmentText node={leadInNode} {profile} layers={[]} showRuby={readingEnabled} />
+				</div>
+			{:else if leadIn}
 				<span class="cue passage-text" {lang} style:font-family={fonts}>{leadIn}</span>
 			{/if}
 			<span class="muted">{leadIn ? '… recite aloud from here, then check' : 'Recite from memory, then check'}</span>
-		</p>
-		{#if showLetters && lineText}
+		</div>
+		{#if showLetters && lineText && !japanese}
 			<p class="letters passage-text" {lang} style:font-family={fonts} title="First letter of each word">
 				{firstLetters(lineText)}
 			</p>
 		{/if}
 		<div class="cue-actions">
-			{#if lineText}
+			{#if lineText && !japanese}
 				<button class="hint-toggle" onclick={() => (showLetters = !showLetters)}>
 					{showLetters ? 'Hide first letters' : 'Show first letters'}
 				</button>
@@ -207,9 +307,16 @@
 			{#if effectiveHint || canEditNote}
 				{#if showHint}
 					{#if effectiveHint}
-						<span class="hint passage-text" {lang} style:font-family={fonts}>
-							{#if personalNote}<span class="note-tag">your note</span>{/if}{effectiveHint}
-						</span>
+						{#if hintNode}
+							<div class="hint rich-hint">
+								{#if personalNote}<span class="note-tag">your note</span>{/if}
+								<SegmentText node={hintNode} {profile} layers={[]} showRuby={readingEnabled} />
+							</div>
+						{:else}
+							<span class="hint passage-text" {lang} style:font-family={fonts}>
+								{#if personalNote}<span class="note-tag">your note</span>{/if}{effectiveHint}
+							</span>
+						{/if}
 					{/if}
 					{#if canEditNote}
 						{#if editingNote}
@@ -250,7 +357,13 @@
 	{#if revealed && revealText}
 		{#if annotated && node}
 			<div class="revealed-text annotated">
-				<SegmentText {node} {profile} {layers} />
+				<SegmentText {node} {profile} {layers} showRuby={readingEnabled} />
+			</div>
+		{:else if fullPassageNodes.length}
+			<div class="revealed-text annotated full-passage-reveal">
+				{#each fullPassageNodes as line (line.id)}
+					<SegmentText node={line} {profile} {layers} showRuby={readingEnabled} />
+				{/each}
 			</div>
 		{:else}
 			<p class="passage-text revealed-text" {lang} style:font-family={fonts}>{revealText}</p>
@@ -307,11 +420,18 @@
 		padding-inline-start: 24px;
 	}
 
+	.chain-rich :global(.segment),
+	.rich-cue :global(.segment),
+	.rich-hint :global(.segment) {
+		margin-bottom: 0 !important;
+	}
+
 	.cue-line {
 		display: flex;
-		align-items: baseline;
+		align-items: flex-end;
 		gap: 10px;
 		margin: 0;
+		flex-wrap: wrap;
 	}
 
 	.cue {
@@ -335,7 +455,7 @@
 	}
 
 	.letters {
-		letter-spacing: 0.12em;
+		letter-spacing: 0;
 		color: var(--gold);
 		margin: 0;
 	}

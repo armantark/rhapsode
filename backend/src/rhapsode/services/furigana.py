@@ -46,7 +46,7 @@ def analyze(text: str) -> list[LocalToken]:
     tagged: list[_TaggedToken] = []
     for word in _tagger()(text):
         surface = str(getattr(word, "surface", word)).strip()
-        if not surface:
+        if not surface or _is_punctuation_only(surface):
             continue
         feature = getattr(word, "feature", None)
         tagged.append(
@@ -249,6 +249,10 @@ def _katakana_to_hiragana(text: str) -> str:
 
 def _has_kanji(text: str) -> bool:
     return any("\u3400" <= char <= "\u9fff" for char in text)
+
+
+def _is_punctuation_only(text: str) -> bool:
+    return not any(char.isalnum() for char in text)
 
 
 def _ruby_targets(revision: models.PassageRevision) -> list[models.Segment]:

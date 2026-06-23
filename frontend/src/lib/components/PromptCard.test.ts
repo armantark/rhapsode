@@ -137,6 +137,7 @@ describe('built-in mode rendering', () => {
 			}),
 			node: japaneseRubyNode(),
 			profile: japaneseProfile,
+			layers: ['reading'],
 			onReveal: vi.fn()
 		});
 		expect([...container.querySelectorAll('rt')].map((node) => node.textContent)).toEqual([
@@ -182,7 +183,25 @@ describe('built-in mode rendering', () => {
 		expect(screen.queryByRole('button', { name: /Show answer/ })).toBeNull();
 	});
 
-	it('revealed Japanese answers show ruby even when support layers are off', () => {
+	it('revealed Japanese answers show ruby when the reading layer is enabled', () => {
+		const { container } = render(PromptCard, {
+			item: item('cue_recall', { instruction: 'Continue from the cue.', cue: 'ふたつの星' }),
+			node: japaneseRubyNode(),
+			profile: japaneseProfile,
+			layers: ['reading'],
+			revealed: true,
+			revealText: '空こぼれ落ちたふたつの星が',
+			onReveal: vi.fn()
+		});
+		const revealed = container.querySelector('.revealed-text');
+		expect([...revealed!.querySelectorAll('rt')].map((node) => node.textContent)).toEqual([
+			'そら',
+			'お',
+			'ほし'
+		]);
+	});
+
+	it('hides Japanese ruby when the reading layer is toggled off', () => {
 		const { container } = render(PromptCard, {
 			item: item('cue_recall', { instruction: 'Continue from the cue.', cue: 'ふたつの星' }),
 			node: japaneseRubyNode(),
@@ -191,6 +210,38 @@ describe('built-in mode rendering', () => {
 			revealText: '空こぼれ落ちたふたつの星が',
 			onReveal: vi.fn()
 		});
+		expect(container.querySelector('rt')).toBeNull();
+	});
+
+	it('renders Japanese cue lead-ins with ruby and never shows the whole line as the cue', () => {
+		const { container } = render(PromptCard, {
+			item: item('cue_recall', {
+				instruction: 'Recite this line to the end.',
+				lead_in: '空こぼれ落ちたふたつの星が',
+				target_text: '空こぼれ落ちたふたつの星が'
+			}),
+			node: japaneseRubyNode(),
+			profile: japaneseProfile,
+			layers: ['reading'],
+			onReveal: vi.fn()
+		});
+
+		expect([...container.querySelectorAll('rt')].map((node) => node.textContent)).toEqual(['そら', 'お']);
+		expect(screen.queryByText('空こぼれ落ちたふたつの星が')).toBeNull();
+	});
+
+	it('renders Japanese shadowing target text through the token ruby surface', () => {
+		const { container } = render(PromptCard, {
+			item: item('shadowing', {
+				instruction: 'Listen, then shadow aloud.',
+				target_text: '空こぼれ落ちたふたつの星が'
+			}),
+			node: japaneseRubyNode(),
+			profile: japaneseProfile,
+			layers: ['reading'],
+			onReveal: vi.fn()
+		});
+
 		expect([...container.querySelectorAll('rt')].map((node) => node.textContent)).toEqual([
 			'そら',
 			'お',

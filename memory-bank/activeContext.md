@@ -139,6 +139,20 @@ Remaining work is manual release validation (signing, first tag push, install sm
   364 token children, 203 ruby readings, zero kanji tokens missing ruby, and
   zero junctures without token children. A manual SQLite backup was written to
   `backend/data/backups/manual/rhapsode-before-japanese-retokenize-20260623.db`.
+- Japanese practice rendering invariant: every Japanese target-text surface
+  (shadowing, fading, chaining, cue/random/weak lead-ins, hints that match
+  passage text, checked answers, and full-passage reveal) must render from
+  segment token nodes when possible. The practice `reading` layer is the ruby
+  switch: default on for Japanese when no saved preference exists, and respected
+  as off once the user toggles it off. Raw prompt strings are a fallback only
+  when no segment node/window can be matched.
+- Japanese cue/juncture correction: recall lead-ins are token-based, not
+  whitespace-based, so an unspaced Japanese line no longer becomes its own cue.
+  Juncture heads/tails are token windows (`光と闇 …`, `… の星が`) rather than
+  whole lines. The dev `Sono Chi no Sadame` DB was refreshed again: 32 junctures
+  shortened, active prompt JSON updated for 3 incomplete items, 284 current
+  token children, and zero kanji tokens missing ruby. A second backup is at
+  `backend/data/backups/manual/rhapsode-before-japanese-cue-refresh-20260623.db`.
 - Collections group existing passages without owning revisions. Reads and
   session launches resolve member passages' active revisions; collection
   sessions persist that revision snapshot and apply one shared smart cap or

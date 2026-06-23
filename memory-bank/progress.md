@@ -128,6 +128,16 @@
   with 364 token children and zero kanji tokens missing ruby; targeted backend
   domain tests, backend Ruff, backend `mypy src`, targeted frontend Vitest, and
   svelte-check pass.
+- Japanese practice rendering invariant pass (2026-06-23): PromptCard now
+  renders Japanese target text through token nodes across shadowing, fading,
+  chaining, cue/random/weak lead-ins, matching hints, checked answers, and
+  full-passage reveal; the `reading` layer controls ruby visibility and
+  defaults on for Japanese when no saved preference exists. Backend recall cues
+  and juncture heads/tails are token-based instead of whitespace-based. The
+  live `Sono Chi no Sadame` DB was refreshed again (32 shortened junctures,
+  3 active prompts updated, 284 token children, 0 kanji tokens missing ruby).
+  Targeted backend domain tests, backend Ruff, backend `mypy src`, targeted
+  frontend Vitest, and svelte-check pass.
 
 ## Remaining
 

@@ -15,13 +15,29 @@ JUNCTURE_SPAN = 3
 
 
 def _tail(text: str) -> str:
-    words = text.split()
-    return ("… " if len(words) > JUNCTURE_SPAN else "") + " ".join(words[-JUNCTURE_SPAN:])
+    units, joiner = _juncture_units(text)
+    return ("… " if len(units) > JUNCTURE_SPAN else "") + joiner.join(
+        units[-JUNCTURE_SPAN:]
+    )
 
 
 def _head(text: str) -> str:
-    words = text.split()
-    return " ".join(words[:JUNCTURE_SPAN]) + (" …" if len(words) > JUNCTURE_SPAN else "")
+    units, joiner = _juncture_units(text)
+    return joiner.join(units[:JUNCTURE_SPAN]) + (" …" if len(units) > JUNCTURE_SPAN else "")
+
+
+def _juncture_units(text: str) -> tuple[list[str], str]:
+    if _contains_japanese(text):
+        tokens = furigana.token_texts(text)
+        if tokens:
+            return tokens, ""
+    return text.split(), " "
+
+
+def _contains_japanese(text: str) -> bool:
+    return any(
+        "\u3040" <= char <= "\u30ff" or "\u3400" <= char <= "\u9fff" for char in text
+    )
 
 
 def add_junctures(
@@ -58,6 +74,37 @@ def add_junctures(
         created.append(juncture)
     db.flush()
     return created
+
+
+def refresh_junctures(
+    db: Session, revision: models.PassageRevision
+) -> dict[str, int]:
+    lines = sorted(
+        (segment for segment in revision.segments if segment.kind == "line"),
+        key=lambda segment: segment.ordinal,
+    )
+    line_by_previous = {
+        previous.ordinal: (previous, following)
+        for previous, following in zip(lines, lines[1:], strict=False)
+    }
+    updated = 0
+    for juncture in (segment for segment in revision.segments if segment.kind == "juncture"):
+        previous_ordinal = (juncture.metadata_json or {}).get("juncture_after")
+        if not isinstance(previous_ordinal, int):
+            continue
+        pair = line_by_previous.get(previous_ordinal)
+        if pair is None:
+            continue
+        previous, following = pair
+        text = _head(following.text)
+        cue = _tail(previous.text)
+        if juncture.text != text or juncture.cue != cue:
+            juncture.text = text
+            juncture.cue = cue
+            updated += 1
+    if updated:
+        db.flush()
+    return {"updated": updated}
 
 
 def add_segments(

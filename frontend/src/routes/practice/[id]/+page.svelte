@@ -150,10 +150,13 @@
 	const currentNode = $derived(
 		currentItem?.segment_id ? (nodeById.get(currentItem.segment_id) ?? null) : null
 	);
+	const allNodes = $derived([...nodeById.values()]);
 	// Layer toggles for the flashcard (translation/gloss/meter), persisted so the
 	// choice sticks across cards and sessions.
 	const LAYERS_KEY = 'rhapsode.practiceLayers';
 	let enabledLayers: string[] = $state([]);
+	let layerPrefsLoaded = $state(false);
+	let hasStoredLayerPrefs = $state(false);
 	const layerChoices = $derived.by(() => {
 		const declared = profileLayers(profile)
 			.map((entry) => entry.layer)
@@ -174,6 +177,7 @@
 			? enabledLayers.filter((entry) => entry !== layer)
 			: [...enabledLayers, layer];
 		localStorage.setItem(LAYERS_KEY, JSON.stringify(enabledLayers));
+		hasStoredLayerPrefs = true;
 	}
 	const revealText = $derived.by(() => {
 		if (!currentItem) return null;
@@ -220,11 +224,15 @@
 	onMount(async () => {
 		micEnabled = localStorage.getItem(MIC_KEY) === 'true';
 		soundOn = isSoundEnabled();
+		const storedLayerPrefs = localStorage.getItem(LAYERS_KEY);
+		hasStoredLayerPrefs = storedLayerPrefs !== null;
 		try {
-			const stored = JSON.parse(localStorage.getItem(LAYERS_KEY) ?? '[]');
+			const stored = JSON.parse(storedLayerPrefs ?? '[]');
 			if (Array.isArray(stored)) enabledLayers = stored.filter((entry) => typeof entry === 'string');
 		} catch {
 			enabledLayers = [];
+		} finally {
+			layerPrefsLoaded = true;
 		}
 		try {
 			session = await api.getSession(page.params.id ?? '');
@@ -271,6 +279,21 @@
 		} finally {
 			loading = false;
 		}
+	});
+
+	$effect(() => {
+		if (
+			!layerPrefsLoaded ||
+			hasStoredLayerPrefs ||
+			profile?.slug !== 'japanese' ||
+			!layerChoices.includes('reading') ||
+			enabledLayers.includes('reading')
+		) {
+			return;
+		}
+		enabledLayers = [...enabledLayers, 'reading'];
+		localStorage.setItem(LAYERS_KEY, JSON.stringify(enabledLayers));
+		hasStoredLayerPrefs = true;
 	});
 
 	function pulse(rating: AttemptRating) {
@@ -473,6 +496,7 @@
 					{revealed}
 					{revealText}
 					node={currentNode}
+					nodes={allNodes}
 					layers={enabledLayers}
 					note={segmentNote}
 					onReveal={() => (revealed = true)}

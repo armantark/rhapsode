@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import japaneseFixture from '../../../../contracts/fixtures/japanese-passage.json';
-import { rubyReading, textLayers } from './ruby';
+import { japaneseRubyParts, rubyReading, textLayers } from './ruby';
 
 // Mirror the committed fixture: a reading annotation flagged render=ruby plus
 // a plain translation layer.
@@ -38,5 +38,27 @@ describe('textLayers', () => {
 
 	it('returns nothing when no layers are enabled', () => {
 		expect(textLayers(fixtureSegment, [])).toEqual([]);
+	});
+});
+
+describe('japaneseRubyParts', () => {
+	it('ignores kana-only readings from older annotations', () => {
+		expect(japaneseRubyParts('ふたつの', 'ふたつの')).toEqual([
+			{ text: 'ふたつの', reading: null }
+		]);
+	});
+
+	it('puts ruby only over kanji inside mixed kana/kanji tokens', () => {
+		expect(japaneseRubyParts('こぼれ落ちた', 'こぼれおちた')).toEqual([
+			{ text: 'こぼれ', reading: null },
+			{ text: '落', reading: 'お' },
+			{ text: 'ちた', reading: null }
+		]);
+		expect(japaneseRubyParts('引き合う', 'ひきあう')).toEqual([
+			{ text: '引', reading: 'ひ' },
+			{ text: 'き', reading: null },
+			{ text: '合', reading: 'あ' },
+			{ text: 'う', reading: null }
+		]);
 	});
 });

@@ -25,13 +25,23 @@ def register_practice_mode(mode_id: str, builder: PromptBuilder) -> None:
 
 def progressive_masks(text: str) -> list[str]:
     words = text.split()
-    if len(words) <= 1:
+    if len(words) > 1:
+        units = words
+        joiner = " "
+    else:
+        units = [char for char in text if not char.isspace()]
+        joiner = ""
+    if len(units) <= 1:
         return [text, "…"]
     stages = [text]
-    for ratio in (0.35, 0.65, 1.0):
-        hidden = max(1, round(len(words) * ratio))
-        stages.append(" ".join("…" if index < hidden else word for index, word in enumerate(words)))
+    for hidden in _progressive_hidden_counts(len(units)):
+        visible = units[hidden:]
+        stages.append("…" if not visible else joiner.join(["…", *visible]))
     return stages
+
+
+def _progressive_hidden_counts(total: int) -> list[int]:
+    return sorted({max(1, round(total * ratio)) for ratio in (0.25, 0.5, 0.75, 1.0)})
 
 
 def _lead_in(text: str, words: int = 2) -> str:

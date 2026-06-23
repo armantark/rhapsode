@@ -119,6 +119,23 @@
 
 	const lang = $derived(langCode(profile));
 	const fonts = $derived(fontStack(profile));
+	const japaneseTokens = $derived(
+		profile?.slug === 'japanese' ? (node?.children ?? []).filter((child) => child.kind === 'token') : []
+	);
+	const japaneseStages = $derived.by(() => {
+		if (!practiceRuby || japaneseTokens.length < 2) return [];
+		return [0, ...hiddenCounts(japaneseTokens.length)].map((hidden) => ({
+			hidden,
+			visible: japaneseTokens.slice(hidden)
+		}));
+	});
+	const stageCount = $derived(japaneseStages.length || stages.length);
+
+	function hiddenCounts(total: number): number[] {
+		return [...new Set([0.25, 0.5, 0.75, 1].map((ratio) => Math.max(1, Math.round(total * ratio))))].sort(
+			(a, b) => a - b
+		);
+	}
 </script>
 
 <div class="prompt card">
@@ -132,7 +149,16 @@
 			{String(prompt.target_text ?? prompt.start ?? '')}
 		</p>
 	{:else if item.mode === 'progressive_fading' && stages.length}
-		{#if practiceRuby && node && stageIndex === 0}
+		{#if japaneseStages.length}
+			<div class="passage-text rich-prompt fade-token-row">
+				{#if japaneseStages[stageIndex]?.hidden}
+					<span class="fade-gap">…</span>
+				{/if}
+				{#each japaneseStages[stageIndex]?.visible ?? [] as token (token.id)}
+					<SegmentText node={token} {profile} layers={[]} />
+				{/each}
+			</div>
+		{:else if practiceRuby && node && stageIndex === 0}
 			<div class="passage-text rich-prompt">
 				<SegmentText {node} {profile} layers={[]} />
 			</div>
@@ -141,8 +167,8 @@
 		{/if}
 		<div class="stage-controls">
 			<button disabled={stageIndex === 0} onclick={() => (stageIndex -= 1)}>More support</button>
-			<span class="muted">stage {stageIndex + 1}/{stages.length}</span>
-			<button disabled={stageIndex >= stages.length - 1} onclick={() => (stageIndex += 1)}>
+			<span class="muted">stage {stageIndex + 1}/{stageCount}</span>
+			<button disabled={stageIndex >= stageCount - 1} onclick={() => (stageIndex += 1)}>
 				Fade further
 			</button>
 		</div>
@@ -254,6 +280,17 @@
 
 	.rich-prompt {
 		margin: 0;
+	}
+
+	.fade-token-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		gap: 10px 14px;
+	}
+
+	.fade-gap {
+		color: var(--text-dim);
 	}
 
 	.chain {

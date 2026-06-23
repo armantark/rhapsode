@@ -113,6 +113,12 @@
   ruby by default on the full-support prompt and checked answer. Verified with
   70 backend tests, backend Ruff, backend `mypy src`, 75 frontend Vitest tests,
   and svelte-check.
+- Japanese ruby/fading follow-up (2026-06-23): frontend rendering now suppresses
+  kana-only ruby and places furigana only over kanji inside mixed tokens; the
+  Japanese practice card uses token-aware progressive fading so visible support
+  keeps word boundaries and ruby. Backend masks now use unique quarter-step
+  stages for spaced and no-space text. Verified with 71 backend tests, backend
+  Ruff, backend `mypy src`, 78 frontend Vitest tests, and svelte-check.
 
 ## Remaining
 

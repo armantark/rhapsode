@@ -74,7 +74,11 @@ describe('ruby rendering', () => {
 			profile: profile({ slug: 'japanese' })
 		});
 		expect(container.querySelector('ruby')).not.toBeNull();
-		expect(container.querySelector('rt')?.textContent).toBe('ぎおんしょうじゃのかねのこえ');
+		expect([...container.querySelectorAll('rt')].map((node) => node.textContent)).toEqual([
+			'ぎおんしょうじゃ',
+			'かね',
+			'こえ'
+		]);
 	});
 
 	it('renders plain text when ruby is toggled off', () => {
@@ -139,8 +143,29 @@ describe('ruby rendering', () => {
 
 		expect(screen.queryByText('空こぼれ落ちた星')).toBeNull();
 		expect(container.querySelectorAll('ruby')).toHaveLength(3);
-		expect(container.querySelectorAll('rt')[1]?.textContent).toBe('こぼれおちた');
+		expect(container.querySelectorAll('rt')[1]?.textContent).toBe('お');
 		expect(screen.getByText('spilled down')).toBeInTheDocument();
+	});
+
+	it('does not render kana-only Japanese readings as ruby', () => {
+		const { container } = render(SegmentText, {
+			node: node({
+				text: 'ふたつの',
+				kind: 'token',
+				annotations: [
+					{
+						id: 'r1',
+						segment_id: 'tok-1',
+						layer: 'reading',
+						value: 'ふたつの',
+						data: { render: 'ruby' }
+					}
+				]
+			}),
+			profile: profile({ slug: 'japanese' })
+		});
+		expect(container.querySelector('ruby')).toBeNull();
+		expect(screen.getByText('ふたつの')).toBeInTheDocument();
 	});
 });
 

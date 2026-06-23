@@ -3,7 +3,7 @@
 	import type { LanguageProfile } from '$lib/api/types';
 	import type { SegmentNode } from '$lib/utils/segments';
 	import { syllableSpans, type MeterSyllable } from '$lib/utils/meter';
-	import { rubyReading, textLayers } from '$lib/utils/ruby';
+	import { japaneseRubyParts, rubyReading, textLayers } from '$lib/utils/ruby';
 	import { fontStack, langCode } from '$lib/utils/language';
 
 	let {
@@ -23,6 +23,9 @@
 	} = $props();
 
 	const reading = $derived(showRuby ? rubyReading(node) : null);
+	const japaneseRuby = $derived(
+		reading && profile?.slug === 'japanese' ? japaneseRubyParts(node.text, reading) : []
+	);
 	const dir = $derived(profile?.direction === 'rtl' ? 'rtl' : undefined);
 	// Tokens flow horizontally as an interlinear row — a vertical word stack
 	// makes a five-line passage scroll like fifty.
@@ -57,7 +60,15 @@
 		{/if}
 		{#if !renderTokensAsPrimary}
 			<span class="passage-text" lang={langCode(profile)} {dir} style:font-family={fontStack(profile)}>
-				{#if reading}
+				{#if reading && profile?.slug === 'japanese'}
+					{#each japaneseRuby as part, index (index)}
+						{#if part.reading}
+							<ruby>{part.text}<rt>{part.reading}</rt></ruby>
+						{:else}
+							{part.text}
+						{/if}
+					{/each}
+				{:else if reading}
 					<ruby>{node.text}<rt>{reading}</rt></ruby>
 				{:else if meterSpans}
 					{#each meterSpans as span, index (index)}<ruby>{span.text}<rt class="meter-mark">{span.mark}</rt></ruby>{/each}

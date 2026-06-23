@@ -147,12 +147,20 @@ describe('built-in mode rendering', () => {
 		});
 		expect([...container.querySelectorAll('rt')].map((node) => node.textContent)).toEqual([
 			'そら',
-			'おち',
+			'お',
 			'ほし'
 		]);
 		await fireEvent.click(screen.getByRole('button', { name: 'Fade further' }));
+		expect(screen.getByText('…')).toBeInTheDocument();
+		expect([...container.querySelectorAll('rt')].map((node) => node.textContent)).toEqual([
+			'お',
+			'ほし'
+		]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Fade further' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Fade further' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Fade further' }));
 		expect(container.querySelector('rt')).toBeNull();
-		expect(screen.getByText('…こぼれ…たふたつの星が')).toBeInTheDocument();
+		expect(screen.getByText('stage 5/5')).toBeInTheDocument();
 	});
 
 	it('forward chaining lists the chain in order', () => {
@@ -190,7 +198,7 @@ describe('built-in mode rendering', () => {
 		});
 		expect([...container.querySelectorAll('rt')].map((node) => node.textContent)).toEqual([
 			'そら',
-			'おち',
+			'お',
 			'ほし'
 		]);
 	});

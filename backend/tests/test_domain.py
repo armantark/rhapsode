@@ -30,8 +30,24 @@ from rhapsode.services.scheduling import _next_clean_streak, mastery_stage
 
 def test_progressive_masks_remove_support() -> None:
     masks = progressive_masks("arma virumque cano")
-    assert masks[0] == "arma virumque cano"
-    assert masks[-1] == "… … …"
+    assert masks == [
+        "arma virumque cano",
+        "… virumque cano",
+        "… cano",
+        "…",
+    ]
+
+
+def test_progressive_masks_handle_no_space_scripts_gradually() -> None:
+    masks = progressive_masks("空こぼれ落ちた")
+
+    assert masks == [
+        "空こぼれ落ちた",
+        "…ぼれ落ちた",
+        "…落ちた",
+        "…ちた",
+        "…",
+    ]
 
 
 def test_all_practice_modes_build_a_prompt(session_factory: object) -> None:

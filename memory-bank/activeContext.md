@@ -117,6 +117,14 @@ Remaining work is manual release validation (signing, first tag push, install sm
 - Japanese practice cards show ruby by default too: progressive fading uses
   the rich token renderer on the full-support stage, and checked Japanese
   answers render ruby even when translation/gloss support layers are off.
+- Japanese ruby rendering is kanji-only on the frontend even if old database
+  annotations still contain kana readings: kana-only tokens render plain, and
+  mixed kana/kanji tokens align the reading so okurigana stays outside `<ruby>`.
+  Japanese progressive fading is token-aware in the practice card, preserving
+  visible token boundaries and ruby across every non-empty stage; backend
+  progressive masks now use unique quarter-step masks for spaced text and
+  character fallback for no-space text so small Greek/Japanese lines do not
+  duplicate stages or jump straight to blank.
 - Collections group existing passages without owning revisions. Reads and
   session launches resolve member passages' active revisions; collection
   sessions persist that revision snapshot and apply one shared smart cap or

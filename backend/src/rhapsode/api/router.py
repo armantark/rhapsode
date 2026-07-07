@@ -356,6 +356,22 @@ def replace_segments(
 
 
 @router.post(
+    "/revisions/{revision_id}/segments", response_model=schemas.RevisionRead, tags=["passages"]
+)
+def append_segments(
+    revision_id: str, payload: schemas.SegmentsReplaceInput, db: Db
+) -> models.PassageRevision:
+    """Append lines in place. Allowed on practiced revisions (unlike the PUT
+    replace) because it never changes existing recall targets or their review
+    history — the frictionless path for growing a passage incrementally."""
+    try:
+        revision = passage_service.get_revision(db, revision_id)
+        return passage_service.append_segments(db, revision, payload.segments)
+    except LookupError as error:
+        raise not_found("Revision") from error
+
+
+@router.post(
     "/revisions/{revision_id}/prep-suggestions",
     response_model=schemas.PrepSuggestResult,
     tags=["passages"],

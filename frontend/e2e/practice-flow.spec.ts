@@ -271,3 +271,26 @@ test('deleting a passage takes a two-step confirm and clears the library', async
 	await expect(page.getByRole('heading', { name: 'Your repertoire' })).toBeVisible();
 	await expect(page.getByText(title)).not.toBeVisible();
 });
+
+test('adding lines to a practiced passage keeps it in place, no fork', async ({ page }) => {
+	const title = `Append e2e ${Date.now()}`;
+	await createGreekPassage(page, title);
+
+	// Practice once so the revision becomes immutable to edits.
+	await startManualSession(page);
+	await expect(page.getByText('Recite this line to the end.')).toBeVisible();
+	await page.keyboard.press(' ');
+	await page.keyboard.press('3');
+	await page.goto('/');
+	await page.getByRole('link', { name: title }).click();
+
+	// Append two lines — no revision fork, no lost progress.
+	await page.getByRole('button', { name: '+ Add lines' }).click();
+	await page.getByLabel(/Paste new lines/).fill('τρίτος στίχος\nτέταρτος στίχος');
+	await page.getByRole('button', { name: '+ Append lines' }).click();
+
+	await expect(page.getByText('τρίτος στίχος').first()).toBeVisible();
+	await expect(page.getByText('τέταρτος στίχος').first()).toBeVisible();
+	// Still revision 1 — appending did not fork.
+	await expect(page.getByText(/revision 1/)).toBeVisible();
+});

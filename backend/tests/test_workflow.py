@@ -189,6 +189,63 @@ def test_session_listing_expires_abandoned_sessions(
     assert rejected.json()["detail"] == "Session is not active."
 
 
+def test_append_lines_to_practiced_revision_preserves_progress(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    revision = passage["active_revision"]
+    lines_before = [s for s in revision["segments"] if s["kind"] == "line"]
+    first_line = lines_before[0]
+
+    # Practice a line so it carries a review state, then confirm the revision
+    # is now immutable to edits (replace 409s).
+    session = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "modes": ["cue_recall"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    ).json()
+    item = next(i for i in session["items"] if i["segment_id"] == first_line["id"])
+    client.post(
+        f"/api/v1/sessions/{session['id']}/attempts",
+        json={"item_id": item["id"], "rating": "clean"},
+        headers=mutation(),
+    )
+    before = {s["segment_id"] for s in client.get("/api/v1/analytics/mastery").json()["items"]}
+    assert first_line["id"] in before
+    rejected = client.put(
+        f"/api/v1/revisions/{revision['id']}/segments",
+        json={"segments": [{"client_id": "x", "kind": "line", "ordinal": 0, "text": "νέος"}]},
+        headers=mutation(),
+    )
+    assert rejected.status_code == 409
+
+    # Appending new lines is allowed and leaves the practiced lines untouched.
+    new_lines = [
+        {"client_id": "new-1", "kind": "line", "ordinal": 0, "text": "πρῶτος στίχος"},
+        {"client_id": "new-2", "kind": "line", "ordinal": 1, "text": "δεύτερος στίχος"},
+    ]
+    appended = client.post(
+        f"/api/v1/revisions/{revision['id']}/segments",
+        json={"segments": new_lines},
+        headers=mutation(),
+    )
+    assert appended.status_code == 200, appended.text
+    body = appended.json()
+    lines_after = [s for s in body["segments"] if s["kind"] == "line"]
+    # Every prior line survives with its exact id; the two new lines follow.
+    assert {s["id"] for s in lines_before} <= {s["id"] for s in lines_after}
+    assert len(lines_after) == len(lines_before) + 2
+    assert body["source_text"].strip().endswith("δεύτερος στίχος")
+
+    # The practiced line keeps its review state — no progress was orphaned.
+    after = {s["segment_id"] for s in client.get("/api/v1/analytics/mastery").json()["items"]}
+    assert first_line["id"] in after
+    # A juncture now bridges the old last line into the first appended line.
+    junctures = [s for s in body["segments"] if s["kind"] == "juncture"]
+    assert len(junctures) >= len(lines_before)
+
+
 def test_personal_note_overlay_updates_practiced_revision_hint(
     client: TestClient,
     mutation: Callable[..., dict[str, str]],

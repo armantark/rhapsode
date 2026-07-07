@@ -187,6 +187,45 @@
 		}
 	}
 
+	// Appending lines never touches existing recall targets or their review
+	// states, so it's allowed even on a practiced (immutable) revision — the
+	// frictionless path for growing a passage a few lines at a time.
+	let addingLines = $state(false);
+	let newLinesText = $state('');
+	let appending = $state(false);
+
+	async function appendLines() {
+		if (!revision) return;
+		const lines = newLinesText
+			.split('\n')
+			.map((line) => line.trim())
+			.filter(Boolean);
+		if (lines.length === 0) return;
+		appending = true;
+		error = '';
+		try {
+			await api.appendSegments(
+				revision.id,
+				lines.map((text, index) => ({
+					client_id: `append-${Date.now()}-${index}`,
+					parent_client_id: null,
+					kind: 'line',
+					ordinal: index,
+					text,
+					cue: null,
+					annotations: []
+				}))
+			);
+			newLinesText = '';
+			addingLines = false;
+			await load();
+		} catch (cause) {
+			error = `Could not add lines: ${cause instanceof Error ? cause.message : cause}`;
+		} finally {
+			appending = false;
+		}
+	}
+
 	async function forkRevision() {
 		if (!passage) return;
 		saving = true;
@@ -458,6 +497,9 @@
 		<section class="card">
 			<div class="toolbar">
 				<span class="eyebrow">Segments &amp; annotations</span>
+				<button onclick={() => (addingLines = !addingLines)}>
+					{addingLines ? 'Close' : '+ Add lines'}
+				</button>
 				<button onclick={() => (editing = !editing)}>{editing ? 'Close editor' : 'Edit'}</button>
 				<button disabled={suggesting} onclick={suggestPrep} title="Gemini drafts cues, word splits, readings, glosses, and translations for lines that don't have them yet. Nothing you wrote is touched.">
 					{suggesting ? 'Drafting…' : '✦ Draft prep'}
@@ -468,6 +510,28 @@
 					</button>
 				{/if}
 			</div>
+			{#if addingLines}
+				<div class="add-lines">
+					<label for="new-lines" class="muted small">
+						Paste new lines — one per line. They're appended after the existing text;
+						{revision.practiced
+							? 'your practice history on the current lines is untouched.'
+							: 'nothing already here changes.'}
+					</label>
+					<textarea
+						id="new-lines"
+						rows="4"
+						class="passage-text"
+						bind:value={newLinesText}
+						placeholder={'next line…\nthe line after…'}
+					></textarea>
+					<button
+						class="primary"
+						disabled={appending || !newLinesText.trim()}
+						onclick={appendLines}
+					>{appending ? 'Adding…' : '+ Append lines'}</button>
+				</div>
+			{/if}
 			{#if prepSummary}
 				<p class="muted small">Drafted: {prepSummary}. Edit or delete anything that misses.</p>
 			{/if}
@@ -668,6 +732,21 @@
 		gap: 8px;
 		margin: 0 0 10px;
 		font-size: 0.74rem;
+	}
+
+	.add-lines {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		margin: 12px 0;
+	}
+
+	.add-lines textarea {
+		width: 100%;
+	}
+
+	.add-lines .primary {
+		align-self: flex-start;
 	}
 
 	.danger {

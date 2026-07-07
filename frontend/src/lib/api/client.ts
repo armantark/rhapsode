@@ -114,6 +114,8 @@ export const api = {
 		send<Revision>('POST', `/passages/${passageId}/revisions`, { body: input, key }),
 	replaceSegments: (revisionId: string, segments: SegmentInput[], key?: string) =>
 		send<Revision>('PUT', `/revisions/${revisionId}/segments`, { body: { segments }, key }),
+	appendSegments: (revisionId: string, segments: SegmentInput[], key?: string) =>
+		send<Revision>('POST', `/revisions/${revisionId}/segments`, { body: { segments }, key }),
 
 	// A 404 means the segment simply has no personal note yet — a normal state,
 	// not an error, so callers get null instead of a thrown ApiError.

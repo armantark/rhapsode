@@ -429,7 +429,13 @@ export interface paths {
         get?: never;
         /** Replace Segments */
         put: operations["replace_segments_api_v1_revisions__revision_id__segments_put"];
-        post?: never;
+        /**
+         * Append Segments
+         * @description Append lines in place. Allowed on practiced revisions (unlike the PUT
+         *     replace) because it never changes existing recall targets or their review
+         *     history — the frictionless path for growing a passage incrementally.
+         */
+        post: operations["append_segments_api_v1_revisions__revision_id__segments_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2217,6 +2223,41 @@ export interface operations {
         };
     };
     replace_segments_api_v1_revisions__revision_id__segments_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                revision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SegmentsReplaceInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    append_segments_api_v1_revisions__revision_id__segments_post: {
         parameters: {
             query?: never;
             header?: never;

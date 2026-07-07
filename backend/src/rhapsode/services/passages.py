@@ -180,6 +180,65 @@ def replace_segments(
     return get_revision(db, revision.id)
 
 
+APPENDABLE_KINDS = ("line", "chunk")
+
+
+def append_segments(
+    db: Session, revision: models.PassageRevision, inputs: list[schemas.SegmentInput]
+) -> models.PassageRevision:
+    """Add new lines to the END of a revision WITHOUT touching what's there.
+
+    Unlike replace_segments this is allowed on practiced revisions: the
+    immutability rule protects recall targets from changing under existing
+    review history, and an append changes nothing that already exists — the
+    prior lines keep their exact text, ordinals, and review states, while the
+    new lines start fresh. This is the frictionless path for incremental
+    growth (a class assigns more lines each week) instead of forking a whole
+    revision and orphaning progress on the lines already learned."""
+    top_level_ordinals = [
+        segment.ordinal
+        for segment in revision.segments
+        if segment.kind in APPENDABLE_KINDS
+    ]
+    offset = (max(top_level_ordinals) + 1) if top_level_ordinals else 0
+    # Only top-level lines/chunks shift after the existing material; token
+    # children keep their parent-relative ordinal, and derived junctures are
+    # dropped (add_junctures rebuilds the boundary below).
+    shifted = [
+        item.model_copy(update={"ordinal": item.ordinal + offset})
+        if item.parent_client_id is None
+        else item
+        for item in inputs
+        if item.kind != "juncture"
+    ]
+    add_segments(db, revision, shifted)
+    db.flush()
+    # add_segments only saw the new segments, so the juncture bridging the
+    # last prior line into the first appended line was not created; refreshing
+    # over the full revision creates it (add_junctures is idempotent) and
+    # re-running the local readings covers that new juncture for Japanese.
+    all_segments = list(
+        db.scalars(select(models.Segment).where(models.Segment.revision_id == revision.id))
+    )
+    add_junctures(db, revision.id, all_segments)
+    furigana.apply_local_readings(db, revision)
+    new_lines = [
+        item.text
+        for item in inputs
+        if item.kind == "line" and item.parent_client_id is None
+    ]
+    if new_lines:
+        parts = [revision.source_text, *new_lines] if revision.source_text else new_lines
+        revision.source_text = "\n".join(parts)
+    db.commit()
+    # Reading revision.segments above loaded the collection into the identity
+    # map; the appended rows were attached by foreign key, not through the
+    # relationship, so the cached collection is stale. Expire it so the
+    # returning query reloads the full, current set.
+    db.expire_all()
+    return get_revision(db, revision.id)
+
+
 def get_revision(db: Session, revision_id: str) -> models.PassageRevision:
     revision = db.scalar(
         select(models.PassageRevision)

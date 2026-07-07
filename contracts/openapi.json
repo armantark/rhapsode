@@ -3153,6 +3153,57 @@
       }
     },
     "/api/v1/revisions/{revision_id}/segments": {
+      "post": {
+        "description": "Append lines in place. Allowed on practiced revisions (unlike the PUT\nreplace) because it never changes existing recall targets or their review\nhistory — the frictionless path for growing a passage incrementally.",
+        "operationId": "append_segments_api_v1_revisions__revision_id__segments_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revision_id",
+            "required": true,
+            "schema": {
+              "title": "Revision Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SegmentsReplaceInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Append Segments",
+        "tags": [
+          "passages"
+        ]
+      },
       "put": {
         "operationId": "replace_segments_api_v1_revisions__revision_id__segments_put",
         "parameters": [

@@ -49,6 +49,26 @@ push, install smoke) remains the other open thread.
   true line for a VISUAL self-check — nothing is parsed or diffed, ever
   (extends grill D3's self-grading-is-the-instrument to writing). Both are
   recall modes: grade bar locked until the check. Typed text is not stored.
+- SCAMPER batch (2026-07-06, all four approved by Arman): (1) `recital` — a
+  performance card with NO grade bar: recite the whole passage, tap line
+  numbers when stumbling (numbers only during; texts appear on the adjust
+  screen), confirm; stumbled lines grade `incorrect`, the rest `hesitant`,
+  junctures inherit their landing line. AttemptCreate gained optional
+  `stumbled_segment_ids` (recital-only, 422 elsewhere; must be lines). The
+  attempt row's own rating is incorrect-if-any-stumble. Launched manually
+  (mode button), never dealt by the smart coach; the smart finisher stays
+  full_passage. Known limit: the per-line stumbles feed FSRS + the mastery
+  ladder but NOT `_difficult_segment_ids` (that reads per-segment Attempt
+  rows; a recital is one row). (2) Juncture recall/fading prompts carry
+  `audio_cue` {media_id,start,end} = the previous line's LineAligner span
+  when aligned reference audio exists — "▶ Hear the cue" plays just that
+  span; degrades silently to text-only. (3) `meaning_recall` — translation
+  annotation as the cue, original as the answer; gates on has_translation
+  like shadowing gates on audio, graduated lines only, never junctures;
+  manual sessions filter to translated lines. (4) Recital confirm shows a
+  pacing line ("you ≈Ns · reference ≈Ms") when every line has a cue span —
+  client-side arithmetic only. Also fixed: submit_attempt now flushes before
+  its remaining-items count so autoflush=False factories complete sessions.
 - Every attempt stores a `review_snapshot` (prior review state of each segment
   it touched), so `POST /sessions/{id}/undo` rolls the last card back exactly —
   re-opens the item, rewinds FSRS/mastery, and reactivates a just-completed

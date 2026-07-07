@@ -165,6 +165,16 @@
   strict mypy, 86 frontend Vitest, svelte-check, production build, and 13/13
   Playwright pass (smart-rotation e2e now expects word_bank second).
 
+- SCAMPER exercise batch (2026-07-06): `recital` (no-net performance card with
+  a self-reported per-line stumble map; stumbled lines lapse, junctures
+  inherit their landing line; pacing line vs aligned reference audio),
+  `meaning_recall` (translation-cued production, graduated translated lines
+  only), and heard-cue junctures (recall/fading cards play the previous
+  line's aligned audio span). Latent bug fixed in passing: session completion
+  now flushes before counting remaining items. 87 backend pytest, Ruff,
+  strict mypy, contract regen, 89 frontend Vitest, svelte-check, production
+  build, 13/13 Playwright.
+
 ## Remaining
 
 - Push to GitHub and trigger first tagged draft release.

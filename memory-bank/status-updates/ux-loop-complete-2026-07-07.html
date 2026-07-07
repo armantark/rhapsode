@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Continuous UX Loop — Wrap · 2026-07-07</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0c0e12; --surface: #161a21; --surface-2: #1e232c; --border: #2a3040;
+    --text: #e8ecf4; --text-dim: #8b95a8; --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.15);
+    --red: #ff5c5c; --green: #4ade80; --amber: #fbbf24; --purple: #a78bfa;
+    --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; font-weight: 300;
+    padding: 40px 24px 80px; line-height: 1.55; }
+.wrap { max-width: 1040px; margin: 0 auto; }
+.badge { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.12em; color: var(--green); background: rgba(74, 222, 128, 0.1);
+    border: 1px solid var(--green); border-radius: 999px; padding: 4px 14px;
+    display: inline-block; margin-bottom: 18px; }
+h1 { font-weight: 700; font-size: 1.8rem; margin-bottom: 10px; }
+.sub { color: var(--text-dim); font-size: 0.95rem; max-width: 820px; margin-bottom: 26px; }
+.sub strong { color: var(--text); font-weight: 500; }
+.iter { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 18px; margin-bottom: 10px; display: grid; grid-template-columns: 60px 1fr auto; gap: 14px; align-items: baseline; }
+.iter .n { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--accent); font-size: 0.8rem; }
+.iter p { color: var(--text-dim); font-size: 0.86rem; }
+.iter p strong { color: var(--text); font-weight: 500; }
+.iter .qa { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 600;
+    letter-spacing: 0.1em; color: var(--green); border: 1px solid var(--green);
+    border-radius: 4px; padding: 2px 8px; white-space: nowrap; }
+.note { border-left: 3px solid var(--amber); background: var(--surface); padding: 14px 18px;
+    border-radius: 0 8px 8px 0; font-size: 0.9rem; color: var(--text-dim); margin-top: 22px; }
+.note strong { color: var(--text); font-weight: 500; }
+.metrics { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--text-dim);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 14px; margin-top: 16px; }
+.metrics strong { color: var(--green); }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <span class="badge">CONTINUOUS UX LOOP · WRAP</span>
+    <h1>Four iterations before the usage ceiling</h1>
+    <p class="sub">The loop ran until the session limit intervened (the QA subagent hit it mid-round-7,
+    so the final verification ran as a direct Playwright script instead). Everything below is on
+    <strong>origin/main @ 0a43b0d</strong>, each iteration committed, tested, and pushed separately.</p>
+
+    <div class="iter"><span class="n">LOOP 1</span><p><strong>Passage deletion</strong> (endpoint + media-file
+    cleanup + two-step confirm + e2e), <strong>library card stats</strong> ("5 due · 0/9 durable · 5 learning"
+    chips), shortcuts-dialog focus.</p><span class="qa">PINCHTAB PASS</span></div>
+
+    <div class="iter"><span class="n">BONUS</span><p><strong>Vanishing-collection bug fixed:</strong> a slow
+    initial list response could clobber a just-created collection from the page. Loads now carry a
+    mutation-invalidated sequence number. Found by the loop's own full-suite run.</p><span class="qa">E2E ×2 STABLE</span></div>
+
+    <div class="iter"><span class="n">LOOP 2</span><p><strong>Review + sessions polish:</strong> "Practice all
+    due" launcher when the queue spans passages, mastery groups in ladder order, relative overdue labels, and
+    library-wide Today sessions titled properly instead of a raw UUID.</p><span class="qa">PINCHTAB PASS</span></div>
+
+    <div class="iter"><span class="n">LOOP 3</span><p><strong>Mastery gutter on the reading view:</strong> stage
+    dots (gold/blue/green) beside each practiced line with a legend and a "progress" toggle; skipped in vertical
+    writing mode.</p><span class="qa">PLAYWRIGHT-VERIFIED</span></div>
+
+    <div class="iter"><span class="n">LOOP 4</span><p><strong>Skeleton loading states:</strong> a shared
+    reduced-motion-safe shimmer component replaces the bare "Loading…" string on all eight pages (verified: zero
+    occurrences remain).</p><span class="qa">PLAYWRIGHT-VERIFIED</span></div>
+
+    <p class="metrics"><strong>92</strong> backend pytest · ruff · strict mypy · <strong>89</strong> vitest ·
+    svelte-check 0/0 · build · <strong>14/14</strong> Playwright e2e · Pinchtab rounds 6 (5/5) and 7 (replaced
+    by direct Playwright verification after the subagent hit the session limit)</p>
+
+    <div class="note"><strong>Where the loop would go next</strong>, in priority order: a mobile-viewport pass
+    over the new surfaces (Today banner, recital grid, settings), compressing the practice progress dots into a
+    bar for large Today queues, and keyboard flow for word-bank chips beyond native tab order. Also still parked
+    on your call: cutting <code style="color:var(--amber)">desktop-v0.0.2</code> so the installable app matches
+    everything built today, and the 2-second human checks Pinchtab can't do (Escape key, hover tooltips).</div>
+</div>
+</body>
+</html>

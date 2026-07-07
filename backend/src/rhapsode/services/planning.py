@@ -122,6 +122,55 @@ def _recall_prompt(
     }
 
 
+def _shuffled_units(units: list[str]) -> list[str]:
+    """Shuffle without ever dealing the natural order (mirrors _random_start_order)."""
+    shuffled = list(units)
+    if len(shuffled) < 2:
+        return shuffled
+    for _ in range(5):
+        random.shuffle(shuffled)
+        if shuffled != units:
+            return shuffled
+    return shuffled[1:] + shuffled[:1]
+
+
+def _word_bank_prompt(target: models.Segment) -> dict[str, Any]:
+    """Rebuild-the-line: every unit is given, only the ORDER must be recalled.
+    Serial order is the dominant failure in verse recitation, and with all
+    items dealt the difficulty sits just above fading — the early rung of the
+    ladder before full production is asked for."""
+    return {
+        "instruction": "Rebuild the line: arrange every word in order, then check.",
+        "word_bank": _shuffled_units(_recall_units(target)),
+        "target_text": target.text,
+    }
+
+
+def _typed_recall_prompt(target: models.Segment, hint: str | None) -> dict[str, Any]:
+    """Typed recall: the forward-recall shape of cue_recall, but production is
+    written, so every character (accents, breathings, okurigana) demands a
+    commitment the ear lets slide past. The check is a stacked visual
+    comparison the learner judges — never an automated matcher; self-grading
+    stays the instrument (grill D3)."""
+    if target.kind == "juncture":
+        count = len(_recall_units(target))
+        plural = "s" if count != 1 else ""
+        return {
+            "instruction": (
+                "Carry on in writing — type just the next line's first "
+                f"{count} word{plural}, then check."
+            ),
+            "lead_in": target.cue or _lead_in(target),
+            "target_text": target.text,
+        }
+    return {
+        "instruction": "Type this line from memory to the end, then check.",
+        "lead_in": _lead_in(target),
+        "hint": hint,
+        "target_text": target.text,
+    }
+
+
 def _range_label(start: int, end: int) -> str:
     return f"line {start}" if start == end else f"lines {start}-{end}"
 
@@ -177,6 +226,10 @@ def prompt_for(
                 "instruction": "Recite the whole line to the end as the support fades.",
                 "stages": progressive_masks(target.text),
             }
+        case "word_bank":
+            return _word_bank_prompt(target)
+        case "typed_recall":
+            return _typed_recall_prompt(target, effective_hint)
         case "forward_chaining":
             return _chain_prompt(context, line_numbers)
         case "backward_chaining":
@@ -344,21 +397,34 @@ def smart_mode_for(
     if stage is None or stage == "new":
         return PracticeMode.progressive_fading.value
     if kind == "juncture":
+        # Junctures skip word_bank (a 3-word head makes ordering trivial) but
+        # graduate to a typed bridge: writing the landing words pins them.
         cycle = (
             [PracticeMode.cue_recall.value, PracticeMode.progressive_fading.value]
             if stage == "learning"
-            else [PracticeMode.random_start.value, PracticeMode.cue_recall.value]
+            else [
+                PracticeMode.random_start.value,
+                PracticeMode.cue_recall.value,
+                PracticeMode.typed_recall.value,
+            ]
         )
     elif stage == "learning":
+        # word_bank leads the learning cycle: all units are given, only order
+        # is recalled, so it is the gentlest step up from fading before full
+        # production (cue recall, chaining) is asked for.
         cycle = [
+            PracticeMode.word_bank.value,
             PracticeMode.cue_recall.value,
             PracticeMode.forward_chaining.value,
             PracticeMode.backward_chaining.value,
             PracticeMode.progressive_fading.value,
         ]
     else:
+        # Graduated lines earn typed recall: written production verifies the
+        # character-level exactness oral self-grading cannot hear.
         cycle = [
             PracticeMode.random_start.value,
+            PracticeMode.typed_recall.value,
             PracticeMode.forward_chaining.value,
             PracticeMode.backward_chaining.value,
             PracticeMode.cue_recall.value,
@@ -386,6 +452,7 @@ SMART_SESSION_CAP = 12
 # ground to death when a long budget is picked.
 FILL_MODE_CYCLE = [
     PracticeMode.progressive_fading.value,
+    PracticeMode.word_bank.value,
     PracticeMode.forward_chaining.value,
     PracticeMode.backward_chaining.value,
     PracticeMode.cue_recall.value,
@@ -398,9 +465,11 @@ FILL_MODE_CYCLE = [
 DEFAULT_MODE_SECONDS: dict[str, float] = {
     "shadowing": 30,
     "progressive_fading": 75,
+    "word_bank": 40,
     "forward_chaining": 45,
     "backward_chaining": 45,
     "cue_recall": 20,
+    "typed_recall": 60,
     "random_start": 30,
     "weak_link": 35,
     "full_passage": 120,
@@ -634,6 +703,9 @@ def build_smart_plan_for_revisions(
                         in {
                             PracticeMode.forward_chaining.value,
                             PracticeMode.backward_chaining.value,
+                            # Ordering a 3-word head is trivial; junctures skip
+                            # word_bank in the fill rotation too.
+                            PracticeMode.word_bank.value,
                         }
                     )
                 ]

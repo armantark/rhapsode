@@ -362,10 +362,10 @@ def test_due_only_session_targets_due_segments(
     body = due_session.json()
     assert body["plan"]["due_only"] is True
     # Only the single graded-and-now-due segment is in the plan. It is still
-    # learning, but cue recall was just used, so the rotation introduces
-    # forward chaining instead of repeating the same exercise.
+    # learning, but cue recall was just used, so the rotation introduces the
+    # least-used learning exercise (word bank) instead of repeating.
     assert [item["segment_id"] for item in body["items"]] == [first["segment_id"]]
-    assert body["items"][0]["mode"] == "forward_chaining"
+    assert body["items"][0]["mode"] == "word_bank"
 
 
 def _tokenized_passage(

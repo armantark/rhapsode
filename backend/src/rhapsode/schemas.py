@@ -199,9 +199,11 @@ class MediaRead(ORMModel):
 class PracticeMode(StrEnum):
     shadowing = "shadowing"
     progressive_fading = "progressive_fading"
+    word_bank = "word_bank"
     forward_chaining = "forward_chaining"
     backward_chaining = "backward_chaining"
     cue_recall = "cue_recall"
+    typed_recall = "typed_recall"
     random_start = "random_start"
     weak_link = "weak_link"
     full_passage = "full_passage"

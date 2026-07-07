@@ -921,7 +921,7 @@ export interface components {
          * PracticeMode
          * @enum {string}
          */
-        PracticeMode: "shadowing" | "progressive_fading" | "forward_chaining" | "backward_chaining" | "cue_recall" | "random_start" | "weak_link" | "full_passage";
+        PracticeMode: "shadowing" | "progressive_fading" | "word_bank" | "forward_chaining" | "backward_chaining" | "cue_recall" | "typed_recall" | "random_start" | "weak_link" | "full_passage";
         /** PrepSuggestInput */
         PrepSuggestInput: {
             /** Layers */

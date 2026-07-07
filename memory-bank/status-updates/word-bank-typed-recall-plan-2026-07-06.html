@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Bank + Typed Recall — Plan · 2026-07-06</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0c0e12; --surface: #161a21; --surface-2: #1e232c; --border: #2a3040;
+    --text: #e8ecf4; --text-dim: #8b95a8; --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.15);
+    --red: #ff5c5c; --green: #4ade80; --amber: #fbbf24; --purple: #a78bfa;
+    --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; }
+body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Outfit', sans-serif; font-weight: 300;
+    padding: 40px 24px 80px; line-height: 1.55;
+}
+.wrap { max-width: 1060px; margin: 0 auto; }
+.badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.12em; color: var(--accent); background: var(--accent-glow);
+    border: 1px solid var(--accent); border-radius: 999px; padding: 4px 14px;
+    display: inline-block; margin-bottom: 18px;
+}
+h1 { font-weight: 700; font-size: 1.9rem; margin-bottom: 10px; }
+.sub { color: var(--text-dim); font-size: 0.95rem; max-width: 780px; margin-bottom: 30px; }
+.sub strong { color: var(--text); font-weight: 500; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 30px; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+.card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+}
+.stagepill {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 8px;
+    border-radius: 4px; display: inline-block; margin-bottom: 10px;
+}
+.stagepill.early { color: var(--amber); border: 1px solid var(--amber); }
+.stagepill.late { color: var(--purple); border: 1px solid var(--purple); }
+.card h2 { font-weight: 700; font-size: 1.08rem; margin-bottom: 8px; }
+.card p { color: var(--text-dim); font-size: 0.86rem; margin-bottom: 12px; }
+.card p strong { color: var(--text); font-weight: 500; }
+.mock {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px; margin-bottom: 12px;
+}
+.mock-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim);
+    display: block; margin-bottom: 10px;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;
+    border: 1px solid var(--amber); color: var(--amber);
+    border-radius: 8px; padding: 4px 10px; cursor: default;
+}
+.chip.placed { border-color: var(--border); color: var(--text); background: var(--bg); }
+.slotline {
+    border-bottom: 1px dashed var(--border); min-height: 30px; margin: 10px 0 4px;
+    display: flex; gap: 8px; align-items: center; padding-bottom: 6px;
+}
+.typedbox {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; padding: 8px 10px;
+    color: var(--text); margin-bottom: 8px;
+}
+.typedbox .err { color: var(--red); text-decoration: underline dotted; }
+.truth {
+    border-left: 3px solid var(--amber); padding-left: 10px;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--text);
+}
+.muted-note { color: var(--text-dim); font-size: 0.75rem; font-style: italic; }
+.files { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+.file {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 2px 8px; color: var(--text-dim);
+}
+.ladder {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px 20px; margin-bottom: 30px;
+}
+.ladder h3 { font-size: 0.8rem; font-weight: 600; color: var(--text-dim); margin-bottom: 12px;
+    font-family: 'JetBrains Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase; }
+.rung { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+.rung .stage {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; width: 90px; color: var(--text-dim);
+}
+.rung .modes { font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; }
+.rung .new-mode { color: var(--green); font-weight: 600; }
+.steps h2 { font-weight: 700; font-size: 1.15rem; margin-bottom: 14px; }
+.step { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 12px; }
+.step-num {
+    font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 0.8rem;
+    background: var(--accent); color: #fff; border-radius: 6px;
+    width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.step p { color: var(--text-dim); font-size: 0.87rem; }
+.step p strong { color: var(--text); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <span class="badge">PRE-IMPLEMENTATION PLAN · NEW EXERCISE MODES</span>
+    <h1>Word-bank reconstruction → typed recall</h1>
+    <p class="sub">Per your ruling: <strong>word bank when a line is young, graduating to typed recall as it
+    matures</strong>; first-letter sprint dropped. Both are deterministic, offline, and self-verified — the check
+    is a visual comparison the learner judges, never an automated matcher (same instrument philosophy as grill D3).
+    Both become built-in modes: enum + contract regen + prompt shapes + card renderers.</p>
+
+    <div class="grid">
+        <div class="card">
+            <span class="stagepill early">EARLY · LEARNING STAGE</span>
+            <h2>word_bank — rebuild the line from its own pieces</h2>
+            <p>The line's units (token children when present, else words) are dealt as <strong>shuffled chips</strong>;
+            tap to place them in order, tap a placed chip to take it back. Reveal shows the true line (with ruby /
+            annotation layers) directly beneath the arrangement. Trains <strong>serial order</strong> — the dominant
+            failure mode in verse — with all items given, so it slots right after fading in difficulty.</p>
+            <div class="mock">
+                <span class="mock-label">Card mockup</span>
+                <div class="slotline"><span class="chip placed">ἄειδε</span><span class="chip placed">Μῆνιν</span></div>
+                <div class="chips"><span class="chip">θεά</span><span class="chip">Ἀχιλῆος</span><span class="chip">Πηληϊάδεω</span></div>
+            </div>
+            <p class="muted-note">Never dealt to junctures (3-word heads make it trivial — they keep their narrow
+            repertoire). Chips shuffle with the no-natural-order guarantee already used by random_start.</p>
+            <div class="files"><span class="file">schemas.py</span><span class="file">planning.py</span><span class="file">PromptCard.svelte</span></div>
+        </div>
+
+        <div class="card">
+            <span class="stagepill late">LATE · REVIEW / DURABLE</span>
+            <h2>typed_recall — type it, then eyeball the match</h2>
+            <p>Lead-in shown as the cue; the learner <strong>types the line from memory</strong>, then reveals. The
+            typed attempt stays on screen with the true text rendered immediately below in the same passage font —
+            mismatches (accents, breathings, okurigana) pop out visually, <strong>no diff algorithm anywhere</strong>.
+            Grades on the same Again/Hard/Good/Easy bar; grade bar stays locked until the check, like all recall modes.</p>
+            <div class="mock">
+                <span class="mock-label">After reveal</span>
+                <div class="typedbox">μηνιν <span class="err">αειδε</span> θεα Πηληϊαδεω Ἀχιληος</div>
+                <div class="truth">Μῆνιν ἄειδε, θεά, Πηληϊάδεω Ἀχιλῆος</div>
+                <p class="muted-note" style="margin-top:8px">(red underline illustrative only — the app renders both
+                plain; your eye is the matcher)</p>
+            </div>
+            <p class="muted-note">Junctures get a typed bridge: "type the next line's first N words." Typed text is
+            kept on the attempt payload? No — out of scope; nothing is parsed or stored this pass.</p>
+            <div class="files"><span class="file">schemas.py</span><span class="file">planning.py</span><span class="file">PromptCard.svelte</span><span class="file">practice/[id]/+page.svelte</span></div>
+        </div>
+    </div>
+
+    <div class="ladder">
+        <h3>Rotation placement (smart_mode_for)</h3>
+        <div class="rung"><span class="stage">new</span><span class="modes">progressive_fading (unchanged — first exposure keeps maximum support)</span></div>
+        <div class="rung"><span class="stage">learning</span><span class="modes"><span class="new-mode">word_bank</span> → cue_recall → forward_chaining → backward_chaining → progressive_fading</span></div>
+        <div class="rung"><span class="stage">review+</span><span class="modes">random_start → <span class="new-mode">typed_recall</span> → forward_chaining → backward_chaining → cue_recall</span></div>
+        <div class="rung"><span class="stage">junctures</span><span class="modes">learning: cue_recall → progressive_fading · graduated: random_start → cue_recall → <span class="new-mode">typed_recall</span></span></div>
+        <div class="rung"><span class="stage">fill cycle</span><span class="modes">progressive_fading → <span class="new-mode">word_bank</span> → chaining → cue_recall → random_start (word_bank skipped for junctures)</span></div>
+    </div>
+
+    <div class="steps">
+        <h2>Implementation order</h2>
+        <div class="step"><div class="step-num">1</div><p><strong>Backend</strong> — enum values, prompt shapes (shuffled unit list; typed instructions with juncture word counts), rotation + fill placement, latency defaults (word_bank 40s, typed_recall 60s), tests (shape, shuffle guarantee, rotation, recitation-extent phrasing).</p></div>
+        <div class="step"><div class="step-num">2</div><p><strong>Contract</strong> — regenerate contracts/openapi.json and the TypeScript client; add both to PRACTICE_MODES for the manual launcher.</p></div>
+        <div class="step"><div class="step-num">3</div><p><strong>Frontend</strong> — PromptCard renderers (chip arranger; cue + textarea + stacked check), reveal/grade-lock lists, practice-page canReveal; vitest for both cards; update the smart-rotation e2e (learning now deals word_bank first).</p></div>
+        <div class="step"><div class="step-num">4</div><p><strong>Verify</strong> — full backend + frontend suites, Playwright, Pinchtab pass over both new cards, results artifact.</p></div>
+    </div>
+</div>
+</body>
+</html>

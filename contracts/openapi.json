@@ -1065,9 +1065,11 @@
         "enum": [
           "shadowing",
           "progressive_fading",
+          "word_bank",
           "forward_chaining",
           "backward_chaining",
           "cue_recall",
+          "typed_recall",
           "random_start",
           "weak_link",
           "full_passage"

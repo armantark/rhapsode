@@ -202,9 +202,9 @@ test('smart sessions rotate a learning line through distinct exercises', async (
 
 	for (const expectedMode of [
 		'progressive fading',
+		'word bank',
 		'cue recall',
-		'forward chaining',
-		'backward chaining'
+		'forward chaining'
 	]) {
 		await page.getByRole('button', { name: '✦ Smart session' }).click();
 		await expect(page).toHaveURL(/\/practice\/[\w-]+/);

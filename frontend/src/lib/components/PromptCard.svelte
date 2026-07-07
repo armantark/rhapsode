@@ -127,12 +127,34 @@
 	let editingNote = $state(false);
 	let noteDraft = $state('');
 	let savingNote = $state(false);
+	// word_bank: indices (not texts) so duplicate words stay distinct chips.
+	let placedChips: number[] = $state([]);
+	// typed_recall: the draft survives the reveal so the learner can eyeball
+	// their attempt against the true line — the check is visual, never parsed.
+	let typedDraft = $state('');
+	// Guarded on the actual id (not just the item prop) so a coarse prop
+	// update — e.g. the reveal flipping — can never wipe in-progress state.
+	let lastItemId: string | null = null;
 	$effect(() => {
-		void item.id;
+		if (item.id === lastItemId) return;
+		lastItemId = item.id;
 		showHint = false;
 		showLetters = false;
 		editingNote = false;
+		placedChips = [];
+		typedDraft = '';
 	});
+
+	const wordBank = $derived(
+		item.mode === 'word_bank' && Array.isArray(prompt.word_bank)
+			? (prompt.word_bank as string[])
+			: []
+	);
+	const poolChips = $derived(
+		wordBank
+			.map((text, index) => ({ text, index }))
+			.filter(({ index }) => !placedChips.includes(index))
+	);
 
 	function openNoteEditor() {
 		noteDraft = personalNote;
@@ -150,7 +172,7 @@
 		}
 	}
 	const knownMode = $derived(
-		['shadowing', 'progressive_fading', 'forward_chaining', 'backward_chaining', 'cue_recall', 'random_start', 'weak_link', 'full_passage'].includes(item.mode)
+		['shadowing', 'progressive_fading', 'word_bank', 'forward_chaining', 'backward_chaining', 'cue_recall', 'typed_recall', 'random_start', 'weak_link', 'full_passage'].includes(item.mode)
 	);
 
 	let stageIndex = $state(0);
@@ -308,6 +330,57 @@
 				Fade further
 			</button>
 		</div>
+	{:else if item.mode === 'word_bank' && wordBank.length}
+		<div class="bank-arrangement" {lang} style:font-family={fonts}>
+			{#if placedChips.length === 0}
+				<span class="muted small-note">Tap the words below in recitation order — tap a placed word to take it back.</span>
+			{:else}
+				{#each placedChips as chipIndex (chipIndex)}
+					<button
+						class="chip placed"
+						onclick={() => (placedChips = placedChips.filter((index) => index !== chipIndex))}
+					>{wordBank[chipIndex]}</button>
+				{/each}
+			{/if}
+		</div>
+		{#if poolChips.length}
+			<div class="bank-pool" {lang} style:font-family={fonts}>
+				{#each poolChips as chip (chip.index)}
+					<button class="chip" onclick={() => (placedChips = [...placedChips, chip.index])}>
+						{chip.text}
+					</button>
+				{/each}
+			</div>
+		{/if}
+	{:else if item.mode === 'typed_recall'}
+		<div class="cue-line">
+			{#if leadInNode}
+				<div class="cue rich-cue">
+					<SegmentText node={leadInNode} {profile} layers={[]} showRuby={readingEnabled} />
+				</div>
+			{:else if leadIn}
+				<span class="cue passage-text" {lang} style:font-family={fonts}>{leadIn}</span>
+			{/if}
+			<span class="muted">{leadIn ? '… type from here, then check' : 'Type from memory, then check'}</span>
+		</div>
+		{#if revealed}
+			{#if typedDraft.trim()}
+				<div class="typed-attempt">
+					<span class="note-tag">your attempt</span>
+					<p class="passage-text" {lang} style:font-family={fonts}>{typedDraft}</p>
+				</div>
+			{/if}
+		{:else}
+			<textarea
+				class="typed-input"
+				bind:value={typedDraft}
+				rows="2"
+				{lang}
+				style:font-family={fonts}
+				aria-label="Type the line from memory"
+				placeholder="Type from memory…"
+			></textarea>
+		{/if}
 	{:else if isChaining}
 		<p class="muted blank">Recite {chainRange} from memory.</p>
 	{:else if item.mode === 'cue_recall' || item.mode === 'weak_link' || item.mode === 'random_start'}
@@ -410,7 +483,7 @@
 		{/if}
 	{/if}
 
-	{#if !revealed && (item.mode === 'cue_recall' || item.mode === 'weak_link' || item.mode === 'random_start' || item.mode === 'full_passage' || isChaining)}
+	{#if !revealed && (item.mode === 'cue_recall' || item.mode === 'weak_link' || item.mode === 'random_start' || item.mode === 'word_bank' || item.mode === 'typed_recall' || item.mode === 'full_passage' || isChaining)}
 		<button class="reveal" onclick={onReveal}>Show answer to check</button>
 	{/if}
 </div>
@@ -552,6 +625,55 @@
 	.blank {
 		font-size: 1.1rem;
 		font-style: italic;
+	}
+
+	.bank-arrangement,
+	.bank-pool {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.bank-arrangement {
+		min-height: 38px;
+		border-bottom: 1px dashed var(--border);
+		padding-bottom: 8px;
+	}
+
+	.chip {
+		font-size: 0.95rem;
+		padding: 5px 12px;
+		border: 1px solid var(--gold);
+		color: var(--gold);
+		background: none;
+		border-radius: 10px;
+		cursor: pointer;
+	}
+
+	.chip.placed {
+		border-color: var(--border);
+		color: var(--text);
+	}
+
+	.small-note {
+		font-size: 0.8rem;
+	}
+
+	.typed-input {
+		width: 100%;
+		font-size: 1rem;
+		resize: vertical;
+	}
+
+	.typed-attempt {
+		display: flex;
+		align-items: baseline;
+		gap: 8px;
+	}
+
+	.typed-attempt .passage-text {
+		margin: 0;
 	}
 
 	.plugin-prompt {

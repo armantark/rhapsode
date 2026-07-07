@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pedagogy Review — Complete · 2026-07-06</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0c0e12; --surface: #161a21; --surface-2: #1e232c; --border: #2a3040;
+    --text: #e8ecf4; --text-dim: #8b95a8; --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.15);
+    --red: #ff5c5c; --green: #4ade80; --amber: #fbbf24; --purple: #a78bfa;
+    --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; }
+body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Outfit', sans-serif; font-weight: 300;
+    padding: 40px 24px 80px; line-height: 1.55;
+}
+.wrap { max-width: 1080px; margin: 0 auto; }
+.badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.12em; color: var(--green); background: rgba(74, 222, 128, 0.1);
+    border: 1px solid var(--green); border-radius: 999px; padding: 4px 14px;
+    display: inline-block; margin-bottom: 18px;
+}
+h1 { font-weight: 700; font-size: 2rem; margin-bottom: 10px; }
+.sub { color: var(--text-dim); font-size: 0.95rem; max-width: 780px; margin-bottom: 30px; }
+.sub strong { color: var(--text); font-weight: 500; }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 36px; }
+@media (max-width: 900px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+.metric {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px; text-align: center;
+}
+.metric .num { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 1.5rem; color: var(--green); }
+.metric .lbl { color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em;
+    font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+.list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 36px; }
+.fix {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 20px;
+    display: grid; grid-template-columns: 24px 1fr auto; gap: 14px; align-items: start;
+}
+.fix .check { color: var(--green); font-weight: 700; }
+.fix h2 { font-size: 0.98rem; font-weight: 700; margin-bottom: 4px; }
+.fix p { color: var(--text-dim); font-size: 0.84rem; }
+.fix p code, .verif code {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.76em; color: var(--amber);
+}
+.pri {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 8px;
+    border-radius: 4px; white-space: nowrap;
+}
+.pri.critical { color: var(--red); border: 1px solid var(--red); }
+.pri.high { color: var(--amber); border: 1px solid var(--amber); }
+.pri.medium { color: var(--green); border: 1px solid var(--green); }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 36px; }
+@media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+.panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px;
+}
+.panel h3 {
+    font-size: 0.8rem; font-weight: 600; color: var(--text-dim); margin-bottom: 12px;
+    font-family: 'JetBrains Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.panel ul { padding-left: 18px; color: var(--text-dim); font-size: 0.85rem; }
+.panel li { margin-bottom: 7px; }
+.panel li strong { color: var(--text); font-weight: 500; }
+.pass { color: var(--green); font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; }
+.next {
+    border-left: 3px solid var(--accent); background: var(--surface);
+    padding: 14px 18px; border-radius: 0 8px 8px 0; font-size: 0.9rem;
+    color: var(--text-dim); max-width: 820px;
+}
+.next strong { color: var(--text); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <span class="badge">COMPLETED · PEDAGOGY HARDENING PASS</span>
+    <h1>Five practice-loop weaknesses, fixed and verified</h1>
+    <p class="sub">All feature branches were merged into <strong>main</strong> (fast-forward, pushed), then the
+    weakest pedagogical parts identified in the <strong>pre-implementation plan</strong> were fixed exactly as
+    scoped — no grill rulings touched, no LLM/model changes. Everything below is live on
+    <strong>origin/main @ 8445ca5</strong>.</p>
+
+    <div class="metrics">
+        <div class="metric"><div class="num">80</div><div class="lbl">backend pytest</div></div>
+        <div class="metric"><div class="num">84</div><div class="lbl">frontend vitest</div></div>
+        <div class="metric"><div class="num">13/13</div><div class="lbl">playwright e2e</div></div>
+        <div class="metric"><div class="num">4/4</div><div class="lbl">pinchtab manual QA</div></div>
+    </div>
+
+    <div class="list">
+        <div class="fix">
+            <span class="check">✓</span>
+            <div>
+                <h2>"Hard" (errors in recall) now schedules as an FSRS lapse</h2>
+                <p><code>RATING_MAP["incorrect"] = Rating.Again</code> — errors no longer grow the interval on the
+                very lines that were just recited wrong. The ladder still distinguishes the failure kinds (B2 intact).</p>
+            </div>
+            <span class="pri critical">Critical</span>
+        </div>
+        <div class="fix">
+            <span class="check">✓</span>
+            <div>
+                <h2>Progressive fading now fades toward the opening cue</h2>
+                <p>Support is removed from the tail first (<code>arma virumque ••••</code>), so difficulty ramps
+                monotonically and the last supported stage converges on the cue_recall shape. Japanese token fading
+                mirrors it; ellipsis continuation markers are never masked (backend strings and token UI both).</p>
+            </div>
+            <span class="pri high">High</span>
+        </div>
+        <div class="fix">
+            <span class="check">✓</span>
+            <div>
+                <h2>Smart triage is due-aware: reviews before new</h2>
+                <p>Rank order is now weak links → learning → <strong>due</strong> review/durable → new → not-yet-due
+                maintenance. Overdue lines can no longer be crowded out of a capped session by novelty.</p>
+            </div>
+            <span class="pri high">High</span>
+        </div>
+        <div class="fix">
+            <span class="check">✓</span>
+            <div>
+                <h2>Juncture fading cards carry the tail anchor</h2>
+                <p>The previous line's tail renders in gold above the stages, so the tail→head association is
+                trained at every stage — including fully faded, which previously identified no transition at all.</p>
+            </div>
+            <span class="pri medium">Medium</span>
+        </div>
+        <div class="fix">
+            <span class="check">✓</span>
+            <div>
+                <h2>Recall cards require the check before grading</h2>
+                <p>The grade bar stays disabled on recall modes until the answer is shown (keyboard 1–4 included).
+                The peek itself remains neutral per the grill ruling — checking just became the required step the
+                helper text already described.</p>
+            </div>
+            <span class="pri medium">Medium</span>
+        </div>
+    </div>
+
+    <div class="cols">
+        <div class="panel">
+            <h3>Verification <span class="pass">ALL GREEN</span></h3>
+            <ul>
+                <li><strong>Backend:</strong> 80 pytest, Ruff, strict mypy, OpenAPI contract check — no contract drift.</li>
+                <li><strong>Frontend:</strong> 84 vitest, svelte-check 0/0, production build, 13/13 Playwright (one
+                collections flake passed clean on the isolated re-run and the full re-run).</li>
+                <li><strong>Pinchtab manual QA</strong> (isolated sandbox DB, real browser): fading direction, juncture
+                gold anchor, grade-lock/unlock cycle, and an 18-transition two-session smoke — all pass, with screenshots.</li>
+                <li><strong>Codex (gpt-5.5) independent review:</strong> one real finding — the Japanese token-fading UI
+                dropped the juncture's trailing "…" (tokenizer strips punctuation) — fixed in <code>8445ca5</code>.
+                Its second finding (a "Postplan upload" ban on Google Fonts) contradicts the status-artifact skill and
+                was rejected as hallucinated.</li>
+            </ul>
+        </div>
+        <div class="panel">
+            <h3>Reviewed, deliberately unchanged</h3>
+            <ul>
+                <li><strong>clean→Easy / hesitant→Good</strong> FSRS cells — defensible under the outcome-hint
+                semantics; changing them would fight the Anki-label ruling.</li>
+                <li><strong>Full-passage grade fanning</strong> one rating across all review units — ruled, coherent.</li>
+                <li><strong>Latency mean without clamping</strong> (A2) and <strong>desired_retention 0.9</strong> (E1) — both ruled.</li>
+                <li><strong>Lifetime difficulty_rate</strong> in weak-link analytics — display-only; the planner's
+                repair-decay signal was already correct.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="next">
+        <strong>Now in flight:</strong> two new exercise modes per your ruling — <strong>word-bank
+        reconstruction</strong> (shuffled token chips, first drill when a line is young) graduating to
+        <strong>typed recall</strong> (type from memory, stacked visual self-check against the original — no
+        automated matcher, same self-grading instrument). First-letter sprint dropped as requested. Plan artifact
+        to follow.
+    </div>
+</div>
+</body>
+</html>

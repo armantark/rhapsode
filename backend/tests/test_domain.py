@@ -116,9 +116,15 @@ def test_manual_random_start_uses_shuffled_target_order(
 def test_smart_mode_ladder_fades_support_with_mastery() -> None:
     assert smart_mode_for(None, difficult=False) == "progressive_fading"
     assert smart_mode_for("new", difficult=False) == "progressive_fading"
-    assert smart_mode_for("learning", difficult=False) == "cue_recall"
+    # Learning lines rebuild order first (word bank), then produce (cue recall).
+    assert smart_mode_for("learning", difficult=False) == "word_bank"
     assert smart_mode_for("review", difficult=False) == "random_start"
     assert smart_mode_for("durable", difficult=False) == "random_start"
+    # Graduated lines earn the typed check right after cold starts.
+    assert (
+        smart_mode_for("review", difficult=False, mode_counts={"random_start": 1})
+        == "typed_recall"
+    )
     # Difficulty pulls a segment into weak-link drilling, but a brand-new
     # segment still needs scaffolding before being drilled cold.
     assert smart_mode_for("review", difficult=True) == "weak_link"
@@ -126,14 +132,16 @@ def test_smart_mode_ladder_fades_support_with_mastery() -> None:
     # Once a technique has been used, the coach deliberately introduces the
     # least-practiced useful exercise instead of repeating the same label.
     assert (
-        smart_mode_for("learning", difficult=False, mode_counts={"cue_recall": 1})
+        smart_mode_for(
+            "learning", difficult=False, mode_counts={"word_bank": 1, "cue_recall": 1}
+        )
         == "forward_chaining"
     )
     assert (
         smart_mode_for(
             "review",
             difficult=True,
-            mode_counts={"weak_link": 5, "random_start": 1},
+            mode_counts={"weak_link": 5, "random_start": 1, "typed_recall": 1},
         )
         == "forward_chaining"
     )
@@ -152,6 +160,7 @@ def test_smart_mode_ladder_fades_support_with_mastery() -> None:
             "learning",
             difficult=False,
             mode_counts={
+                "word_bank": 1,
                 "cue_recall": 1,
                 "forward_chaining": 1,
                 "backward_chaining": 1,
@@ -202,7 +211,7 @@ def test_smart_plan_rotates_line_exercises_and_builds_forward_context(
                     attempt_count=2,
                 )
             )
-            for mode in ("cue_recall", "progressive_fading"):
+            for mode in ("cue_recall", "progressive_fading", "word_bank"):
                 db.add(
                     models.Attempt(
                         session_id=history.id,
@@ -273,7 +282,7 @@ def test_smart_plan_backward_chaining_uses_current_learned_prefix(
                     attempt_count=2,
                 )
             )
-            for mode in ("cue_recall", "forward_chaining"):
+            for mode in ("cue_recall", "forward_chaining", "word_bank"):
                 db.add(
                     models.Attempt(
                         session_id=history.id,
@@ -1207,24 +1216,24 @@ def test_minutes_budget_fills_short_passage_with_varied_repeats(
 
         # 10 minutes (600s): the 3-line pass spends 3×75s = 225s, then the
         # broader rotation fills the rest in successive passage-order
-        # run-throughs. The final random-start turn fits for only one line.
+        # run-throughs, tapering as the budget runs down.
         plan = build_smart_plan(db, revision, ["line"], minutes=10)
         assert [item["mode"] for item in plan] == (
             ["progressive_fading"] * 3
+            + ["word_bank"] * 3
             + ["forward_chaining"] * 3
-            + ["backward_chaining"] * 3
-            + ["cue_recall"] * 3
-            + ["random_start"]
+            + ["backward_chaining"] * 2
+            + ["cue_recall"]
         )
         per_segment = {segment.id: [] for segment in revision.segments}
         for item in plan:
             per_segment[item["segment_id"]].append(item["mode"])
-        assert sorted(len(modes) for modes in per_segment.values()) == [4, 4, 5]
+        assert sorted(len(modes) for modes in per_segment.values()) == [3, 4, 5]
 
         # A huge budget cannot exceed the per-segment repetition cap: still the
-        # primary turn plus the four-mode rotation, never more.
+        # primary turn plus the five-mode rotation, never more.
         capped = build_smart_plan(db, revision, ["line"], minutes=120)
-        assert len(capped) == 15
+        assert len(capped) == 18
 
 
 def test_minutes_fill_never_assigns_chaining_to_junctures(session_factory: object) -> None:
@@ -1247,7 +1256,9 @@ def test_minutes_fill_never_assigns_chaining_to_junctures(session_factory: objec
         juncture_modes = {
             item["mode"] for item in plan if item["segment_id"] == juncture_id
         }
-        assert juncture_modes.isdisjoint({"forward_chaining", "backward_chaining"})
+        assert juncture_modes.isdisjoint(
+            {"forward_chaining", "backward_chaining", "word_bank"}
+        )
 
 
 def test_abandoned_sessions_expire_but_completed_history_does_not(
@@ -1270,6 +1281,35 @@ def test_abandoned_sessions_expire_but_completed_history_does_not(
         assert stale.status == "expired"
         assert recent.status == "active"
         assert completed.status == "completed"
+
+
+def test_word_bank_deals_every_unit_out_of_order() -> None:
+    line = models.Segment(kind="line", ordinal=0, text="arma virumque cano Troiae qui")
+    prompt = prompt_for("word_bank", line, [line])
+    units = line.text.split()
+    # Every word is dealt exactly once, never in the natural order (the order
+    # IS the thing being recalled), and the true line rides along as the
+    # visual self-check answer.
+    assert sorted(prompt["word_bank"]) == sorted(units)
+    assert prompt["word_bank"] != units
+    assert prompt["target_text"] == line.text
+
+
+def test_typed_recall_is_a_written_recall_with_a_visual_check() -> None:
+    line = models.Segment(kind="line", ordinal=0, text="arma virumque cano")
+    prompt = prompt_for("typed_recall", line, [line])
+    assert "type" in prompt["instruction"].lower()
+    assert prompt["lead_in"] == "arma virumque"
+    assert prompt["target_text"] == line.text
+
+    # A typed juncture bridge names the exact word count, like its oral twin.
+    juncture = models.Segment(
+        kind="juncture", ordinal=1, text="epsilon zeta …", cue="… gamma delta"
+    )
+    bridge = prompt_for("typed_recall", juncture, [juncture])
+    assert "type" in bridge["instruction"].lower()
+    assert "first 2 words" in bridge["instruction"]
+    assert bridge["lead_in"] == "… gamma delta"
 
 
 def test_random_start_is_a_checkable_recall_with_an_endpoint() -> None:
@@ -1299,9 +1339,11 @@ def test_every_mode_states_its_recitation_extent() -> None:
     endpoint_phrase = {
         "shadowing": "line",
         "progressive_fading": "line",
+        "word_bank": "then check",
         "forward_chaining": "then check",
         "backward_chaining": "then check",
         "cue_recall": "to the end",
+        "typed_recall": "to the end",
         "random_start": "to the end",
         "weak_link": "to the end",
         "full_passage": "start to finish",

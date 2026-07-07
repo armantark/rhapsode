@@ -372,6 +372,8 @@
 				'cue_recall',
 				'weak_link',
 				'random_start',
+				'word_bank',
+				'typed_recall',
 				'full_passage',
 				'forward_chaining',
 				'backward_chaining'

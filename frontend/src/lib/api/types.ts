@@ -47,9 +47,11 @@ export type MediaCategory = 'reference' | 'saved_best';
 export const PRACTICE_MODES: PracticeMode[] = [
 	'shadowing',
 	'progressive_fading',
+	'word_bank',
 	'forward_chaining',
 	'backward_chaining',
 	'cue_recall',
+	'typed_recall',
 	'random_start',
 	'weak_link',
 	'full_passage'

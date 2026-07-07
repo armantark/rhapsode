@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/svelte';
+import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 import PromptCard from './PromptCard.svelte';
 import type { LanguageProfile, PracticeItem } from '$lib/api/types';
@@ -162,6 +162,50 @@ describe('built-in mode rendering', () => {
 		expect(container.querySelector('rt')).toBeNull();
 		expect(container.querySelectorAll('.fade-token-mask')).toHaveLength(6);
 		expect(screen.getByText('stage 5/5')).toBeInTheDocument();
+	});
+
+	it('word bank deals chips that move between pool and arrangement', async () => {
+		render(PromptCard, {
+			item: item('word_bank', {
+				instruction: 'Rebuild the line: arrange every word in order, then check.',
+				word_bank: ['cano', 'arma', 'virumque'],
+				target_text: 'arma virumque cano'
+			}),
+			onReveal: vi.fn()
+		});
+		// All chips start in the pool; tapping places them in recitation order.
+		await fireEvent.click(screen.getByRole('button', { name: 'arma' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'virumque' }));
+		const arrangement = document.querySelector('.bank-arrangement');
+		expect(arrangement?.textContent).toContain('arma');
+		expect(arrangement?.textContent).toContain('virumque');
+		expect(document.querySelector('.bank-pool')?.textContent).toContain('cano');
+		// Tapping a placed chip returns it to the pool.
+		await fireEvent.click(within(arrangement as HTMLElement).getByRole('button', { name: 'arma' }));
+		expect(document.querySelector('.bank-pool')?.textContent).toContain('arma');
+		// The self-check is the standard reveal.
+		expect(screen.getByRole('button', { name: /Show answer/ })).toBeInTheDocument();
+	});
+
+	it('typed recall keeps the attempt visible beside the revealed answer', async () => {
+		const { rerender } = render(PromptCard, {
+			item: item('typed_recall', {
+				instruction: 'Type this line from memory to the end, then check.',
+				lead_in: 'arma virumque',
+				target_text: 'arma virumque cano'
+			}),
+			revealText: 'arma virumque cano',
+			onReveal: vi.fn()
+		});
+		expect(screen.getByText('arma virumque')).toBeInTheDocument();
+		const input = screen.getByLabelText('Type the line from memory');
+		await fireEvent.input(input, { target: { value: 'arma virumque canoo' } });
+		await rerender({ revealed: true });
+		// The typed attempt and the true line sit stacked for a visual check —
+		// nothing is parsed or diffed.
+		expect(screen.getByText('arma virumque canoo')).toBeInTheDocument();
+		expect(screen.getByText('arma virumque cano')).toBeInTheDocument();
+		expect(screen.queryByLabelText('Type the line from memory')).toBeNull();
 	});
 
 	it('juncture fading keeps the previous line tail visible as the anchor', () => {

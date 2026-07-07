@@ -12,10 +12,17 @@
 
 	onMount(load);
 
+	// A create that lands while the initial list request is still in flight
+	// must not be clobbered when that stale response arrives — bumping the
+	// sequence invalidates any load snapshot taken before the mutation.
+	let loadSequence = 0;
+
 	async function load() {
+		const sequence = ++loadSequence;
 		loading = true;
 		try {
-			collections = await api.listCollections();
+			const fetched = await api.listCollections();
+			if (sequence === loadSequence) collections = fetched;
 		} catch (cause) {
 			error = `Could not load collections: ${cause instanceof Error ? cause.message : cause}`;
 		} finally {
@@ -30,6 +37,7 @@
 		error = '';
 		try {
 			const collection = await api.createCollection({ name });
+			loadSequence += 1;
 			collections = [...collections, collection];
 			newName = '';
 		} catch (cause) {

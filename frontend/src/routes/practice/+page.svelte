@@ -57,7 +57,10 @@
 
 	function sessionTitle(session: PracticeSession): string {
 		const key = session.collection_id ?? session.revision_id;
-		return (key ? titles.get(key) : null) ?? key ?? session.id;
+		// A session with no target is the library-wide Today queue — showing
+		// its raw id would read like a bug.
+		if (!key) return "Today's due — whole library";
+		return titles.get(key) ?? key;
 	}
 
 	function progress(session: PracticeSession): string {

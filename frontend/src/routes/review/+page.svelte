@@ -98,13 +98,41 @@
 		}
 	}
 
+	// Groups walk the ladder in pedagogical order, not first-seen order.
+	const STAGE_ORDER = ['new', 'learning', 'review', 'durable'];
 	const masteryGroups = $derived.by(() => {
 		const groups = new Map<string, ReviewState[]>();
 		for (const state of allStates) {
 			groups.set(state.mastery_stage, [...(groups.get(state.mastery_stage) ?? []), state]);
 		}
-		return [...groups.entries()];
+		return [...groups.entries()].sort(
+			(a, b) => STAGE_ORDER.indexOf(a[0]) - STAGE_ORDER.indexOf(b[0])
+		);
 	});
+
+	// "3h overdue" reads faster than a raw timestamp and says what matters:
+	// how far behind the schedule this item is.
+	function dueLabel(dueAt: string): string {
+		const minutes = (Date.now() - new Date(dueAt).getTime()) / 60_000;
+		if (minutes < 1) return 'due now';
+		if (minutes < 60) return `${Math.round(minutes)}m overdue`;
+		if (minutes < 48 * 60) return `${Math.round(minutes / 60)}h overdue`;
+		return `${Math.round(minutes / (24 * 60))}d overdue`;
+	}
+
+	let startingAllDue = $state(false);
+	async function practiceAllDue() {
+		startingAllDue = true;
+		error = '';
+		try {
+			const session = await api.createSession({ due_only: true });
+			await goto(`/practice/${session.id}`);
+		} catch (cause) {
+			error = `Could not start today's session: ${cause instanceof Error ? cause.message : cause}`;
+		} finally {
+			startingAllDue = false;
+		}
+	}
 	async function applyWeakFilter() {
 		weak = await api.weakLinks(revisionFilter || undefined);
 	}
@@ -155,10 +183,15 @@
 		<p class="muted">Nothing due. Recite something for pleasure instead.</p>
 	{:else}
 		<div class="due-actions">
+			{#if dueByRevision.length > 1}
+				<button class="primary" disabled={startingAllDue || startingDue !== ''} onclick={practiceAllDue}>
+					{startingAllDue ? 'Starting…' : `▶ Practice all ${due.length} due`}
+				</button>
+			{/if}
 			{#each dueByRevision as [revisionId, group] (revisionId)}
 				<button
 					class="primary"
-					disabled={startingDue !== ''}
+					disabled={startingDue !== '' || startingAllDue}
 					onclick={() => practiceDue(revisionId)}
 				>{startingDue === revisionId ? 'Starting…' : `▶ Practice ${group.count} due — ${group.title}`}</button>
 			{/each}
@@ -176,7 +209,7 @@
 							{/if}
 						</td>
 						<td><span class="tag">{state.mastery_stage}</span></td>
-						<td class="muted">{new Date(state.due_at).toLocaleString()}</td>
+						<td class="muted" title={new Date(state.due_at).toLocaleString()}>{dueLabel(state.due_at)}</td>
 						<td class="muted">{state.clean_count} / {state.attempt_count}</td>
 					</tr>
 				{/each}

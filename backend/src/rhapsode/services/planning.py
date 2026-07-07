@@ -66,7 +66,11 @@ def _lead_in(target: models.Segment, words: int = 2) -> str:
     tree so Japanese does not collapse into a whole-line cue."""
     tokens = _token_children(target)
     if tokens:
-        return "".join(token.text for token in tokens[:words])
+        # Rejoin tokens with the line's own word separator: spaced scripts
+        # (Greek, Latin) need the spaces back, or the opening smushes into one
+        # run ("μῆνινἄειδε"); Japanese and other unspaced text join with "".
+        joiner = " " if any(char.isspace() for char in target.text) else ""
+        return joiner.join(token.text for token in tokens[:words])
     return " ".join(target.text.split()[:words])
 
 

@@ -187,6 +187,25 @@ describe('built-in mode rendering', () => {
 		expect(screen.getByRole('button', { name: /Show answer/ })).toBeInTheDocument();
 	});
 
+	it('word bank chips carry furigana over their kanji', () => {
+		const { container } = render(PromptCard, {
+			item: item('word_bank', {
+				instruction: 'Rebuild the line: arrange every word in order, then check.',
+				word_bank: ['星', '空', 'が'],
+				target_text: '空こぼれ落ちたふたつの星が'
+			}),
+			node: japaneseRubyNode(),
+			profile: japaneseProfile,
+			layers: ['reading'],
+			onReveal: vi.fn()
+		});
+		// The kanji chips (空 → そら, 星 → ほし) render ruby just like every
+		// other Japanese target surface; the kana chip (が) stays plain.
+		const readings = [...container.querySelectorAll('.bank-pool rt')].map((n) => n.textContent);
+		expect(readings).toContain('そら');
+		expect(readings).toContain('ほし');
+	});
+
 	it('typed recall keeps the attempt visible beside the revealed answer', async () => {
 		const { rerender } = render(PromptCard, {
 			item: item('typed_recall', {

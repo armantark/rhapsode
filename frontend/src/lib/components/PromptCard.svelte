@@ -241,6 +241,38 @@
 			.map((text, index) => ({ text, index }))
 			.filter(({ index }) => !placedChips.includes(index))
 	);
+	// Each chip's token node (Japanese), so kanji chips carry furigana like
+	// every other target surface. Matched by text, consuming each token once
+	// so repeated words map to distinct nodes.
+	const wordBankNodes = $derived.by((): (SegmentNode | null)[] => {
+		if (!japanese || !node) return wordBank.map(() => null);
+		const tokens = tokenChildren(node);
+		const used = new Set<number>();
+		return wordBank.map((text) => {
+			const target = normalizeText(text);
+			const found = tokens.findIndex(
+				(token, index) => !used.has(index) && normalizeText(token.text) === target
+			);
+			if (found === -1) return null;
+			used.add(found);
+			return tokens[found];
+		});
+	});
+
+	// Drag-to-reorder the placed chips. Tap still places/removes; drag is the
+	// enhancement for fixing an order without tearing the row down.
+	let dragFrom: number | null = $state(null);
+	function reorderPlaced(to: number) {
+		if (dragFrom === null || dragFrom === to) {
+			dragFrom = null;
+			return;
+		}
+		const next = [...placedChips];
+		const [moved] = next.splice(dragFrom, 1);
+		next.splice(to, 0, moved);
+		placedChips = next;
+		dragFrom = null;
+	}
 
 	function openNoteEditor() {
 		noteDraft = personalNote;
@@ -424,21 +456,39 @@
 	{:else if item.mode === 'word_bank' && wordBank.length}
 		<div class="bank-arrangement" {lang} style:font-family={fonts}>
 			{#if placedChips.length === 0}
-				<span class="muted small-note">Tap the words below in recitation order — tap a placed word to take it back.</span>
+				<span class="muted small-note">Tap the words below in recitation order — drag placed words to reorder, tap one to take it back.</span>
 			{:else}
-				{#each placedChips as chipIndex (chipIndex)}
+				{#each placedChips as chipIndex, position (chipIndex)}
+					{@const chipNode = wordBankNodes[chipIndex]}
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<button
 						class="chip placed"
+						class:dragging={dragFrom === position}
+						draggable="true"
+						ondragstart={() => (dragFrom = position)}
+						ondragover={(event) => event.preventDefault()}
+						ondrop={(event) => {
+							event.preventDefault();
+							reorderPlaced(position);
+						}}
+						ondragend={() => (dragFrom = null)}
 						onclick={() => (placedChips = placedChips.filter((index) => index !== chipIndex))}
-					>{wordBank[chipIndex]}</button>
+					>
+						{#if chipNode}
+							<SegmentText node={chipNode} {profile} layers={[]} showRuby={readingEnabled} />
+						{:else}{wordBank[chipIndex]}{/if}
+					</button>
 				{/each}
 			{/if}
 		</div>
 		{#if poolChips.length}
 			<div class="bank-pool" {lang} style:font-family={fonts}>
 				{#each poolChips as chip (chip.index)}
+					{@const chipNode = wordBankNodes[chip.index]}
 					<button class="chip" onclick={() => (placedChips = [...placedChips, chip.index])}>
-						{chip.text}
+						{#if chipNode}
+							<SegmentText node={chipNode} {profile} layers={[]} showRuby={readingEnabled} />
+						{:else}{chip.text}{/if}
 					</button>
 				{/each}
 			</div>
@@ -795,6 +845,24 @@
 	.chip.placed {
 		border-color: var(--border);
 		color: var(--text);
+	}
+
+	.chip.placed[draggable='true'] {
+		cursor: grab;
+	}
+
+	.chip.dragging {
+		opacity: 0.5;
+	}
+
+	/* Ruby chips embed the reading view's segment markup; strip its block
+	   spacing so the chip stays a tight inline pill. */
+	.chip :global(.segment) {
+		margin: 0 !important;
+	}
+
+	.chip :global(.line-text) {
+		margin: 0;
 	}
 
 	.small-note {

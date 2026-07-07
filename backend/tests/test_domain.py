@@ -1024,6 +1024,29 @@ def test_japanese_recall_prompt_uses_token_lead_in(session_factory: object) -> N
         assert prompt["lead_in"] != line.text
 
 
+def test_spaced_language_lead_in_keeps_word_spaces(session_factory: object) -> None:
+    # Greek/Latin lines are space-delimited: the token-based lead-in must keep
+    # the spaces, or the opening smushes into one run ("μῆνινἄειδε").
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="greek-lead-in", name="Ancient Greek")
+        passage = models.Passage(title="Iliad", language_profile=language)
+        revision = models.PassageRevision(
+            passage=passage, revision_number=1, source_text="μῆνιν ἄειδε θεά"
+        )
+        line = models.Segment(kind="line", ordinal=0, text="μῆνιν ἄειδε θεά")
+        line.children = [
+            models.Segment(kind="token", ordinal=0, text="μῆνιν"),
+            models.Segment(kind="token", ordinal=1, text="ἄειδε"),
+            models.Segment(kind="token", ordinal=2, text="θεά"),
+        ]
+        revision.segments = [line, *line.children]
+        db.add(passage)
+        db.commit()
+
+        prompt = prompt_for("cue_recall", line, [line])
+        assert prompt["lead_in"] == "μῆνιν ἄειδε"
+
+
 def test_prep_backfills_japanese_ruby_without_llm(session_factory: object) -> None:
     with session_factory() as db:  # type: ignore[operator]
         language = models.LanguageProfile(slug="japanese-ruby-backfill", name="Japanese")

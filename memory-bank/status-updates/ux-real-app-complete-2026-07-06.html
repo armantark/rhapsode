@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Real-App UX Pass — Complete · 2026-07-06</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0c0e12; --surface: #161a21; --surface-2: #1e232c; --border: #2a3040;
+    --text: #e8ecf4; --text-dim: #8b95a8; --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.15);
+    --red: #ff5c5c; --green: #4ade80; --amber: #fbbf24; --purple: #a78bfa;
+    --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; }
+body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Outfit', sans-serif; font-weight: 300;
+    padding: 40px 24px 80px; line-height: 1.55;
+}
+.wrap { max-width: 1060px; margin: 0 auto; }
+.badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.12em; color: var(--green); background: rgba(74, 222, 128, 0.1);
+    border: 1px solid var(--green); border-radius: 999px; padding: 4px 14px;
+    display: inline-block; margin-bottom: 18px;
+}
+h1 { font-weight: 700; font-size: 1.9rem; margin-bottom: 10px; }
+.sub { color: var(--text-dim); font-size: 0.95rem; max-width: 810px; margin-bottom: 28px; }
+.sub strong { color: var(--text); font-weight: 500; }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 30px; }
+@media (max-width: 900px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+.metric {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px; text-align: center;
+}
+.metric .num { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 1.5rem; color: var(--green); }
+.metric .lbl { color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em;
+    font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+.list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 30px; }
+.fix {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 20px;
+    display: grid; grid-template-columns: 24px 1fr auto; gap: 14px; align-items: start;
+}
+.fix .check { color: var(--green); font-weight: 700; }
+.fix h2 { font-size: 0.98rem; font-weight: 700; margin-bottom: 4px; }
+.fix p { color: var(--text-dim); font-size: 0.84rem; }
+.fix p strong { color: var(--text); font-weight: 500; }
+.fix code { font-family: 'JetBrains Mono', monospace; font-size: 0.78em; color: var(--amber); }
+.qa {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 600;
+    letter-spacing: 0.1em; padding: 2px 8px; border-radius: 4px; white-space: nowrap;
+    color: var(--green); border: 1px solid var(--green);
+}
+.qa.note { color: var(--amber); border-color: var(--amber); }
+.verdict {
+    border-left: 3px solid var(--amber); background: var(--surface);
+    padding: 14px 18px; border-radius: 0 8px 8px 0; font-size: 0.9rem;
+    color: var(--text-dim); max-width: 860px;
+}
+.verdict strong { color: var(--text); font-weight: 500; }
+.verdict code { font-family: 'JetBrains Mono', monospace; font-size: 0.8em; color: var(--amber); }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <span class="badge">COMPLETED · REAL-APP UX PASS</span>
+    <h1>Settings, sample, shortcuts — and the burrs sanded off</h1>
+    <p class="sub">Shipped and verified on <strong>origin/main @ 319fff1</strong>. The app now configures
+    itself in-app instead of via a repo-root <code>.env</code>, teaches its own first five minutes, and
+    tells you its keyboard language.</p>
+
+    <div class="metrics">
+        <div class="metric"><div class="num">90</div><div class="lbl">backend pytest</div></div>
+        <div class="metric"><div class="num">89</div><div class="lbl">frontend vitest</div></div>
+        <div class="metric"><div class="num">13/13</div><div class="lbl">playwright e2e</div></div>
+        <div class="metric"><div class="num">5/6</div><div class="lbl">pinchtab checks*</div></div>
+    </div>
+
+    <div class="list">
+        <div class="fix">
+            <span class="check">✓</span>
+            <div>
+                <h2>Settings page</h2>
+                <p>Four cards behind a new nav link: <strong>Data safety</strong> (backup folder, "last backup 1h ago"
+                from <code>GET /system/status</code>), <strong>Scheduler</strong> (retention target, personal-weights
+                vs defaults status), <strong>Prep assistant</strong> (masked Gemini-key entry stored as an app
+                setting — env stays the fallback, and the practice loop still never touches the LLM), and
+                <strong>Practice defaults</strong> (sound/mic). The <code>.env</code> dependency is now optional.</p>
+            </div>
+            <span class="qa">QA PASS</span>
+        </div>
+        <div class="fix">
+            <span class="check">✓</span>
+            <div>
+                <h2>First-run sample + shortcuts overlay</h2>
+                <p>The empty library offers "Try a sample — Iliad 1.1–5" (verified creating and landing on a
+                5-line passage), and <code>?</code> opens a keyboard-shortcuts dialog anywhere (nav button for
+                mouse users; Esc and click-outside close it). The clear-queue banner also got its first live
+                sighting: "Nothing due — the queue is clear. 🏛".</p>
+            </div>
+            <span class="qa">QA PASS</span>
+        </div>
+        <div class="fix">
+            <span class="check">✓</span>
+            <div>
+                <h2>Launcher fixes</h2>
+                <p>Manual mode selection now <strong>persists across navigation</strong> (verified with before/after
+                screenshots), the typed-recall hint no longer claims Space checks the card, and the modes disclosure
+                binds its open state so no re-render can snap it shut.</p>
+            </div>
+            <span class="qa">QA PASS</span>
+        </div>
+        <div class="fix">
+            <span class="check">✓</span>
+            <div>
+                <h2>*The "double-click disclosure" verdict: automation artifact</h2>
+                <p>Pinchtab still saw a swallowed first click — but a direct Playwright reproduction against the same
+                running app shows the first post-load click opening the panel, with the event log
+                (<code>summary click → toggle open=true</code>) to prove it, and the e2e suite's manual-session
+                helper has always opened it with a single click. Real mouse events are fine; Pinchtab's synthetic
+                first-click delivery is the anomaly (the same tool also cannot deliver Space or Escape). Worth one
+                two-second human click to close the book, but the code is correct.</p>
+            </div>
+            <span class="qa note">ROOT-CAUSED</span>
+        </div>
+    </div>
+
+    <div class="verdict">
+        <strong>Still parked from the "real app" review, on your call:</strong> cutting
+        <code>desktop-v0.0.2</code> (the June 12 release predates today's entire overhaul — one tag push when you
+        want it) and signing/notarization (needs your Apple Developer account).
+    </div>
+</div>
+</body>
+</html>

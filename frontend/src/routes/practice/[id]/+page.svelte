@@ -305,7 +305,44 @@
 		}, 600);
 	}
 
-	async function grade(rating: AttemptRating) {
+	// Reference pacing for a recital: the summed aligned line spans, available
+	// only when every line has one. Arithmetic, not assessment — a fluency
+	// mirror shown beside the learner's own focused time.
+	const recitalReferenceSeconds = $derived.by(() => {
+		if (currentItem?.mode !== 'recital') return null;
+		const lineIds = (revision?.segments ?? [])
+			.filter((segment) => segment.kind === 'line' || segment.kind === 'chunk')
+			.map((segment) => segment.id);
+		if (!lineIds.length) return null;
+		const spans = new Map<string, number>();
+		for (const media of referenceMedia) {
+			for (const cue of media.cue_points ?? []) {
+				if (cue.segment_id && cue.end != null && !spans.has(cue.segment_id)) {
+					spans.set(cue.segment_id, cue.end - cue.time);
+				}
+			}
+		}
+		if (!lineIds.every((id) => spans.has(id))) return null;
+		return lineIds.reduce((total, id) => total + (spans.get(id) ?? 0), 0);
+	});
+
+	async function confirmRecital(stumbledSegmentIds: string[]) {
+		// The recital's summary rating mirrors its per-line map: any stumble is
+		// a lapse, a clean pass is Good. The backend derives per-line grades.
+		const pacing =
+			recitalReferenceSeconds !== null
+				? ` · you ≈${Math.round(elapsedFocusedMs() / 1000)}s · reference ≈${Math.round(recitalReferenceSeconds)}s`
+				: '';
+		await grade(stumbledSegmentIds.length ? 'incorrect' : 'hesitant', {
+			stumbledSegmentIds,
+			feedbackSuffix: pacing
+		});
+	}
+
+	async function grade(
+		rating: AttemptRating,
+		recital?: { stumbledSegmentIds: string[]; feedbackSuffix: string }
+	) {
 		if (!session || !currentItem || submitting || undoing) return;
 		submitting = true;
 		error = '';
@@ -318,14 +355,16 @@
 				rating,
 				revealed,
 				latency_ms: Math.max(0, Math.round(elapsedFocusedMs())),
-				media_asset_id: pendingMediaId
+				media_asset_id: pendingMediaId,
+				stumbled_segment_ids: recital?.stumbledSegmentIds ?? null
 			});
 			const landed = result.attempt.rating as AttemptRating;
 			history.push(landed);
 			tally = { ...tally, [landed]: tally[landed] + 1 };
-			lastFeedback = result.mastery_stage
-				? `${RATING_LABELS[landed]} · mastery ${result.mastery_stage}${result.due_at ? ` · next ${new Date(result.due_at).toLocaleDateString()}` : ''}`
-				: RATING_LABELS[landed];
+			lastFeedback =
+				(result.mastery_stage
+					? `${RATING_LABELS[landed]} · mastery ${result.mastery_stage}${result.due_at ? ` · next ${new Date(result.due_at).toLocaleDateString()}` : ''}`
+					: RATING_LABELS[landed]) + (recital?.feedbackSuffix ?? '');
 			session = result.session;
 			streak = landed === 'clean' ? streak + 1 : 0;
 			playGrade(landed, streak);
@@ -374,6 +413,7 @@
 				'random_start',
 				'word_bank',
 				'typed_recall',
+				'meaning_recall',
 				'full_passage',
 				'forward_chaining',
 				'backward_chaining'
@@ -510,6 +550,7 @@
 					note={segmentNote}
 					onReveal={() => (revealed = true)}
 					onSaveNote={saveNote}
+					onRecitalConfirm={confirmRecital}
 				/>
 			</div>
 		{/key}
@@ -567,21 +608,24 @@
 			{micEnabled ? '🎙 recording enabled' : '🎙 enable recording'}
 		</button>
 
-		<!-- Recall cards require the check before grading (Anki model: the answer
-		     is always seen before the grade). Verbatim errors are exactly the ones
-		     the reciter doesn't hear, so grading blind would inflate the schedule.
-		     The peek itself stays neutral — it never forces a grade. -->
-		<GradeBar onGrade={grade} disabled={submitting || canReveal} />
-		{#if revealed}
-			<p class="muted small">
-				Answer shown — grade yourself honestly. Pick <strong>Again</strong> only if you
-				couldn't recall it.
-			</p>
-		{:else if canReveal}
-			<p class="muted small">
-				Recite from memory, then press <kbd>Space</kbd> to check — grading unlocks after
-				the check.
-			</p>
+		{#if currentItem.mode !== 'recital'}
+			<!-- Recall cards require the check before grading (Anki model: the answer
+			     is always seen before the grade). Verbatim errors are exactly the ones
+			     the reciter doesn't hear, so grading blind would inflate the schedule.
+			     The peek itself stays neutral — it never forces a grade. A recital has
+			     no grade bar at all: its stumble map IS the grade. -->
+			<GradeBar onGrade={grade} disabled={submitting || canReveal} />
+			{#if revealed}
+				<p class="muted small">
+					Answer shown — grade yourself honestly. Pick <strong>Again</strong> only if you
+					couldn't recall it.
+				</p>
+			{:else if canReveal}
+				<p class="muted small">
+					Recite from memory, then press <kbd>Space</kbd> to check — grading unlocks after
+					the check.
+				</p>
+			{/if}
 		{/if}
 		{#if lastFeedback}
 			<p class="feedback">{lastFeedback}</p>

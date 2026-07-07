@@ -2,6 +2,7 @@
 	import type { LanguageProfile, PracticeItem } from '$lib/api/types';
 	import type { SegmentNode } from '$lib/utils/segments';
 	import SegmentText from './SegmentText.svelte';
+	import { api } from '$lib/api/client';
 	import { fontStack, langCode } from '$lib/utils/language';
 
 	let {
@@ -14,7 +15,8 @@
 		layers = [],
 		note = null,
 		onReveal,
-		onSaveNote
+		onSaveNote,
+		onRecitalConfirm
 	}: {
 		item: PracticeItem;
 		profile?: LanguageProfile | null;
@@ -41,6 +43,9 @@
 		onReveal: () => void;
 		/** Persists the note for the current segment; parent owns the request. */
 		onSaveNote?: (text: string) => void | Promise<void>;
+		/** Recital only: submits the confirmed stumble map; parent owns the
+		 *  attempt request and derives per-line grades from it. */
+		onRecitalConfirm?: (stumbledSegmentIds: string[]) => void | Promise<void>;
 	} = $props();
 
 	const japanese = $derived(profile?.slug === 'japanese');
@@ -132,6 +137,12 @@
 	// typed_recall: the draft survives the reveal so the learner can eyeball
 	// their attempt against the true line — the check is visual, never parsed.
 	let typedDraft = $state('');
+	// recital: the stumble map, flagged live by line number while performing,
+	// adjusted with the texts visible, then confirmed. Self-reported taps —
+	// the app never infers a stumble.
+	let recitalPhase: 'performing' | 'adjusting' = $state('performing');
+	let stumbledIds: string[] = $state([]);
+	let confirmingRecital = $state(false);
 	// Guarded on the actual id (not just the item prop) so a coarse prop
 	// update — e.g. the reveal flipping — can never wipe in-progress state.
 	let lastItemId: string | null = null;
@@ -143,7 +154,82 @@
 		editingNote = false;
 		placedChips = [];
 		typedDraft = '';
+		recitalPhase = 'performing';
+		stumbledIds = [];
+		stopCueAudio();
 	});
+
+	function toggleStumble(segmentId: string) {
+		stumbledIds = stumbledIds.includes(segmentId)
+			? stumbledIds.filter((id) => id !== segmentId)
+			: [...stumbledIds, segmentId];
+	}
+
+	async function confirmRecital() {
+		if (!onRecitalConfirm) return;
+		confirmingRecital = true;
+		try {
+			await onRecitalConfirm(stumbledIds);
+		} finally {
+			confirmingRecital = false;
+		}
+	}
+
+	// The recital map covers the passage's recitable units (lines, or chunks
+	// for chunk-grain passages) in order; junctures inherit on the backend.
+	const recitalLines = $derived(
+		item.mode === 'recital'
+			? nodes
+					.filter((candidate) => candidate.kind === 'line' || candidate.kind === 'chunk')
+					.sort((a, b) => a.ordinal - b.ordinal)
+			: []
+	);
+
+	// Heard cue: when aligned reference audio exists, juncture recall cards
+	// carry the previous line's span — hearing it is the performance condition.
+	const audioCue = $derived.by(() => {
+		const cue = prompt.audio_cue;
+		if (!cue || typeof cue !== 'object') return null;
+		const { media_id, start, end } = cue as Record<string, unknown>;
+		if (typeof media_id !== 'string' || typeof start !== 'number' || typeof end !== 'number') {
+			return null;
+		}
+		return { mediaId: media_id, start, end };
+	});
+	let cueAudio: HTMLAudioElement | null = null;
+	let playingCue = $state(false);
+
+	function stopCueAudio() {
+		cueAudio?.pause();
+		cueAudio = null;
+		playingCue = false;
+	}
+
+	function playAudioCue() {
+		const cue = audioCue;
+		if (!cue) return;
+		stopCueAudio();
+		const element = new Audio(api.mediaUrl(cue.mediaId));
+		cueAudio = element;
+		playingCue = true;
+		element.addEventListener('loadedmetadata', () => {
+			element.currentTime = cue.start;
+			void element.play().catch(() => (playingCue = false));
+		});
+		element.addEventListener('timeupdate', () => {
+			if (element.currentTime >= cue.end) {
+				element.pause();
+				playingCue = false;
+			}
+		});
+		element.addEventListener('ended', () => (playingCue = false));
+	}
+
+	const translationCue = $derived(
+		item.mode === 'meaning_recall' && typeof prompt.translation === 'string'
+			? prompt.translation
+			: ''
+	);
 
 	const wordBank = $derived(
 		item.mode === 'word_bank' && Array.isArray(prompt.word_bank)
@@ -172,7 +258,7 @@
 		}
 	}
 	const knownMode = $derived(
-		['shadowing', 'progressive_fading', 'word_bank', 'forward_chaining', 'backward_chaining', 'cue_recall', 'typed_recall', 'random_start', 'weak_link', 'full_passage'].includes(item.mode)
+		['shadowing', 'progressive_fading', 'word_bank', 'forward_chaining', 'backward_chaining', 'cue_recall', 'typed_recall', 'meaning_recall', 'random_start', 'weak_link', 'full_passage', 'recital'].includes(item.mode)
 	);
 
 	let stageIndex = $state(0);
@@ -300,6 +386,11 @@
 				{:else}
 					<span class="cue passage-text" {lang} style:font-family={fonts}>{fadeLeadIn}</span>
 				{/if}
+				{#if audioCue}
+					<button class="hint-toggle" onclick={playAudioCue}>
+						{playingCue ? '▶ playing…' : '▶ Hear the cue'}
+					</button>
+				{/if}
 				<span class="muted">… carry on into the next line</span>
 			</div>
 		{/if}
@@ -361,6 +452,11 @@
 			{:else if leadIn}
 				<span class="cue passage-text" {lang} style:font-family={fonts}>{leadIn}</span>
 			{/if}
+			{#if audioCue}
+				<button class="hint-toggle" onclick={playAudioCue}>
+					{playingCue ? '▶ playing…' : '▶ Hear the cue'}
+				</button>
+			{/if}
 			<span class="muted">{leadIn ? '… type from here, then check' : 'Type from memory, then check'}</span>
 		</div>
 		{#if revealed}
@@ -383,6 +479,46 @@
 		{/if}
 	{:else if isChaining}
 		<p class="muted blank">Recite {chainRange} from memory.</p>
+	{:else if item.mode === 'meaning_recall'}
+		<div class="cue-line">
+			<span class="meaning-cue">“{translationCue}”</span>
+			<span class="muted">… recite the original aloud, then check</span>
+		</div>
+	{:else if item.mode === 'recital'}
+		{#if recitalPhase === 'performing'}
+			<p class="muted blank">Perform aloud — tap a line's number the moment you stumble.</p>
+			<div class="recital-grid">
+				{#each recitalLines as line, index (line.id)}
+					<button
+						class="numchip"
+						class:stumbled={stumbledIds.includes(line.id)}
+						onclick={() => toggleStumble(line.id)}
+					>{index + 1}</button>
+				{/each}
+			</div>
+			<button class="reveal" onclick={() => (recitalPhase = 'adjusting')}>Done reciting →</button>
+		{:else}
+			<p class="muted small-note">
+				Adjust the map — tap any line you stumbled on. Flagged lines are graded as lapses,
+				the rest as Good.
+			</p>
+			<ol class="recital-adjust">
+				{#each recitalLines as line (line.id)}
+					<li>
+						<button
+							class="recital-row"
+							class:stumbled={stumbledIds.includes(line.id)}
+							onclick={() => toggleStumble(line.id)}
+						>
+							<span class="passage-text" {lang} style:font-family={fonts}>{line.text}</span>
+						</button>
+					</li>
+				{/each}
+			</ol>
+			<button class="reveal" onclick={confirmRecital} disabled={confirmingRecital}>
+				{confirmingRecital ? 'Saving…' : 'Confirm recital'}
+			</button>
+		{/if}
 	{:else if item.mode === 'cue_recall' || item.mode === 'weak_link' || item.mode === 'random_start'}
 		<div class="cue-line">
 			{#if leadInNode}
@@ -391,6 +527,11 @@
 				</div>
 			{:else if leadIn}
 				<span class="cue passage-text" {lang} style:font-family={fonts}>{leadIn}</span>
+			{/if}
+			{#if audioCue}
+				<button class="hint-toggle" onclick={playAudioCue}>
+					{playingCue ? '▶ playing…' : '▶ Hear the cue'}
+				</button>
 			{/if}
 			<span class="muted">{leadIn ? '… recite aloud from here, then check' : 'Recite from memory, then check'}</span>
 		</div>
@@ -483,7 +624,7 @@
 		{/if}
 	{/if}
 
-	{#if !revealed && (item.mode === 'cue_recall' || item.mode === 'weak_link' || item.mode === 'random_start' || item.mode === 'word_bank' || item.mode === 'typed_recall' || item.mode === 'full_passage' || isChaining)}
+	{#if !revealed && (item.mode === 'cue_recall' || item.mode === 'weak_link' || item.mode === 'random_start' || item.mode === 'word_bank' || item.mode === 'typed_recall' || item.mode === 'meaning_recall' || item.mode === 'full_passage' || isChaining)}
 		<button class="reveal" onclick={onReveal}>Show answer to check</button>
 	{/if}
 </div>
@@ -673,6 +814,64 @@
 	}
 
 	.typed-attempt .passage-text {
+		margin: 0;
+	}
+
+	.meaning-cue {
+		font-size: 1.05rem;
+		font-style: italic;
+		color: var(--gold);
+	}
+
+	.recital-grid {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+
+	.numchip {
+		font-family: var(--font-mono);
+		font-size: 0.85rem;
+		min-width: 40px;
+		padding: 8px 10px;
+		border: 1px solid var(--border);
+		color: var(--text-dim);
+		background: none;
+		border-radius: 10px;
+		cursor: pointer;
+	}
+
+	.numchip.stumbled {
+		border-color: var(--red);
+		color: var(--red);
+	}
+
+	.recital-adjust {
+		margin: 0;
+		padding-inline-start: 24px;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	.recital-row {
+		background: none;
+		border: 1px solid transparent;
+		border-radius: 8px;
+		padding: 4px 8px;
+		text-align: start;
+		cursor: pointer;
+	}
+
+	.recital-row.stumbled {
+		border-color: var(--red);
+	}
+
+	.recital-row.stumbled .passage-text {
+		color: var(--red);
+	}
+
+	.recital-row .passage-text {
 		margin: 0;
 	}
 

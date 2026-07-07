@@ -204,9 +204,11 @@ class PracticeMode(StrEnum):
     backward_chaining = "backward_chaining"
     cue_recall = "cue_recall"
     typed_recall = "typed_recall"
+    meaning_recall = "meaning_recall"
     random_start = "random_start"
     weak_link = "weak_link"
     full_passage = "full_passage"
+    recital = "recital"
 
 
 class SessionCreate(BaseModel):
@@ -274,6 +276,11 @@ class AttemptCreate(BaseModel):
     # the grade is the canonical signal (Anki model), so peeking never forces a
     # rating — the learner self-grades honestly with Again/Hard/Good/Easy.
     revealed: bool = False
+    # Recital only: the lines the learner flagged as stumbles. Self-reported —
+    # never derived by any matcher. Stumbled lines grade as a lapse, the rest
+    # as Good, and junctures inherit their landing line's rating, replacing
+    # full-passage's one-grade fan with per-line signal from a performance.
+    stumbled_segment_ids: list[str] | None = None
 
 
 class AttemptRead(ORMModel):

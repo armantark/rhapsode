@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recital · Heard Cues · Meaning Recall — Plan · 2026-07-06</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0c0e12; --surface: #161a21; --surface-2: #1e232c; --border: #2a3040;
+    --text: #e8ecf4; --text-dim: #8b95a8; --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.15);
+    --red: #ff5c5c; --green: #4ade80; --amber: #fbbf24; --purple: #a78bfa;
+    --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; }
+body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Outfit', sans-serif; font-weight: 300;
+    padding: 40px 24px 80px; line-height: 1.55;
+}
+.wrap { max-width: 1080px; margin: 0 auto; }
+.badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.12em; color: var(--accent); background: var(--accent-glow);
+    border: 1px solid var(--accent); border-radius: 999px; padding: 4px 14px;
+    display: inline-block; margin-bottom: 18px;
+}
+h1 { font-weight: 700; font-size: 1.9rem; margin-bottom: 10px; }
+.sub { color: var(--text-dim); font-size: 0.95rem; max-width: 800px; margin-bottom: 30px; }
+.sub strong { color: var(--text); font-weight: 500; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 30px; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+.card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+}
+.card.wide { grid-column: 1 / -1; }
+.pill {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 8px;
+    border-radius: 4px; display: inline-block; margin-bottom: 10px;
+}
+.pill.scamper-e { color: var(--red); border: 1px solid var(--red); }
+.pill.scamper-s { color: var(--amber); border: 1px solid var(--amber); }
+.pill.scamper-r { color: var(--purple); border: 1px solid var(--purple); }
+.pill.scamper-p { color: var(--green); border: 1px solid var(--green); }
+.card h2 { font-weight: 700; font-size: 1.08rem; margin-bottom: 8px; }
+.card p { color: var(--text-dim); font-size: 0.86rem; margin-bottom: 12px; }
+.card p strong { color: var(--text); font-weight: 500; }
+.card p code { font-family: 'JetBrains Mono', monospace; font-size: 0.78em; color: var(--amber); }
+.mock {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px; margin-bottom: 12px;
+}
+.mock-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim);
+    display: block; margin-bottom: 10px;
+}
+.numgrid { display: flex; flex-wrap: wrap; gap: 8px; }
+.numchip {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.74rem;
+    border: 1px solid var(--border); color: var(--text-dim);
+    border-radius: 8px; padding: 4px 10px;
+}
+.numchip.stumbled { border-color: var(--red); color: var(--red); }
+.adjrow { display: flex; gap: 10px; align-items: baseline; font-size: 0.78rem; margin-bottom: 6px; }
+.adjrow .n { font-family: 'JetBrains Mono', monospace; color: var(--text-dim); width: 18px; }
+.adjrow .t { font-family: 'JetBrains Mono', monospace; color: var(--text); }
+.adjrow.bad .t { color: var(--red); }
+.playbtn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.76rem;
+    border: 1px solid var(--gold, #fbbf24); color: var(--amber);
+    border-radius: 8px; padding: 5px 12px;
+}
+.hintline { font-style: italic; color: var(--text-dim); font-size: 0.84rem; margin-bottom: 8px; }
+.truth {
+    border-left: 3px solid var(--amber); padding-left: 10px;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--text);
+}
+.files { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+.file {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 2px 8px; color: var(--text-dim);
+}
+.rules {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px 20px; margin-bottom: 30px;
+}
+.rules h3 { font-size: 0.8rem; font-weight: 600; color: var(--text-dim); margin-bottom: 10px;
+    font-family: 'JetBrains Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase; }
+.rules ul { padding-left: 18px; color: var(--text-dim); font-size: 0.85rem; }
+.rules li { margin-bottom: 6px; }
+.rules li strong { color: var(--text); font-weight: 500; }
+.steps h2 { font-weight: 700; font-size: 1.15rem; margin-bottom: 14px; }
+.step { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 12px; }
+.step-num {
+    font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 0.8rem;
+    background: var(--accent); color: #fff; border-radius: 6px;
+    width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.step p { color: var(--text-dim); font-size: 0.87rem; }
+.step p strong { color: var(--text); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <span class="badge">PRE-IMPLEMENTATION PLAN · SCAMPER BATCH</span>
+    <h1>Recital mode, heard cues, meaning recall</h1>
+    <p class="sub">The three surviving SCAMPER cells you approved, plus the small pacing-gap rider. All
+    deterministic, offline, self-verified — no matcher, no LLM in the loop. The recital's stumble map also
+    retires a known weakness: <strong>full-passage grading currently fans one grade onto every segment</strong>;
+    a recital grades each line from a real performance instead.</p>
+
+    <div class="grid">
+        <div class="card wide">
+            <span class="pill scamper-e">Eliminate + Combine · session flavor</span>
+            <h2>recital — perform with no net, then mark the stumble map</h2>
+            <p>One card for the whole passage. During the performance the screen shows only tappable
+            <strong>line numbers</strong> (text would make it reading, not recital); tap a number the moment you
+            stumble — no stopping, no reveal, no grade bar. "Done reciting" flips to the adjustment screen: every
+            line's text appears beside its number, your live flags pre-marked, tap to correct, then confirm.</p>
+            <div class="mock">
+                <span class="mock-label">During · tap where you stumble</span>
+                <div class="numgrid"><span class="numchip">1</span><span class="numchip">2</span><span class="numchip stumbled">3</span><span class="numchip">4</span><span class="numchip stumbled">5</span></div>
+            </div>
+            <div class="mock">
+                <span class="mock-label">After · adjust and confirm</span>
+                <div class="adjrow"><span class="n">2</span><span class="t">οὐλομένην, ἣ μυρί᾽ Ἀχαιοῖς ἄλγε᾽ ἔθηκε,</span></div>
+                <div class="adjrow bad"><span class="n">3</span><span class="t">πολλὰς δ᾽ ἰφθίμους ψυχὰς Ἄϊδι προΐαψεν</span></div>
+            </div>
+            <p><strong>Grading rule (deterministic):</strong> stumbled lines → <code>incorrect</code> (a lapse, per the
+            fixed FSRS map); clean lines → <code>hesitant</code> (Good — a recital pass is solid evidence, not
+            effortless-perfect evidence); junctures inherit their landing line's rating (the seam is where the stumble
+            lives). <code>AttemptCreate</code> gains optional <code>stumbled_segment_ids</code>; undo already snapshots
+            arbitrary segment sets, so ⌘Z rolls the whole recital back.</p>
+            <div class="files"><span class="file">schemas.py</span><span class="file">planning.py</span><span class="file">router.py</span><span class="file">PromptCard.svelte</span><span class="file">practice/[id]/+page.svelte</span></div>
+        </div>
+
+        <div class="card">
+            <span class="pill scamper-s">Substitute · cue modality</span>
+            <h2>Heard-cue junctures</h2>
+            <p>When the previous line has an aligned cue span (from LineAligner), juncture recall prompts
+            (<code>cue_recall</code>, <code>random_start</code>, <code>weak_link</code>, <code>typed_recall</code>)
+            carry <code>audio_cue: {media_id, start, end}</code>. The card shows a play button that plays exactly
+            that span — hear the previous line, recite the next line's opening. Auditory cue → oral production, the
+            actual performance condition. Text lead-in stays as the fallback and remains visible.</p>
+            <div class="mock">
+                <span class="mock-label">Card addition</span>
+                <span class="playbtn">▶ Hear the cue</span>
+            </div>
+            <p>Degrades silently: no aligned audio → today's text-only card, byte for byte.</p>
+            <div class="files"><span class="file">planning.py</span><span class="file">PromptCard.svelte</span></div>
+        </div>
+
+        <div class="card">
+            <span class="pill scamper-r">Reverse · cue layer</span>
+            <h2>meaning_recall — translation as the cue</h2>
+            <p>The line's existing <code>translation</code> annotation is the prompt; recite (aloud) the original,
+            then reveal and self-grade. Trains the meaning→form mapping that pure serial rote leaves untouched —
+            the defense against "sound without sense" decay. Lines only, and only lines that have a translation;
+            appended to the graduated rotation the same way shadowing gates on reference audio. Manual sessions
+            filter to translated lines.</p>
+            <div class="mock">
+                <span class="mock-label">Card</span>
+                <p class="hintline">"and hurled to Hades many mighty souls of heroes"</p>
+                <div class="truth">πολλὰς δ᾽ ἰφθίμους ψυχὰς Ἄϊδι προΐαψεν</div>
+            </div>
+            <div class="files"><span class="file">schemas.py</span><span class="file">planning.py</span><span class="file">PromptCard.svelte</span></div>
+        </div>
+
+        <div class="card wide">
+            <span class="pill scamper-p">Put to other uses · rider</span>
+            <h2>Pacing gap on the recital confirm screen</h2>
+            <p>The focused-time clock already times the recital and the cue spans already give each line's reference
+            duration. When every line of the passage has a span, the confirm screen adds one line:
+            <strong>"Your recital ≈ 41s · reference ≈ 26s"</strong>. Client-side arithmetic only; absent spans, absent
+            line. No score, no judgment — a fluency mirror.</p>
+            <div class="files"><span class="file">practice/[id]/+page.svelte</span></div>
+        </div>
+    </div>
+
+    <div class="rules">
+        <h3>Fences respected</h3>
+        <ul>
+            <li><strong>No matcher anywhere:</strong> stumbles are self-reported taps; meaning recall is checked by eye; the pacing line is arithmetic, not assessment.</li>
+            <li><strong>Practice loop stays offline/deterministic</strong> (C1): translations were already drafted at prep time; audio spans were already authored in LineAligner.</li>
+            <li><strong>Smart finisher unchanged:</strong> recital is launched deliberately (mode button), not dealt by the coach — a performance should be chosen, not assigned.</li>
+        </ul>
+    </div>
+
+    <div class="steps">
+        <h2>Implementation order</h2>
+        <div class="step"><div class="step-num">1</div><p><strong>Backend</strong> — enum values (<code>recital</code>, <code>meaning_recall</code>), prompt shapes, juncture <code>audio_cue</code> attachment from media cue spans, <code>stumbled_segment_ids</code> on AttemptCreate with per-segment grading + juncture inheritance, rotation gating for meaning_recall, latency defaults, tests.</p></div>
+        <div class="step"><div class="step-num">2</div><p><strong>Contract</strong> — regenerate OpenAPI + TS client; PRACTICE_MODES gains both modes.</p></div>
+        <div class="step"><div class="step-num">3</div><p><strong>Frontend</strong> — recital two-phase card (number grid → adjustment list → confirm), heard-cue play button, meaning_recall renderer with grade lock, pacing-gap line; vitest for each.</p></div>
+        <div class="step"><div class="step-num">4</div><p><strong>Verify</strong> — full suites, Playwright, Pinchtab pass over all three cards, results artifact.</p></div>
+    </div>
+</div>
+</body>
+</html>

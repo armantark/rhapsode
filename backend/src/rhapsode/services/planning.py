@@ -171,6 +171,76 @@ def _typed_recall_prompt(target: models.Segment, hint: str | None) -> dict[str, 
     }
 
 
+def _translation_text(target: models.Segment) -> str | None:
+    for annotation in target.annotations:
+        if annotation.layer == "translation" and annotation.value.strip():
+            return annotation.value.strip()
+    return None
+
+
+def _meaning_recall_prompt(target: models.Segment) -> dict[str, Any]:
+    """Meaning-cued recall: the drafted translation is the prompt and the
+    original is the answer, exercising the meaning→form mapping that serial
+    rote leaves untouched — the decay mode where a passage becomes sound
+    without sense. Only lines with a translation annotation qualify."""
+    return {
+        "instruction": "The meaning is shown — recite the original line to the end.",
+        "translation": _translation_text(target) or "",
+        "target_text": target.text,
+    }
+
+
+# Juncture recall cards can substitute the cue's MODALITY when aligned
+# reference audio exists: hearing the previous line is the actual performance
+# condition, so these modes carry an audio_cue span alongside the text lead-in.
+JUNCTURE_AUDIO_CUE_MODES = {
+    PracticeMode.progressive_fading.value,
+    PracticeMode.cue_recall.value,
+    PracticeMode.typed_recall.value,
+    PracticeMode.random_start.value,
+    PracticeMode.weak_link.value,
+}
+
+
+def _reference_cue_spans(db: Session, revision_id: str) -> dict[str, dict[str, Any]]:
+    """segment_id → {media_id, start, end} from aligned reference audio."""
+    spans: dict[str, dict[str, Any]] = {}
+    for asset in db.scalars(
+        select(models.MediaAsset)
+        .where(models.MediaAsset.revision_id == revision_id)
+        .where(models.MediaAsset.category == "reference")
+        .order_by(models.MediaAsset.created_at)
+    ):
+        for cue in asset.cue_points or []:
+            segment_id = cue.get("segment_id")
+            end = cue.get("end")
+            if segment_id and end is not None and segment_id not in spans:
+                spans[segment_id] = {
+                    "media_id": asset.id,
+                    "start": cue.get("time", 0.0),
+                    "end": end,
+                }
+    return spans
+
+
+def _attach_juncture_audio_cue(
+    prompt: dict[str, Any],
+    mode: str,
+    target: models.Segment,
+    spans: Mapping[str, dict[str, Any]],
+    lines_by_ordinal: Mapping[int, models.Segment],
+) -> None:
+    if not spans or target.kind != "juncture" or mode not in JUNCTURE_AUDIO_CUE_MODES:
+        return
+    previous_ordinal = (target.metadata_json or {}).get("juncture_after")
+    line = lines_by_ordinal.get(previous_ordinal) if isinstance(previous_ordinal, int) else None
+    if line is None:
+        return
+    cue = spans.get(line.id)
+    if cue:
+        prompt["audio_cue"] = cue
+
+
 def _range_label(start: int, end: int) -> str:
     return f"line {start}" if start == end else f"lines {start}-{end}"
 
@@ -230,6 +300,8 @@ def prompt_for(
             return _word_bank_prompt(target)
         case "typed_recall":
             return _typed_recall_prompt(target, effective_hint)
+        case "meaning_recall":
+            return _meaning_recall_prompt(target)
         case "forward_chaining":
             return _chain_prompt(context, line_numbers)
         case "backward_chaining":
@@ -254,6 +326,17 @@ def prompt_for(
         case "full_passage":
             return {
                 "instruction": "Recite the whole passage from memory, start to finish.",
+                "blank": True,
+            }
+        case "recital":
+            # A performance card: no checks, no reveal, no grade bar. The only
+            # interaction is flagging stumbles by line number; the confirm
+            # screen turns the map into per-line grades (see submit_attempt).
+            return {
+                "instruction": (
+                    "Perform the whole passage from memory, start to finish — "
+                    "tap a line's number the moment you stumble, then confirm the map."
+                ),
                 "blank": True,
             }
         case _:
@@ -386,6 +469,7 @@ def smart_mode_for(
     kind: str = "line",
     mode_counts: dict[str, int] | None = None,
     has_reference_audio: bool = False,
+    has_translation: bool = False,
 ) -> str:
     """Choose the least-used useful exercise for this mastery stage.
 
@@ -431,6 +515,11 @@ def smart_mode_for(
         ]
     if has_reference_audio and kind != "juncture" and (stage == "learning" or difficult):
         cycle.append(PracticeMode.shadowing.value)
+    # Meaning-cued recall gates on a drafted translation the way shadowing
+    # gates on reference audio, and joins only the graduated repertoire —
+    # producing form from a semantic cue presumes the form is already learned.
+    if has_translation and kind != "juncture" and stage != "learning":
+        cycle.append(PracticeMode.meaning_recall.value)
     if difficult:
         cycle = [PracticeMode.weak_link.value, *cycle]
     counts = mode_counts or {}
@@ -470,9 +559,11 @@ DEFAULT_MODE_SECONDS: dict[str, float] = {
     "backward_chaining": 45,
     "cue_recall": 20,
     "typed_recall": 60,
+    "meaning_recall": 25,
     "random_start": 30,
     "weak_link": 35,
     "full_passage": 120,
+    "recital": 120,
 }
 FALLBACK_MODE_SECONDS = 30.0
 MIN_MODE_SAMPLES = 5
@@ -618,8 +709,22 @@ def build_smart_plan_for_revisions(
             kind=segment.kind,
             mode_counts=mode_counts[segment.id],
             has_reference_audio=segment.revision_id in revisions_with_reference,
+            has_translation=_translation_text(segment) is not None,
         )
         for segment in all_segments
+    }
+    cue_spans_by_revision = {
+        revision.id: _reference_cue_spans(db, revision.id)
+        for revision, _segments in revision_segments
+        if revision.id in revisions_with_reference
+    }
+    lines_by_ordinal_by_revision = {
+        revision.id: {
+            segment.ordinal: segment
+            for segment in revision.segments
+            if segment.kind == "line"
+        }
+        for revision, _segments in revision_segments
     }
     # First exposure rides the recording when one exists (grill D2): hear a
     # fluent rendition and speak along BEFORE fading it from memory. Junctures
@@ -752,18 +857,26 @@ def build_smart_plan_for_revisions(
             }
             else None
         )
+        prompt = prompt_for(
+            mode,
+            target,
+            context,
+            personal_notes.get(target.id, target.cue),
+            line_numbers,
+        )
+        _attach_juncture_audio_cue(
+            prompt,
+            mode,
+            target,
+            cue_spans_by_revision.get(target.revision_id, {}),
+            lines_by_ordinal_by_revision.get(target.revision_id, {}),
+        )
         items.append(
             {
                 "revision_id": target.revision_id,
                 "segment_id": target.id,
                 "mode": mode,
-                "prompt": prompt_for(
-                    mode,
-                    target,
-                    context,
-                    personal_notes.get(target.id, target.cue),
-                    line_numbers,
-                ),
+                "prompt": prompt,
             }
         )
 
@@ -869,6 +982,12 @@ def build_plan(
     personal_notes = _personal_note_texts(db, [segment.id for segment in segments])
     difficult_ids = _difficult_segment_ids(db)
     line_numbers_by_id = _line_number_map(_ordered_segments(revision, None))
+    cue_spans = _reference_cue_spans(db, revision.id)
+    lines_by_ordinal = {
+        segment.ordinal: segment
+        for segment in revision.segments
+        if segment.kind == "line"
+    }
     items: list[dict[str, Any]] = []
     for mode in modes:
         targets = segments
@@ -878,7 +997,13 @@ def build_plan(
             targets = [segment for segment in segments if segment.id in difficult_ids] or segments[
                 :1
             ]
-        elif mode == PracticeMode.full_passage.value:
+        elif mode == PracticeMode.meaning_recall.value:
+            # Meaning needs a drafted translation to cue from; untranslated
+            # lines (and junctures, which never carry one) are skipped.
+            targets = [
+                segment for segment in segments if _translation_text(segment) is not None
+            ]
+        elif mode in {PracticeMode.full_passage.value, PracticeMode.recital.value}:
             targets = segments[:1]
         for target in targets:
             target_index = next(
@@ -898,18 +1023,20 @@ def build_plan(
                 }
                 else None
             )
+            prompt = prompt_for(
+                mode,
+                target,
+                context,
+                personal_notes.get(target.id, target.cue),
+                line_numbers,
+            )
+            _attach_juncture_audio_cue(prompt, mode, target, cue_spans, lines_by_ordinal)
             items.append(
                 {
                     "revision_id": revision.id,
                     "segment_id": target.id,
                     "mode": mode,
-                    "prompt": prompt_for(
-                        mode,
-                        target,
-                        context,
-                        personal_notes.get(target.id, target.cue),
-                        line_numbers,
-                    ),
+                    "prompt": prompt,
                 }
             )
     return items

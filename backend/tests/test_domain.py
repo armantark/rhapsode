@@ -73,11 +73,19 @@ def test_all_practice_modes_build_a_prompt(session_factory: object) -> None:
         revision = models.PassageRevision(
             passage=passage, revision_number=1, source_text="arma virumque cano"
         )
+        first = models.Segment(kind="line", ordinal=0, text="arma virumque cano")
         revision.segments = [
-            models.Segment(kind="line", ordinal=0, text="arma virumque cano"),
+            first,
             models.Segment(kind="line", ordinal=1, text="Troiae qui primus ab oris"),
         ]
         db.add(passage)
+        db.commit()
+        # meaning_recall only targets translated lines, so one line carries one.
+        annotation = models.Annotation(
+            segment_id=first.id, layer="translation", value="I sing of arms and the man"
+        )
+        db.add(annotation)
+        first.annotations.append(annotation)
         db.commit()
         plan = build_plan(db, revision, BUILT_IN_MODES, ["line"])
         assert {item["mode"] for item in plan} == set(BUILT_IN_MODES)
@@ -1283,6 +1291,85 @@ def test_abandoned_sessions_expire_but_completed_history_does_not(
         assert completed.status == "completed"
 
 
+def test_meaning_recall_joins_only_graduated_translated_lines() -> None:
+    exhausted = {
+        "random_start": 1,
+        "typed_recall": 1,
+        "forward_chaining": 1,
+        "backward_chaining": 1,
+        "cue_recall": 1,
+    }
+    # Gates on a translation the way shadowing gates on reference audio.
+    assert (
+        smart_mode_for("review", difficult=False, mode_counts=exhausted, has_translation=True)
+        == "meaning_recall"
+    )
+    assert (
+        smart_mode_for("review", difficult=False, mode_counts=exhausted, has_translation=False)
+        != "meaning_recall"
+    )
+    # Producing form from a semantic cue presumes the form is learned: the
+    # learning stage never deals it, translation or not.
+    assert (
+        smart_mode_for("learning", difficult=False, has_translation=True) != "meaning_recall"
+    )
+    assert (
+        smart_mode_for(
+            "review", difficult=False, kind="juncture", mode_counts=exhausted, has_translation=True
+        )
+        != "meaning_recall"
+    )
+
+
+def test_juncture_recall_prompts_carry_the_previous_lines_audio_span(
+    session_factory: object,
+) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="greek-audio-cue", name="Ancient Greek")
+        passage = models.Passage(title="Iliad", language_profile=language)
+        revision = models.PassageRevision(
+            passage=passage, revision_number=1, source_text="..."
+        )
+        first = models.Segment(kind="line", ordinal=0, text="alpha beta gamma")
+        juncture = models.Segment(
+            kind="juncture",
+            ordinal=1,
+            text="delta epsilon …",
+            cue="… beta gamma",
+            metadata_json={"juncture_after": 0},
+        )
+        second = models.Segment(kind="line", ordinal=1, text="delta epsilon zeta")
+        revision.segments = [first, juncture, second]
+        db.add(passage)
+        db.commit()
+        asset = models.MediaAsset(
+            revision_id=revision.id,
+            category="reference",
+            mime_type="audio/mpeg",
+            original_name="teacher.mp3",
+            storage_path="/dev/null",
+            size_bytes=1,
+            cue_points=[
+                {"label": "line 1", "time": 0.0, "end": 4.2, "segment_id": first.id},
+                {"label": "line 2", "time": 4.2, "end": 8.0, "segment_id": second.id},
+            ],
+        )
+        db.add(asset)
+        db.commit()
+
+        plan = build_plan(db, revision, ["cue_recall"], None)
+        prompts = {item["segment_id"]: item["prompt"] for item in plan}
+        # Hearing the previous line is the performance condition: the juncture
+        # card carries that line's span; line cards stay text-cued.
+        assert prompts[juncture.id]["audio_cue"] == {
+            "media_id": asset.id,
+            "start": 0.0,
+            "end": 4.2,
+        }
+        assert "audio_cue" not in prompts[first.id]
+        assert "audio_cue" not in prompts[second.id]
+
+
 def test_word_bank_deals_every_unit_out_of_order() -> None:
     line = models.Segment(kind="line", ordinal=0, text="arma virumque cano Troiae qui")
     prompt = prompt_for("word_bank", line, [line])
@@ -1344,9 +1431,11 @@ def test_every_mode_states_its_recitation_extent() -> None:
         "backward_chaining": "then check",
         "cue_recall": "to the end",
         "typed_recall": "to the end",
+        "meaning_recall": "to the end",
         "random_start": "to the end",
         "weak_link": "to the end",
         "full_passage": "start to finish",
+        "recital": "start to finish",
     }
     for mode, needle in endpoint_phrase.items():
         instruction = prompt_for(mode, line, context)["instruction"].lower()

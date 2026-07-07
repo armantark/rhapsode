@@ -581,6 +581,8 @@ export interface components {
              * @default false
              */
             revealed: boolean;
+            /** Stumbled Segment Ids */
+            stumbled_segment_ids?: string[] | null;
         };
         /**
          * AttemptRating
@@ -921,7 +923,7 @@ export interface components {
          * PracticeMode
          * @enum {string}
          */
-        PracticeMode: "shadowing" | "progressive_fading" | "word_bank" | "forward_chaining" | "backward_chaining" | "cue_recall" | "typed_recall" | "random_start" | "weak_link" | "full_passage";
+        PracticeMode: "shadowing" | "progressive_fading" | "word_bank" | "forward_chaining" | "backward_chaining" | "cue_recall" | "typed_recall" | "meaning_recall" | "random_start" | "weak_link" | "full_passage" | "recital";
         /** PrepSuggestInput */
         PrepSuggestInput: {
             /** Layers */

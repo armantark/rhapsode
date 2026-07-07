@@ -586,7 +586,47 @@ def submit_attempt(
             raise HTTPException(
                 status_code=422, detail="Only saved_best media may be attached to an attempt."
             )
-    if item.mode == schemas.PracticeMode.full_passage.value:
+    if payload.stumbled_segment_ids is not None and item.mode != schemas.PracticeMode.recital.value:
+        raise HTTPException(
+            status_code=422, detail="Only recital attempts carry a stumble map."
+        )
+    # Each affected review unit is (segment_id, rating). Every mode grades all
+    # its units with the pressed rating except recital, whose stumble map
+    # yields per-line grades from one performance.
+    affected: list[tuple[str, str]] = []
+    if item.mode == schemas.PracticeMode.recital.value:
+        revision_id = item.revision_id or session.revision_id
+        revision = db.get(models.PassageRevision, revision_id) if revision_id else None
+        if revision is not None:
+            kinds = planning.practiceable_kinds(revision)
+            units = [
+                segment
+                for segment in sorted(revision.segments, key=lambda segment: segment.ordinal)
+                if segment.kind in kinds
+            ]
+            stumbled = set(payload.stumbled_segment_ids or [])
+            flaggable_ids = {unit.id for unit in units if unit.kind != "juncture"}
+            if not stumbled <= flaggable_ids:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Stumbled segments must be lines of the recited passage.",
+                )
+            # Junctures inherit their landing line's rating: the seam into a
+            # stumbled line is where the stumble lives. Stumbles are lapses
+            # ("incorrect"); a clean recital pass is solid-but-not-effortless
+            # evidence, so unflagged units grade Good ("hesitant").
+            landing_by_ordinal = {
+                unit.ordinal: unit.id for unit in units if unit.kind != "juncture"
+            }
+            for unit in units:
+                flagged_id = (
+                    landing_by_ordinal.get(unit.ordinal)
+                    if unit.kind == "juncture"
+                    else unit.id
+                )
+                rating = "incorrect" if flagged_id in stumbled else "hesitant"
+                affected.append((unit.id, rating))
+    elif item.mode == schemas.PracticeMode.full_passage.value:
         # A full-passage recitation advances every review unit of the passage,
         # but only the review units: fanning the grade onto word tokens would
         # mint review states the planner can never schedule, surfacing them as
@@ -595,33 +635,29 @@ def submit_attempt(
         revision = db.get(models.PassageRevision, revision_id) if revision_id else None
         if revision is not None:
             kinds = planning.practiceable_kinds(revision)
-            affected_ids = [
-                segment.id
+            affected = [
+                (segment.id, payload.rating.value)
                 for segment in sorted(revision.segments, key=lambda segment: segment.ordinal)
                 if segment.kind in kinds
             ]
-        else:
-            affected_ids = []
     elif item.mode in {
         schemas.PracticeMode.forward_chaining.value,
         schemas.PracticeMode.backward_chaining.value,
     }:
         prompt = item.prompt if isinstance(item.prompt, dict) else {}
         chain_segment_ids = prompt.get("chain_segment_ids")
-        affected_ids = (
+        affected = (
             [
-                segment_id
+                (segment_id, payload.rating.value)
                 for segment_id in chain_segment_ids
                 if isinstance(segment_id, str)
             ]
             if isinstance(chain_segment_ids, list)
-            else ([item.segment_id] if item.segment_id else [])
+            else ([(item.segment_id, payload.rating.value)] if item.segment_id else [])
         )
     elif item.segment_id:
-        affected_ids = [item.segment_id]
-    else:
-        affected_ids = []
-    snapshot = [scheduling.snapshot_review_state(db, sid) for sid in affected_ids]
+        affected = [(item.segment_id, payload.rating.value)]
+    snapshot = [scheduling.snapshot_review_state(db, sid) for sid, _ in affected]
     attempt = models.Attempt(
         session_id=session_id,
         item_id=item.id,
@@ -637,9 +673,12 @@ def submit_attempt(
     item.completed = True
     session.current_index = max(session.current_index, item.position + 1)
     state = None
-    for segment_id in affected_ids:
-        reviewed = scheduling.review_segment(db, segment_id, payload.rating.value)
+    for segment_id, rating in affected:
+        reviewed = scheduling.review_segment(db, segment_id, rating)
         state = state or reviewed
+    # The completion check below is SQL; without a flush a session factory
+    # configured with autoflush=False would never see this item complete.
+    db.flush()
     remaining = db.scalar(
         select(func.count(models.PracticeItem.id)).where(
             models.PracticeItem.session_id == session_id,

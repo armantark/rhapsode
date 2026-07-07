@@ -52,9 +52,11 @@ export const PRACTICE_MODES: PracticeMode[] = [
 	'backward_chaining',
 	'cue_recall',
 	'typed_recall',
+	'meaning_recall',
 	'random_start',
 	'weak_link',
-	'full_passage'
+	'full_passage',
+	'recital'
 ];
 
 export const ATTEMPT_RATINGS: AttemptRating[] = ['clean', 'hesitant', 'incorrect', 'revealed'];

@@ -208,6 +208,59 @@ describe('built-in mode rendering', () => {
 		expect(screen.queryByLabelText('Type the line from memory')).toBeNull();
 	});
 
+	it('meaning recall cues from the translation and hides the original until checked', async () => {
+		const { rerender } = render(PromptCard, {
+			item: item('meaning_recall', {
+				instruction: 'The meaning is shown — recite the original line to the end.',
+				translation: 'Sing, goddess, the anger of Achilles',
+				target_text: 'μῆνιν ἄειδε θεὰ'
+			}),
+			revealText: 'μῆνιν ἄειδε θεὰ',
+			onReveal: vi.fn()
+		});
+		expect(screen.getByText(/Sing, goddess, the anger of Achilles/)).toBeInTheDocument();
+		expect(screen.queryByText('μῆνιν ἄειδε θεὰ')).toBeNull();
+		await rerender({ revealed: true });
+		expect(screen.getByText('μῆνιν ἄειδε θεὰ')).toBeInTheDocument();
+	});
+
+	it('juncture recall cards with an aligned span offer the heard cue', () => {
+		render(PromptCard, {
+			item: item('cue_recall', {
+				instruction: 'Carry on into the next line — recite just its first 2 words, then stop.',
+				lead_in: '… gamma delta',
+				target_text: 'epsilon zeta …',
+				audio_cue: { media_id: 'media-1', start: 0, end: 4.2 }
+			}),
+			onReveal: vi.fn()
+		});
+		expect(screen.getByRole('button', { name: /Hear the cue/ })).toBeInTheDocument();
+	});
+
+	it('recital flags stumbles by number, adjusts with text, and confirms the map', async () => {
+		const onRecitalConfirm = vi.fn();
+		const first = { ...lineNode('Μῆνιν ἄειδε, θεά,'), id: 'line-1', ordinal: 0 };
+		const second = { ...lineNode('οὐλομένην, ἣ μυρί᾽'), id: 'line-2', ordinal: 1 };
+		render(PromptCard, {
+			item: item('recital', {
+				instruction: 'Perform the whole passage from memory, start to finish.',
+				blank: true
+			}),
+			nodes: [second, first],
+			onReveal: vi.fn(),
+			onRecitalConfirm
+		});
+		// Performing phase: numbers only (text would make it reading, not recital).
+		expect(screen.queryByText('Μῆνιν ἄειδε, θεά,')).toBeNull();
+		await fireEvent.click(screen.getByRole('button', { name: '2' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Done reciting →' }));
+		// Adjusting phase: texts appear, the live flag carried over.
+		expect(screen.getByText('Μῆνιν ἄειδε, θεά,')).toBeInTheDocument();
+		expect(screen.getByText('οὐλομένην, ἣ μυρί᾽')).toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: 'Confirm recital' }));
+		expect(onRecitalConfirm).toHaveBeenCalledWith(['line-2']);
+	});
+
 	it('juncture fading keeps the previous line tail visible as the anchor', () => {
 		render(PromptCard, {
 			item: item('progressive_fading', {

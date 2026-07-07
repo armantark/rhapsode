@@ -122,6 +122,20 @@
             "default": false,
             "title": "Revealed",
             "type": "boolean"
+          },
+          "stumbled_segment_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stumbled Segment Ids"
           }
         },
         "required": [
@@ -1070,9 +1084,11 @@
           "backward_chaining",
           "cue_recall",
           "typed_recall",
+          "meaning_recall",
           "random_start",
           "weak_link",
-          "full_passage"
+          "full_passage",
+          "recital"
         ],
         "title": "PracticeMode",
         "type": "string"

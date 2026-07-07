@@ -567,6 +567,108 @@ def test_reveal_flag_is_independent_of_rating(
     assert result["mastery_stage"] != "new"
 
 
+def test_recital_stumble_map_grades_each_line(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    from datetime import datetime
+
+    revision = passage["active_revision"]
+    lines = [s for s in revision["segments"] if s["kind"] == "line"]
+    junctures = [s for s in revision["segments"] if s["kind"] == "juncture"]
+    assert junctures, "fixture passage should auto-generate a juncture"
+
+    created = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "modes": ["recital"]},
+        headers=mutation(),
+    )
+    assert created.status_code == 201, created.text
+    session = created.json()
+    assert [item["mode"] for item in session["items"]] == ["recital"]
+    item = session["items"][0]
+
+    # The stumble map must reference lines, not junctures.
+    rejected = client.post(
+        f"/api/v1/sessions/{session['id']}/attempts",
+        json={
+            "item_id": item["id"],
+            "rating": "incorrect",
+            "stumbled_segment_ids": [junctures[0]["id"]],
+        },
+        headers=mutation(),
+    )
+    assert rejected.status_code == 422
+
+    # Stumbled on line 2 only: it lapses, line 1 passes, and the juncture
+    # leading into line 2 lapses with its landing line.
+    attempted = client.post(
+        f"/api/v1/sessions/{session['id']}/attempts",
+        json={
+            "item_id": item["id"],
+            "rating": "incorrect",
+            "stumbled_segment_ids": [lines[1]["id"]],
+        },
+        headers=mutation(),
+    )
+    assert attempted.status_code == 201, attempted.text
+    assert attempted.json()["session"]["status"] == "completed"
+
+    states = client.get("/api/v1/analytics/mastery").json()["items"]
+    due_by_segment = {
+        state["segment_id"]: datetime.fromisoformat(state["due_at"]) for state in states
+    }
+    assert due_by_segment[lines[1]["id"]] < due_by_segment[lines[0]["id"]]
+    assert due_by_segment[junctures[0]["id"]] < due_by_segment[lines[0]["id"]]
+
+
+def test_stumble_map_is_recital_only(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    revision = passage["active_revision"]
+    created = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "modes": ["cue_recall"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    )
+    assert created.status_code == 201, created.text
+    session = created.json()
+    rejected = client.post(
+        f"/api/v1/sessions/{session['id']}/attempts",
+        json={
+            "item_id": session["items"][0]["id"],
+            "rating": "hesitant",
+            "stumbled_segment_ids": [],
+        },
+        headers=mutation(),
+    )
+    assert rejected.status_code == 422
+
+
+def test_meaning_recall_targets_only_translated_lines(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    revision = passage["active_revision"]
+    lines = [s for s in revision["segments"] if s["kind"] == "line"]
+    created = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "modes": ["meaning_recall"]},
+        headers=mutation(),
+    )
+    assert created.status_code == 201, created.text
+    items = created.json()["items"]
+    # Only line-1 carries a translation annotation in the fixture.
+    assert [item["segment_id"] for item in items] == [lines[0]["id"]]
+    prompt = items[0]["prompt"]
+    assert prompt["translation"] == "Sing, goddess, the anger of Achilles"
+    assert prompt["target_text"] == lines[0]["text"]
+
+
 def test_incorrect_attempt_becomes_weak_link(
     client: TestClient,
     mutation: Callable[..., dict[str, str]],

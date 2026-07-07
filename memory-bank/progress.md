@@ -157,6 +157,14 @@
   pytest (80), Ruff, strict mypy, contract check, 84 frontend Vitest,
   svelte-check, production build, and 13/13 Playwright pass.
 
+- New exercise modes (2026-07-06): `word_bank` (shuffled chip reconstruction,
+  leads the learning rotation, excluded for junctures) and `typed_recall`
+  (typed production with stacked visual self-check, graduated rotation for
+  lines and junctures). PracticeMode enum extended, OpenAPI contract and TS
+  client regenerated, manual launcher lists both. Full backend pytest, Ruff,
+  strict mypy, 86 frontend Vitest, svelte-check, production build, and 13/13
+  Playwright pass (smart-rotation e2e now expects word_bank second).
+
 ## Remaining
 
 - Push to GitHub and trigger first tagged draft release.

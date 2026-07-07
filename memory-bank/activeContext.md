@@ -38,6 +38,17 @@ push, install smoke) remains the other open thread.
 - Smart-session triage is due-aware (2026-07-06): rank order is weak links →
   learning → DUE review/durable → new → not-yet-due maintenance. Reviews come
   before new material; not-due maintenance only fills leftover room.
+- Two new practice modes (2026-07-06, Arman's ruling — first-letter sprint
+  explicitly rejected as useless): `word_bank` deals the line's own units
+  (token children when present) as shuffled chips to rebuild in order — serial
+  order is the dominant verse failure, so it LEADS the learning-stage rotation
+  as the gentlest step above fading; never dealt to junctures (3-word heads
+  are trivial) including in the minutes-fill rotation. `typed_recall` joins
+  the graduated (review/durable) rotation for lines and junctures: lead-in
+  cue, type from memory, then the attempt stays on screen stacked above the
+  true line for a VISUAL self-check — nothing is parsed or diffed, ever
+  (extends grill D3's self-grading-is-the-instrument to writing). Both are
+  recall modes: grade bar locked until the check. Typed text is not stored.
 - Every attempt stores a `review_snapshot` (prior review state of each segment
   it touched), so `POST /sessions/{id}/undo` rolls the last card back exactly —
   re-opens the item, rewinds FSRS/mastery, and reactivates a just-completed

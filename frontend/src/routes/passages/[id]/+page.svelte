@@ -25,6 +25,12 @@
 	let error = $state('');
 	let loading = $state(true);
 
+	// Per-line mastery for the reading gutter: where each line stands on the
+	// ladder, visible while reading rather than buried in the review tab.
+	let reviewStages: Map<string, string> = $state(new Map());
+	let showProgress = $state(true);
+	const MASTERY_HORIZON = '2999-01-01T00:00:00Z';
+
 	// reading view options
 	let enabledLayers: string[] = $state([]);
 	let showRuby = $state(true);
@@ -140,6 +146,12 @@
 				drafts = segmentsToDrafts(visibleSegments);
 				forkSourceText = revision.source_text;
 				referenceMedia = await api.listMedia(revision.id, 'reference');
+				const segmentIds = new Set((revision.segments ?? []).map((segment) => segment.id));
+				reviewStages = new Map(
+					(await api.dueReviews(MASTERY_HORIZON))
+						.filter((state) => segmentIds.has(state.segment_id))
+						.map((state) => [state.segment_id, state.mastery_stage])
+				);
 				if (!chosenKinds.every((kind) => kinds.includes(kind)) && kinds.length) {
 					chosenKinds = [kinds.includes('line') ? 'line' : kinds[0]];
 				}
@@ -304,10 +316,36 @@
 					<button class:active={vertical} aria-pressed={vertical} onclick={() => (vertical = !vertical)}>vertical</button>
 				{/if}
 				<button class:active={showCues} aria-pressed={showCues} onclick={() => (showCues = !showCues)}>cues</button>
+				{#if reviewStages.size > 0}
+					<button
+						class:active={showProgress}
+						aria-pressed={showProgress}
+						onclick={() => (showProgress = !showProgress)}
+					>progress</button>
+				{/if}
 			</div>
+			{#if showProgress && !vertical && reviewStages.size > 0}
+				<p class="muted small stage-legend">
+					<span class="stage-dot learning"></span> learning
+					<span class="stage-dot review"></span> review
+					<span class="stage-dot durable"></span> durable
+				</p>
+			{/if}
 			<div class="text-flow" class:vertical-text={vertical}>
 				{#each tree as node (node.id)}
-					<SegmentText {node} {profile} layers={enabledLayers} {showRuby} {showCues} />
+					{#if showProgress && !vertical && reviewStages.has(node.id)}
+						<div class="line-row">
+							<span
+								class="stage-dot {reviewStages.get(node.id)}"
+								title="mastery: {reviewStages.get(node.id)}"
+							></span>
+							<div class="line-body">
+								<SegmentText {node} {profile} layers={enabledLayers} {showRuby} {showCues} />
+							</div>
+						</div>
+					{:else}
+						<SegmentText {node} {profile} layers={enabledLayers} {showRuby} {showCues} />
+					{/if}
 				{/each}
 			</div>
 		</section>
@@ -562,6 +600,50 @@
 		width: 100%;
 		padding: 12px;
 		margin-top: 8px;
+	}
+
+	.line-row {
+		display: flex;
+		align-items: baseline;
+		gap: 10px;
+	}
+
+	.line-body {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.stage-dot {
+		flex-shrink: 0;
+		display: inline-block;
+		width: 9px;
+		height: 9px;
+		border-radius: 50%;
+		border: 1px solid var(--border);
+		background: var(--surface-2);
+	}
+
+	.stage-dot.learning {
+		background: var(--gold);
+		border-color: var(--gold);
+	}
+
+	.stage-dot.review {
+		background: var(--blue);
+		border-color: var(--blue);
+	}
+
+	.stage-dot.durable {
+		background: var(--green);
+		border-color: var(--green);
+	}
+
+	.stage-legend {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin: 0 0 10px;
+		font-size: 0.74rem;
 	}
 
 	.danger {

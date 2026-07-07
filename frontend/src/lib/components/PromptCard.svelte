@@ -179,6 +179,12 @@
 		);
 	});
 	const stageCount = $derived(japaneseStages.length || stages.length);
+	// Token children drop standalone punctuation, so a juncture head's trailing
+	// continuation marker must be re-appended; it is never masked (mirrors
+	// backend progressive_masks keeping ellipsis units visible).
+	const fadeTrailingEllipsis = $derived(
+		japaneseStages.length > 0 && (node?.text ?? '').trimEnd().endsWith('…')
+	);
 
 	function hiddenCounts(total: number): number[] {
 		return [...new Set([0.25, 0.5, 0.75, 1].map((ratio) => Math.max(1, Math.round(total * ratio))))].sort(
@@ -284,6 +290,9 @@
 						<SegmentText node={piece.token} {profile} layers={[]} showRuby={readingEnabled} />
 					{/if}
 				{/each}
+				{#if fadeTrailingEllipsis}
+					<span class="passage-text" {lang} style:font-family={fonts}>…</span>
+				{/if}
 			</div>
 		{:else if practiceRuby && node && stageIndex === 0}
 			<div class="passage-text rich-prompt">

@@ -225,6 +225,36 @@ push, install smoke) remains the other open thread.
   `scripts/build_backend_sidecar.py` before `tauri build`. Remote:
   `https://github.com/armantark/rhapsode.git`.
 
+- FSRS efficiency batch (2026-07-06, Arman's ruling: stay FSRS-pure, optimize
+  retention per minute of daily engagement; calendar-based ideas rejected):
+  (1) Library-wide "Today" queue — SessionCreate with NO target + due_only
+  spans every passage's active revision, UNCAPPED (the 12-item momentum cap is
+  for exploratory smart sessions; a due queue must be clearable and FSRS
+  bounds it); session row has revision_id None like collection sessions.
+  Home-page banner via GET /analytics/today: due count, estimated minutes
+  (same planner + latency means that build the session), streak, retention
+  mirror, 7-day forecast (day 0 carries the backlog). (2) Every grade now
+  persists its py-fsrs review log to `fsrs_review_logs` keyed to the attempt
+  (ondelete CASCADE, PRAGMA foreign_keys=ON) so ⌘Z retracts logs — the
+  optimizer never trains on undone reviews. Latency is logged only for
+  single-segment attempts (fanned grades would repeat one latency). (3)
+  `scripts/optimize_fsrs.py` (run with `uv run --extra optimizer`; torch
+  stays out of the app/sidecar via the `optimizer` optional-dependency group)
+  fits personal FSRS weights once ≥400 logs exist and writes them to the
+  `fsrs_parameters` app setting; the scheduler reads them per review with
+  safe fallback to defaults on absent/malformed values. (4) Streak =
+  consecutive UTC days with ≥1 completed session (yesterday keeps it alive
+  before the first practice of the day); desktop dock badge via the
+  `set_due_badge` Tauri command (tauri 2.11 set_badge_count), invoked from
+  the home page only under Tauri. Parked by ruling: hifz-style corpus
+  rotation, performance-date ramp (until the Iliad class deadline hurts),
+  cross-passage formula index (until ~5 same-language passages).
+- Latent bug fixed with the recital batch: submit_attempt flushes before its
+  remaining-items completion count (autoflush=False factories never completed
+  sessions). A second latent bug shape to remember: svelte-check narrows
+  $state-backed nullables to `never` inside $derived — cast via a local
+  (documented in practice page and home page).
+
 ## Verified Results
 
 - Backend: 57 pytest, ruff, strict mypy, contract `--check` all green.

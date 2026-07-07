@@ -175,6 +175,14 @@
   strict mypy, contract regen, 89 frontend Vitest, svelte-check, production
   build, 13/13 Playwright.
 
+- FSRS efficiency batch (2026-07-06): library-wide uncapped Today queue with
+  home banner (due count, minutes promise, retention mirror, streak, 7-day
+  forecast, one-click session), persisted per-review FSRS logs with undo
+  cascade, personal-weights fit via scripts/optimize_fsrs.py behind the
+  `optimizer` dependency group, and a desktop dock badge. 90 backend pytest,
+  Ruff, strict mypy, contract + client regen, 89 frontend Vitest,
+  svelte-check, production build, 13/13 Playwright, cargo check.
+
 ## Remaining
 
 - Push to GitHub and trigger first tagged draft release.

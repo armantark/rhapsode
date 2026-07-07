@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -142,7 +143,7 @@
 </script>
 
 {#if loading}
-	<p class="muted">Loading…</p>
+	<Skeleton rows={4} card />
 {:else if !collection}
 	<p class="error-banner" role="alert">{error || 'Collection not found.'}</p>
 {:else}

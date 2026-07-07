@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api/client';
 	import type { SystemStatus } from '$lib/api/types';
@@ -80,7 +81,7 @@
 {#if error}<p class="error-banner" role="alert">{error}</p>{/if}
 
 {#if loading}
-	<p class="muted">Loading…</p>
+	<Skeleton rows={4} card />
 {:else if status}
 	<div class="stack">
 		<section class="card">

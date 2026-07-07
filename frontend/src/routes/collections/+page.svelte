@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api/client';
 	import type { Collection } from '$lib/api/types';
@@ -72,7 +73,7 @@
 </form>
 
 {#if loading}
-	<p class="muted">Loading…</p>
+	<Skeleton rows={3} card />
 {:else if collections.length === 0}
 	<div class="card empty"><p>No collections yet. Create one above, then add passages to it.</p></div>
 {:else}

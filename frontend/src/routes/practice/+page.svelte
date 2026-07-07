@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api/client';
 	import type { PracticeSession } from '$lib/api/types';
@@ -82,7 +83,7 @@
 {/if}
 
 {#if loading}
-	<p class="muted">Loading…</p>
+	<Skeleton rows={3} card />
 {:else}
 	<h2>Active</h2>
 	{#if active.length === 0}

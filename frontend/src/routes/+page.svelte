@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api/client';
@@ -157,7 +158,7 @@
 {/if}
 
 {#if loading}
-	<p class="muted">Loading…</p>
+	<Skeleton rows={4} card />
 {:else if passages.length === 0 && !error}
 	<div class="card empty">
 		<p>No passages yet. Add your first text — Greek, Armenian, Latin, Japanese, or anything else.</p>

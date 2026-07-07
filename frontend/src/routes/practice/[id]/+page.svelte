@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import AttemptRecorder from '$lib/components/AttemptRecorder.svelte';
@@ -490,7 +491,7 @@
 {/if}
 
 {#if loading}
-	<p class="muted">Loading…</p>
+	<Skeleton rows={4} card />
 {:else if !session}
 	<p class="error-banner" role="alert">{error || 'Session not found.'}</p>
 {:else}

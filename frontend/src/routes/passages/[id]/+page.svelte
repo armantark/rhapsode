@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -284,7 +285,7 @@
 </script>
 
 {#if loading}
-	<p class="muted">Loading…</p>
+	<Skeleton rows={5} card />
 {:else if !passage}
 	<p class="error-banner" role="alert">{error || 'Passage not found.'}</p>
 {:else}

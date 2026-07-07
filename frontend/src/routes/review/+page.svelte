@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import AudioPlayer from '$lib/components/AudioPlayer.svelte';
@@ -177,7 +178,7 @@
 
 {#if error}<p class="error-banner" role="alert">{error}</p>{/if}
 {#if loading}
-	<p class="muted">Loading…</p>
+	<Skeleton rows={5} card />
 {:else if tab === 'due'}
 	{#if due.length === 0}
 		<p class="muted">Nothing due. Recite something for pleasure instead.</p>

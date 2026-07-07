@@ -174,7 +174,7 @@ test('smart session scaffolds a fresh passage with progressive fading', async ({
 	const title = `Smart e2e ${Date.now()}`;
 	await createGreekPassage(page, title);
 
-	await page.getByRole('button', { name: '✦ Smart session' }).click();
+	await page.getByRole('button', { name: '✦ Smart session' }).first().click();
 	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
 
 	// Auto grain deals both lines plus the juncture between them.
@@ -206,7 +206,7 @@ test('smart sessions rotate a learning line through distinct exercises', async (
 		'cue recall',
 		'forward chaining'
 	]) {
-		await page.getByRole('button', { name: '✦ Smart session' }).click();
+		await page.getByRole('button', { name: '✦ Smart session' }).first().click();
 		await expect(page).toHaveURL(/\/practice\/[\w-]+/);
 		await expect(page.getByText(expectedMode, { exact: true })).toBeVisible();
 		// Recall modes require the check before grading; fading does not.

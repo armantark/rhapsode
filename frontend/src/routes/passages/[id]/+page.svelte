@@ -297,6 +297,14 @@
 			<h1>{passage.title}</h1>
 			{#if passage.description}<p class="muted">{passage.description}</p>{/if}
 		</div>
+		{#if revision}
+			<!-- The primary action, reachable without scrolling past a hundred
+			     lines of reading view. The full launcher (modes, kinds, budget)
+			     stays below. -->
+			<button class="primary head-launch" disabled={startingSession} onclick={() => startSession(true)}>
+				{startingSession ? 'Starting…' : '✦ Smart session'}
+			</button>
+		{/if}
 	</header>
 
 	{#if error}<p class="error-banner" role="alert">{error}</p>{/if}
@@ -516,6 +524,19 @@
 {/if}
 
 <style>
+	.head {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		gap: 14px;
+		flex-wrap: wrap;
+	}
+
+	.head-launch {
+		flex-shrink: 0;
+		margin-top: 6px;
+	}
+
 	.head h1 {
 		margin: 6px 0 4px;
 	}

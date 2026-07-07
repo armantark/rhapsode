@@ -61,11 +61,59 @@ def restore_review_state(db: Session, snapshot: dict[str, Any]) -> None:
     state.attempt_count = snapshot["attempt_count"]
 
 
-def review_segment(db: Session, segment_id: str, rating: str) -> models.ReviewState:
+# Setting key holding personally fitted FSRS weights, written by
+# scripts/optimize_fsrs.py once enough review history exists. Absent or
+# malformed → py-fsrs population defaults, so the fit is strictly opt-in.
+FSRS_PARAMETERS_KEY = "fsrs_parameters"
+
+
+def _fsrs_parameters(db: Session) -> list[float] | None:
+    setting = db.get(models.AppSetting, FSRS_PARAMETERS_KEY)
+    if setting is None or not isinstance(setting.value, list) or not setting.value:
+        return None
+    try:
+        return [float(value) for value in setting.value]
+    except (TypeError, ValueError):
+        return None
+
+
+def _scheduler(db: Session) -> Scheduler:
+    parameters = _fsrs_parameters(db)
+    desired_retention = get_settings().desired_retention
+    if parameters is None:
+        return Scheduler(desired_retention=desired_retention)
+    try:
+        return Scheduler(parameters=parameters, desired_retention=desired_retention)
+    except ValueError:
+        # A stored parameter list from an incompatible py-fsrs version must
+        # not break grading; population defaults are always valid.
+        return Scheduler(desired_retention=desired_retention)
+
+
+def review_segment(
+    db: Session,
+    segment_id: str,
+    rating: str,
+    attempt_id: str | None = None,
+    review_duration_ms: int | None = None,
+) -> models.ReviewState:
     state = db.scalar(select(models.ReviewState).where(models.ReviewState.segment_id == segment_id))
     card = Card.from_json(state.fsrs_card_json) if state else Card()
-    scheduler = Scheduler(desired_retention=get_settings().desired_retention)
-    card, _review_log = scheduler.review_card(card, RATING_MAP[rating], datetime.now(UTC))
+    scheduler = _scheduler(db)
+    card, review_log = scheduler.review_card(card, RATING_MAP[rating], datetime.now(UTC))
+    if attempt_id is not None:
+        # The optimizer's raw material. Keyed to the attempt so undo retracts
+        # the log along with the review it snapshots.
+        db.add(
+            models.FsrsReviewLog(
+                attempt_id=attempt_id,
+                segment_id=segment_id,
+                card_id=review_log.card_id,
+                rating=int(review_log.rating),
+                reviewed_at=review_log.review_datetime,
+                review_duration_ms=review_duration_ms,
+            )
+        )
     if state is None:
         state = models.ReviewState(
             segment_id=segment_id,

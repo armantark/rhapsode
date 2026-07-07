@@ -657,12 +657,21 @@ def build_smart_plan(
     )
 
 
+def estimate_plan_seconds(db: Session, plan: list[dict[str, Any]]) -> float:
+    """What a plan costs in focused seconds, from the caller's own per-mode
+    latency means — the same estimator the minutes budget uses, so a promised
+    session length matches the session actually dealt."""
+    seconds = _mode_seconds(db)
+    return sum(seconds.get(item["mode"], FALLBACK_MODE_SECONDS) for item in plan)
+
+
 def build_smart_plan_for_revisions(
     db: Session,
     revisions: list[models.PassageRevision],
     segment_kinds: list[str] | None,
     only_segment_ids: set[str] | None = None,
     minutes: int | None = None,
+    cap: int | None = SMART_SESSION_CAP,
 ) -> list[dict[str, Any]]:
     revision_segments: list[tuple[models.PassageRevision, list[models.Segment]]] = []
     for revision in revisions:
@@ -833,12 +842,13 @@ def build_smart_plan_for_revisions(
     else:
         # The cap limits ITEMS, not segments: a shadowed new segment takes
         # two slots, so a fresh passage with audio still ends while momentum
-        # lasts.
+        # lasts. cap=None (the library-wide Today queue) takes everything —
+        # a due queue must be clearable, and FSRS already bounds its size.
         used = 0
         for entry in triaged:
             segment = entry[2]
             weight = 2 if segment.id in shadow_first else 1
-            if chosen and used + weight > SMART_SESSION_CAP:
+            if cap is not None and chosen and used + weight > cap:
                 break
             used += weight
             chosen.append(entry)

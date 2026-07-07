@@ -567,6 +567,107 @@ def test_reveal_flag_is_independent_of_rating(
     assert result["mastery_stage"] != "new"
 
 
+def test_review_logs_persist_per_grade_and_undo_retracts_them(
+    client: TestClient,
+    session_factory: object,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    from sqlalchemy import func, select
+
+    from rhapsode import models
+
+    revision = passage["active_revision"]
+    created = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "modes": ["cue_recall"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    )
+    session = created.json()
+    attempted = client.post(
+        f"/api/v1/sessions/{session['id']}/attempts",
+        json={"item_id": session["items"][0]["id"], "rating": "hesitant", "latency_ms": 2100},
+        headers=mutation(),
+    )
+    assert attempted.status_code == 201, attempted.text
+
+    def log_count() -> int:
+        with session_factory() as db:  # type: ignore[operator]
+            return db.scalar(select(func.count(models.FsrsReviewLog.id))) or 0
+
+    assert log_count() == 1
+    with session_factory() as db:  # type: ignore[operator]
+        log = db.scalars(select(models.FsrsReviewLog)).one()
+        assert log.rating == 3  # hesitant → FSRS Good
+        assert log.review_duration_ms == 2100
+
+    # Undo deletes the attempt; the log must cascade with it so the optimizer
+    # never trains on retracted reviews.
+    undone = client.post(f"/api/v1/sessions/{session['id']}/undo", headers=mutation())
+    assert undone.status_code == 200, undone.text
+    assert log_count() == 0
+
+
+def test_library_wide_today_queue(
+    client: TestClient,
+    session_factory: object,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import update
+
+    from rhapsode import models
+
+    # A targetless session is only valid as the due-only Today queue.
+    rejected = client.post("/api/v1/sessions", json={}, headers=mutation())
+    assert rejected.status_code == 422
+
+    # Nothing due yet: the banner shows zero and a launch attempt 422s.
+    empty = client.get("/api/v1/analytics/today").json()
+    assert empty["due_count"] == 0
+    assert empty["estimated_minutes"] == 0
+    no_due = client.post("/api/v1/sessions", json={"due_only": True}, headers=mutation())
+    assert no_due.status_code == 422
+
+    # Grade one line, then force it due.
+    revision = passage["active_revision"]
+    seeded = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "modes": ["cue_recall"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    ).json()
+    for item in seeded["items"]:
+        client.post(
+            f"/api/v1/sessions/{seeded['id']}/attempts",
+            json={"item_id": item["id"], "rating": "hesitant"},
+            headers=mutation(),
+        )
+    with session_factory() as db:  # type: ignore[operator]
+        db.execute(
+            update(models.ReviewState).values(due_at=datetime.now(UTC) - timedelta(days=1))
+        )
+        db.commit()
+
+    banner = client.get("/api/v1/analytics/today").json()
+    assert banner["due_count"] == 2
+    assert banner["estimated_minutes"] >= 1
+    # The seeding session completed, so the streak is alive today.
+    assert banner["streak_days"] == 1
+    assert banner["forecast"][0]["due"] == 2
+
+    launched = client.post("/api/v1/sessions", json={"due_only": True}, headers=mutation())
+    assert launched.status_code == 201, launched.text
+    body = launched.json()
+    assert body["revision_id"] is None
+    assert body["plan"]["due_only"] is True
+    # Every due segment is dealt — the Today queue is uncapped.
+    assert {item["segment_id"] for item in body["items"]} >= set(
+        state["segment_id"] for state in client.get("/api/v1/analytics/due").json()
+    )
+
+
 def test_recital_stumble_map_grades_each_line(
     client: TestClient,
     mutation: Callable[..., dict[str, str]],

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FSRS Efficiency Batch — Plan · 2026-07-06</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0c0e12; --surface: #161a21; --surface-2: #1e232c; --border: #2a3040;
+    --text: #e8ecf4; --text-dim: #8b95a8; --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.15);
+    --red: #ff5c5c; --green: #4ade80; --amber: #fbbf24; --purple: #a78bfa;
+    --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; }
+body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Outfit', sans-serif; font-weight: 300;
+    padding: 40px 24px 80px; line-height: 1.55;
+}
+.wrap { max-width: 1080px; margin: 0 auto; }
+.badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.12em; color: var(--accent); background: var(--accent-glow);
+    border: 1px solid var(--accent); border-radius: 999px; padding: 4px 14px;
+    display: inline-block; margin-bottom: 18px;
+}
+h1 { font-weight: 700; font-size: 1.9rem; margin-bottom: 10px; }
+.sub { color: var(--text-dim); font-size: 0.95rem; max-width: 800px; margin-bottom: 30px; }
+.sub strong { color: var(--text); font-weight: 500; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 30px; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+.card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+}
+.card.wide { grid-column: 1 / -1; }
+.pill {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 8px;
+    border-radius: 4px; display: inline-block; margin-bottom: 10px;
+}
+.pill.anchor { color: var(--amber); border: 1px solid var(--amber); }
+.pill.deep { color: var(--red); border: 1px solid var(--red); }
+.pill.mirror { color: var(--green); border: 1px solid var(--green); }
+.pill.pull { color: var(--purple); border: 1px solid var(--purple); }
+.card h2 { font-weight: 700; font-size: 1.08rem; margin-bottom: 8px; }
+.card p { color: var(--text-dim); font-size: 0.86rem; margin-bottom: 10px; }
+.card p strong { color: var(--text); font-weight: 500; }
+.card p code, .mockbanner code { font-family: 'JetBrains Mono', monospace; font-size: 0.78em; color: var(--amber); }
+.mockbanner {
+    background: var(--surface-2); border: 1px solid var(--amber); border-radius: 10px;
+    padding: 12px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+.mockbanner .big { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--amber); }
+.mockbanner .chip {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: var(--text-dim);
+    border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px;
+}
+.mockbanner .go {
+    margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.74rem;
+    border: 1px solid var(--amber); color: var(--amber); border-radius: 8px; padding: 5px 12px;
+}
+.files { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+.file {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 2px 8px; color: var(--text-dim);
+}
+.rules {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px 20px; margin-bottom: 30px;
+}
+.rules h3 { font-size: 0.8rem; font-weight: 600; color: var(--text-dim); margin-bottom: 10px;
+    font-family: 'JetBrains Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase; }
+.rules ul { padding-left: 18px; color: var(--text-dim); font-size: 0.85rem; }
+.rules li { margin-bottom: 6px; }
+.rules li strong { color: var(--text); font-weight: 500; }
+.rules li code { font-family: 'JetBrains Mono', monospace; font-size: 0.78em; color: var(--amber); }
+.steps h2 { font-weight: 700; font-size: 1.15rem; margin-bottom: 14px; }
+.step { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 12px; }
+.step-num {
+    font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 0.8rem;
+    background: var(--accent); color: #fff; border-radius: 6px;
+    width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.step p { color: var(--text-dim); font-size: 0.87rem; }
+.step p strong { color: var(--text); font-weight: 500; }
+.step p code { font-family: 'JetBrains Mono', monospace; font-size: 0.78em; color: var(--amber); }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <span class="badge">PRE-IMPLEMENTATION PLAN · FSRS EFFICIENCY BATCH</span>
+    <h1>Deeper into FSRS: the Today queue, personal weights, honest numbers</h1>
+    <p class="sub">Your ruling: stay FSRS-pure, optimize <strong>retention per minute of daily
+    engagement</strong>. Four features, one shared spine (persisted review logs). The parked ideas
+    (calendar ramp, corpus rotation, formula index) stay parked — recorded in the memory bank, not the code.</p>
+
+    <div class="grid">
+        <div class="card wide">
+            <span class="pill anchor">Daily anchor</span>
+            <h2>Library-wide "Today" queue</h2>
+            <div class="mockbanner">
+                <span class="big">14 due · ≈9 min</span>
+                <span class="chip">🔥 6-day streak</span>
+                <span class="chip">recall 93% · target 90%</span>
+                <span class="go">▶ Practice today's due</span>
+            </div>
+            <p>One button on the home page clears everything due <strong>across the whole library</strong> —
+            currently impossible without launching per-passage sessions. <code>SessionCreate</code> allows
+            no target when <code>due_only</code> is set; the planner builds one smart due-only session over
+            every active revision, <strong>uncapped</strong> (the 12-item momentum cap is for exploratory smart
+            sessions; a due queue must be clearable — its size is already bounded by FSRS itself). The minutes
+            estimate reuses the exact planner + per-mode latency means, so the promise matches the session.
+            A new <code>GET /analytics/today</code> feeds the banner: due count, estimated minutes, streak,
+            measured retention, 7-day forecast.</p>
+            <div class="files"><span class="file">schemas.py</span><span class="file">router.py</span><span class="file">planning.py</span><span class="file">routes/+page.svelte</span></div>
+        </div>
+
+        <div class="card">
+            <span class="pill deep">Deepest lever</span>
+            <h2>Persist review logs → personal FSRS weights</h2>
+            <p><code>review_segment</code> already receives a py-fsrs review log on every grade and discards it.
+            New <code>fsrs_review_logs</code> table (card id, FSRS rating, timestamp, duration), rows keyed to the
+            attempt so <strong>⌘Z undo cascades them away</strong> — the optimizer never trains on retracted reviews.
+            The fit itself runs as <code>scripts/optimize_fsrs.py</code> via the <code>fsrs[optimizer]</code> extra
+            (torch stays OUT of the app and the PyInstaller sidecar); it writes the fitted parameters to the
+            settings table, and the scheduler reads them from there — defaults until then, per-review thereafter.
+            Same 0.9 target, fewer reviews: this is the "less time" half delivered by FSRS itself.</p>
+            <div class="files"><span class="file">models.py</span><span class="file">alembic migration</span><span class="file">scheduling.py</span><span class="file">scripts/optimize_fsrs.py</span></div>
+        </div>
+
+        <div class="card">
+            <span class="pill mirror">Honest numbers</span>
+            <h2>Measured retention + 7-day workload forecast</h2>
+            <p>From the same logs: actual recall rate (share of logged reviews not rated Again, last 30 days,
+            with its sample size) beside the 0.9 target, and a 7-day strip of upcoming due counts. No scores,
+            no judgment — the two numbers that tell you whether the daily habit is paying and whether
+            0.9 is the right setting. Rendered as chips + mini bars on the Today banner.</p>
+            <div class="files"><span class="file">router.py</span><span class="file">routes/+page.svelte</span></div>
+        </div>
+
+        <div class="card">
+            <span class="pill pull">Daily pull</span>
+            <h2>Cross-day streak + desktop badge</h2>
+            <p>Streak = consecutive days with at least one completed session (deterministic, from
+            <code>completed_at</code>), shown as the 🔥 chip. On desktop, the due count lands on the dock icon
+            via a small Tauri command — the app does the daily pulling instead of you remembering.
+            Feature-gated: browser dev sees no badge, and if the Tauri badge API fights back it degrades to
+            nothing rather than blocking the batch.</p>
+            <div class="files"><span class="file">src-tauri/src/lib.rs</span><span class="file">routes/+page.svelte</span></div>
+        </div>
+    </div>
+
+    <div class="rules">
+        <h3>Fences respected</h3>
+        <ul>
+            <li><strong>FSRS-pure:</strong> nothing schedules outside FSRS; the batch only feeds it better data (personal weights) and exposes what it already knows (due counts, forecast).</li>
+            <li><strong>Practice loop stays light:</strong> torch/pandas live only behind the optional <code>optimizer</code> dependency group, invoked by a script — never imported by the app.</li>
+            <li><strong>desired_retention 0.9 unchanged</strong> (ruled E1); the retention mirror informs any future change, it doesn't make one.</li>
+            <li><strong>Parked, on purpose:</strong> corpus rotation (extra-FSRS reviews), the needed-by date (until the Iliad class deadline hurts), the formula index (until ~5 same-language passages).</li>
+        </ul>
+    </div>
+
+    <div class="steps">
+        <h2>Implementation order</h2>
+        <div class="step"><div class="step-num">1</div><p><strong>Log spine</strong> — model + migration for <code>fsrs_review_logs</code> (attempt-cascade), <code>review_segment</code> persists the log it currently discards, scheduler reads parameters from the settings table with default fallback.</p></div>
+        <div class="step"><div class="step-num">2</div><p><strong>Today session + endpoint</strong> — targetless due-only <code>SessionCreate</code>, uncapped library-wide plan, <code>GET /analytics/today</code> (due, minutes, retention, streak, forecast); workflow tests for both.</p></div>
+        <div class="step"><div class="step-num">3</div><p><strong>Optimizer script</strong> — <code>scripts/optimize_fsrs.py</code> behind the <code>optimizer</code> dependency group; refuses to fit under ~400 logs; writes <code>fsrs_parameters</code> setting.</p></div>
+        <div class="step"><div class="step-num">4</div><p><strong>Frontend</strong> — Today banner (count, minutes, streak, retention, forecast bars, one-click session), Tauri badge command + invocation, contract/client regen.</p></div>
+        <div class="step"><div class="step-num">5</div><p><strong>Verify</strong> — full suites, Playwright, Pinchtab (grade → undo → log count returns; Today button launches a cross-passage session), results artifact.</p></div>
+    </div>
+</div>
+</body>
+</html>

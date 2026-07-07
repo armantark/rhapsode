@@ -38,6 +38,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analytics/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Today
+         * @description The daily front door: due queue size and cost, the retention mirror,
+         *     the cross-day streak, and a 7-day workload forecast — everything FSRS
+         *     already knows, surfaced where the day starts.
+         */
+        get: operations["today_api_v1_analytics_today_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/weak-links": {
         parameters: {
             query?: never;
@@ -1082,6 +1104,36 @@ export interface components {
             /** Value */
             value: unknown;
         };
+        /** TodayForecastDay */
+        TodayForecastDay: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Due */
+            due: number;
+        };
+        /**
+         * TodayRead
+         * @description The daily front door: everything the home banner needs in one call.
+         */
+        TodayRead: {
+            /** Desired Retention */
+            desired_retention: number;
+            /** Due Count */
+            due_count: number;
+            /** Estimated Minutes */
+            estimated_minutes: number;
+            /** Forecast */
+            forecast: components["schemas"]["TodayForecastDay"][];
+            /** Measured Retention */
+            measured_retention: number | null;
+            /** Retention Sample */
+            retention_sample: number;
+            /** Streak Days */
+            streak_days: number;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -1178,6 +1230,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    today_api_v1_analytics_today_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodayRead"];
                 };
             };
         };

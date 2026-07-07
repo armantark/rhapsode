@@ -16,6 +16,12 @@ dependencies = [
   "uvicorn[standard]>=0.35,<0.36",
 ]
 
+[project.optional-dependencies]
+# The FSRS parameter fit pulls torch/pandas; it runs only through
+# scripts/optimize_fsrs.py and must never be imported by the app or bundled
+# into the PyInstaller sidecar.
+optimizer = ["fsrs[optimizer]>=6.3,<6.4"]
+
 [project.scripts]
 rhapsode = "rhapsode.cli:main"
 rhapsode-migrate = "rhapsode.migrations:main"

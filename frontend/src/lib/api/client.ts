@@ -16,6 +16,7 @@ import type {
 	PersonalNote,
 	PracticeSession,
 	PrepSuggestResult,
+	Today,
 	Revision,
 	RevisionInput,
 	ReviewState,
@@ -187,6 +188,7 @@ export const api = {
 	completeSession: (sessionId: string, key?: string) =>
 		send<PracticeSession>('POST', `/sessions/${sessionId}/complete`, { key }),
 
+	today: () => send<Today>('GET', '/analytics/today'),
 	dueReviews: (before?: string) => send<ReviewState[]>('GET', '/analytics/due', { query: { before } }),
 	weakLinks: (revisionId?: string) =>
 		send<WeakLink[]>('GET', '/analytics/weak-links', { query: { revision_id: revisionId } }),

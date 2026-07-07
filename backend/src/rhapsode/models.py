@@ -254,6 +254,25 @@ class PluginManifest(Base, TimestampMixin):
     config: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
 
+class FsrsReviewLog(Base):
+    """One row per FSRS review, in the shape the py-fsrs optimizer consumes.
+
+    Keyed to the attempt (CASCADE) so undo retracts the log with the review —
+    the optimizer must never train on reviews the learner rolled back. The
+    card_id comes from the segment's FSRS card, giving the optimizer a stable
+    per-card identity across the log."""
+
+    __tablename__ = "fsrs_review_logs"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    attempt_id: Mapped[str] = mapped_column(ForeignKey("attempts.id", ondelete="CASCADE"))
+    segment_id: Mapped[str | None] = mapped_column(ForeignKey("segments.id", ondelete="SET NULL"))
+    card_id: Mapped[int] = mapped_column(Integer)
+    rating: Mapped[int] = mapped_column(Integer)
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    review_duration_ms: Mapped[int | None] = mapped_column(Integer)
+
+
 class AppSetting(Base):
     __tablename__ = "app_settings"
 

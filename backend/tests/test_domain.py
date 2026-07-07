@@ -1488,6 +1488,24 @@ def test_both_failure_ratings_schedule_as_lapses() -> None:
     assert RATING_MAP["clean"] == Rating.Easy
 
 
+def test_fsrs_parameters_load_from_settings_with_safe_fallback(
+    session_factory: object,
+) -> None:
+    from rhapsode.services.scheduling import _fsrs_parameters, _scheduler
+
+    with session_factory() as db:  # type: ignore[operator]
+        # Absent → defaults (None signals the Scheduler to use its own).
+        assert _fsrs_parameters(db) is None
+        db.add(models.AppSetting(key="fsrs_parameters", value=[0.4] * 21))
+        db.commit()
+        assert _fsrs_parameters(db) == [0.4] * 21
+        assert _scheduler(db) is not None
+        # Malformed values must never break grading.
+        db.get(models.AppSetting, "fsrs_parameters").value = ["not", "numbers"]
+        db.commit()
+        assert _fsrs_parameters(db) is None
+
+
 def test_mastery_stages() -> None:
     state = models.ReviewState(
         segment_id="segment",

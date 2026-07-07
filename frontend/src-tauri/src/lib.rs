@@ -18,6 +18,16 @@ fn api_base_url(state: State<'_, BackendState>) -> String {
     state.api_base_url.clone()
 }
 
+#[tauri::command]
+fn set_due_badge(window: tauri::WebviewWindow, count: i64) -> Result<(), String> {
+    // The dock icon does the daily pulling: due count as the badge, cleared
+    // when the queue is empty. Platforms without badge support just no-op.
+    let value = if count > 0 { Some(count) } else { None };
+    window
+        .set_badge_count(value)
+        .map_err(|error| error.to_string())
+}
+
 fn reserve_port() -> Result<u16, String> {
     TcpListener::bind("127.0.0.1:0")
         .map_err(|error| format!("failed to reserve localhost port: {error}"))
@@ -162,7 +172,7 @@ pub fn run() {
             app.manage(backend);
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![api_base_url])
+        .invoke_handler(tauri::generate_handler![api_base_url, set_due_badge])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {

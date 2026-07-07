@@ -1557,6 +1557,79 @@
         "title": "SettingRead",
         "type": "object"
       },
+      "TodayForecastDay": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "due": {
+            "title": "Due",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "due"
+        ],
+        "title": "TodayForecastDay",
+        "type": "object"
+      },
+      "TodayRead": {
+        "description": "The daily front door: everything the home banner needs in one call.",
+        "properties": {
+          "desired_retention": {
+            "title": "Desired Retention",
+            "type": "number"
+          },
+          "due_count": {
+            "title": "Due Count",
+            "type": "integer"
+          },
+          "estimated_minutes": {
+            "title": "Estimated Minutes",
+            "type": "integer"
+          },
+          "forecast": {
+            "items": {
+              "$ref": "#/components/schemas/TodayForecastDay"
+            },
+            "title": "Forecast",
+            "type": "array"
+          },
+          "measured_retention": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measured Retention"
+          },
+          "retention_sample": {
+            "title": "Retention Sample",
+            "type": "integer"
+          },
+          "streak_days": {
+            "title": "Streak Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "due_count",
+          "estimated_minutes",
+          "desired_retention",
+          "measured_retention",
+          "retention_sample",
+          "streak_days",
+          "forecast"
+        ],
+        "title": "TodayRead",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -1755,6 +1828,28 @@
           }
         },
         "summary": "Mastery",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/today": {
+      "get": {
+        "description": "The daily front door: due queue size and cost, the retention mirror,\nthe cross-day streak, and a 7-day workload forecast — everything FSRS\nalready knows, surfaced where the day starts.",
+        "operationId": "today_api_v1_analytics_today_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Today",
         "tags": [
           "analytics"
         ]

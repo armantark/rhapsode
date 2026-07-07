@@ -1,4 +1,5 @@
-from datetime import UTC, datetime
+import math
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -23,6 +24,20 @@ Db = Annotated[Session, Depends(get_session)]
 
 def not_found(name: str) -> HTTPException:
     return HTTPException(status_code=404, detail=f"{name} not found.")
+
+
+def _library_revisions(db: Session) -> list[models.PassageRevision]:
+    """Every passage's active revision, in stable creation order — the corpus
+    the library-wide Today queue and its banner both draw from."""
+    revisions: list[models.PassageRevision] = []
+    for passage in db.scalars(
+        select(models.Passage)
+        .where(models.Passage.active_revision_id.is_not(None))
+        .order_by(models.Passage.created_at)
+    ):
+        if passage.active_revision_id:
+            revisions.append(passage_service.get_revision(db, passage.active_revision_id))
+    return revisions
 
 
 @router.get("/health", response_model=schemas.HealthRead, tags=["system"])
@@ -471,12 +486,17 @@ def create_session(payload: schemas.SessionCreate, db: Db) -> models.PracticeSes
         revisions = collection_service.active_revisions(db, collection)
         if not revisions:
             raise HTTPException(status_code=422, detail="Collection has no active passages.")
-    else:
-        assert payload.revision_id is not None
+    elif payload.revision_id is not None:
         try:
             revisions = [passage_service.get_revision(db, payload.revision_id)]
         except LookupError as error:
             raise not_found("Revision") from error
+    else:
+        # No target + due_only (schema-enforced): the library-wide Today
+        # queue over every passage's active revision.
+        revisions = _library_revisions(db)
+        if not revisions:
+            raise HTTPException(status_code=422, detail="The library has no passages yet.")
     only_segment_ids = None
     if payload.due_only:
         # Only segments the planner can actually serve are candidates for a
@@ -492,6 +512,7 @@ def create_session(payload: schemas.SessionCreate, db: Db) -> models.PracticeSes
         only_segment_ids = planning.due_segment_ids(db, practiceable_ids)
         if not only_segment_ids:
             raise HTTPException(status_code=422, detail="No segments are due for review.")
+    library_wide = payload.revision_id is None and payload.collection_id is None
     if payload.modes is None:
         requested_modes: list[str] = []
         plan = planning.build_smart_plan_for_revisions(
@@ -500,6 +521,9 @@ def create_session(payload: schemas.SessionCreate, db: Db) -> models.PracticeSes
             payload.segment_kinds,
             only_segment_ids,
             minutes=payload.minutes,
+            # A due queue must be clearable: the momentum cap is for
+            # exploratory smart sessions, and FSRS already bounds the queue.
+            cap=None if library_wide else planning.SMART_SESSION_CAP,
         )
     else:
         requested_modes = [mode.value for mode in payload.modes]
@@ -513,7 +537,9 @@ def create_session(payload: schemas.SessionCreate, db: Db) -> models.PracticeSes
     if not plan:
         raise HTTPException(status_code=422, detail="Target has no practiceable segments.")
     session = models.PracticeSession(
-        revision_id=revisions[0].id if collection is None else None,
+        # Only a single-passage launch pins the session to one revision; a
+        # collection or library-wide session resolves revisions per item.
+        revision_id=payload.revision_id,
         collection_id=collection.id if collection is not None else None,
         plan={
             "modes": requested_modes,
@@ -670,11 +696,19 @@ def submit_attempt(
         review_snapshot=snapshot,
     )
     db.add(attempt)
+    # Flush so the attempt has its id: the review logs written below key to it
+    # (undo cascades them away with the attempt).
+    db.flush()
     item.completed = True
     session.current_index = max(session.current_index, item.position + 1)
     state = None
+    # A card's latency is only meaningful per review when the card touched one
+    # segment; fanned grades would teach the optimizer one latency many times.
+    log_duration = payload.latency_ms if len(affected) == 1 else None
     for segment_id, rating in affected:
-        reviewed = scheduling.review_segment(db, segment_id, rating)
+        reviewed = scheduling.review_segment(
+            db, segment_id, rating, attempt_id=attempt.id, review_duration_ms=log_duration
+        )
         state = state or reviewed
     # The completion check below is SQL; without a flush a session factory
     # configured with autoflush=False would never see this item complete.
@@ -779,6 +813,86 @@ def due_reviews(db: Db, before: datetime | None = None) -> list[models.ReviewSta
         for state in states
         if (segment := segments.get(state.segment_id)) is not None and is_practiceable(segment)
     ]
+
+
+@router.get("/analytics/today", response_model=schemas.TodayRead, tags=["analytics"])
+def today(db: Db) -> schemas.TodayRead:
+    """The daily front door: due queue size and cost, the retention mirror,
+    the cross-day streak, and a 7-day workload forecast — everything FSRS
+    already knows, surfaced where the day starts."""
+    now = datetime.now(UTC)
+    revisions = _library_revisions(db)
+    practiceable_ids: list[str] = []
+    for revision in revisions:
+        kinds = planning.practiceable_kinds(revision)
+        practiceable_ids.extend(
+            segment.id for segment in revision.segments if segment.kind in kinds
+        )
+    due_ids = planning.due_segment_ids(db, practiceable_ids)
+    plan = (
+        planning.build_smart_plan_for_revisions(db, revisions, None, due_ids, cap=None)
+        if due_ids
+        else []
+    )
+    estimated_minutes = math.ceil(planning.estimate_plan_seconds(db, plan) / 60) if plan else 0
+
+    # Retention mirror: share of logged reviews not rated Again, last 30 days.
+    rows = db.execute(
+        select(models.FsrsReviewLog.rating, func.count(models.FsrsReviewLog.id))
+        .where(models.FsrsReviewLog.reviewed_at >= now - timedelta(days=30))
+        .group_by(models.FsrsReviewLog.rating)
+    ).all()
+    sample = sum(count for _rating, count in rows)
+    again = sum(count for rating, count in rows if rating == 1)
+    measured = (sample - again) / sample if sample else None
+
+    # Streak: consecutive UTC days with at least one completed session,
+    # ending today — or yesterday, so an unpracticed morning shows the streak
+    # still alive rather than already broken.
+    completed_days = {
+        completed_at.date()
+        for completed_at in db.scalars(
+            select(models.PracticeSession.completed_at).where(
+                models.PracticeSession.completed_at.is_not(None)
+            )
+        )
+        if completed_at is not None
+    }
+    today_date = now.date()
+    cursor = today_date if today_date in completed_days else today_date - timedelta(days=1)
+    streak = 0
+    while cursor in completed_days:
+        streak += 1
+        cursor -= timedelta(days=1)
+
+    # Forecast: day 0 carries the whole backlog; days 1-6 that day's arrivals.
+    due_dates = [
+        due_at.date()
+        for due_at in db.scalars(
+            select(models.ReviewState.due_at).where(
+                models.ReviewState.segment_id.in_(practiceable_ids)
+            )
+        )
+    ]
+    forecast = []
+    for offset in range(7):
+        day = today_date + timedelta(days=offset)
+        due = (
+            sum(1 for due_date in due_dates if due_date <= day)
+            if offset == 0
+            else sum(1 for due_date in due_dates if due_date == day)
+        )
+        forecast.append(schemas.TodayForecastDay(date=day, due=due))
+
+    return schemas.TodayRead(
+        due_count=len(due_ids),
+        estimated_minutes=estimated_minutes,
+        desired_retention=get_settings().desired_retention,
+        measured_retention=measured,
+        retention_sample=sample,
+        streak_days=streak,
+        forecast=forecast,
+    )
 
 
 @router.get("/analytics/mastery", response_model=schemas.MasteryPage, tags=["analytics"])

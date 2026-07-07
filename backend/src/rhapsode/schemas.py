@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 from typing import Any, Self
 
@@ -233,8 +233,14 @@ class SessionCreate(BaseModel):
 
     @model_validator(mode="after")
     def exactly_one_target(self) -> Self:
-        if (self.revision_id is None) == (self.collection_id is None):
+        if self.revision_id is not None and self.collection_id is not None:
             raise ValueError("Send exactly one of revision_id or collection_id.")
+        # No target at all is the library-wide Today queue: due material from
+        # every passage, one session. Only due_only can span the library.
+        if self.revision_id is None and self.collection_id is None and not self.due_only:
+            raise ValueError(
+                "Send revision_id or collection_id, or set due_only for the whole library."
+            )
         return self
 
 
@@ -316,6 +322,30 @@ class MasteryPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class TodayForecastDay(BaseModel):
+    date: date
+    due: int
+
+
+class TodayRead(BaseModel):
+    """The daily front door: everything the home banner needs in one call."""
+
+    due_count: int
+    # From the same planner + per-mode latency means that will build the
+    # session, so the promised length matches the session actually dealt.
+    estimated_minutes: int
+    desired_retention: float
+    # Share of logged reviews (last 30 days) not rated Again; None until any
+    # review logs exist. A mirror, not a score.
+    measured_retention: float | None
+    retention_sample: int
+    # Consecutive UTC days ending today (or yesterday, if today is still
+    # unpracticed) with at least one completed session.
+    streak_days: int
+    # Day 0 carries the whole backlog; days 1-6 are that day's arrivals.
+    forecast: list[TodayForecastDay]
 
 
 class WeakLinkRead(BaseModel):

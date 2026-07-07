@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FSRS Efficiency Batch — Complete · 2026-07-06</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0c0e12; --surface: #161a21; --surface-2: #1e232c; --border: #2a3040;
+    --text: #e8ecf4; --text-dim: #8b95a8; --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.15);
+    --red: #ff5c5c; --green: #4ade80; --amber: #fbbf24; --purple: #a78bfa;
+    --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; }
+body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Outfit', sans-serif; font-weight: 300;
+    padding: 40px 24px 80px; line-height: 1.55;
+}
+.wrap { max-width: 1060px; margin: 0 auto; }
+.badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.12em; color: var(--green); background: rgba(74, 222, 128, 0.1);
+    border: 1px solid var(--green); border-radius: 999px; padding: 4px 14px;
+    display: inline-block; margin-bottom: 18px;
+}
+h1 { font-weight: 700; font-size: 1.9rem; margin-bottom: 10px; }
+.sub { color: var(--text-dim); font-size: 0.95rem; max-width: 810px; margin-bottom: 28px; }
+.sub strong { color: var(--text); font-weight: 500; }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 30px; }
+@media (max-width: 900px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+.metric {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px; text-align: center;
+}
+.metric .num { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 1.5rem; color: var(--green); }
+.metric .lbl { color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em;
+    font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+.proof {
+    background: var(--surface-2); border: 1px solid var(--amber); border-radius: 10px;
+    padding: 12px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin-bottom: 30px; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+}
+.proof .gold { color: var(--amber); font-weight: 600; }
+.proof .arrow { color: var(--text-dim); }
+.proof .note { color: var(--text-dim); font-size: 0.72rem; font-family: 'Outfit', sans-serif; }
+.list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 30px; }
+.fix {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 20px;
+    display: grid; grid-template-columns: 24px 1fr auto; gap: 14px; align-items: start;
+}
+.fix .check { color: var(--green); font-weight: 700; }
+.fix h2 { font-size: 0.98rem; font-weight: 700; margin-bottom: 4px; }
+.fix p { color: var(--text-dim); font-size: 0.84rem; }
+.fix p strong { color: var(--text); font-weight: 500; }
+.fix code { font-family: 'JetBrains Mono', monospace; font-size: 0.78em; color: var(--amber); }
+.qa {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 600;
+    letter-spacing: 0.1em; padding: 2px 8px; border-radius: 4px; white-space: nowrap;
+    color: var(--green); border: 1px solid var(--green);
+}
+.qa.unit { color: var(--purple); border-color: var(--purple); }
+.next {
+    border-left: 3px solid var(--accent); background: var(--surface);
+    padding: 14px 18px; border-radius: 0 8px 8px 0; font-size: 0.9rem;
+    color: var(--text-dim); max-width: 860px;
+}
+.next strong { color: var(--text); font-weight: 500; }
+.next code { font-family: 'JetBrains Mono', monospace; font-size: 0.8em; color: var(--amber); }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <span class="badge">COMPLETED · FSRS EFFICIENCY BATCH</span>
+    <h1>The daily front door is open</h1>
+    <p class="sub">All four features shipped and browser-verified on <strong>origin/main @ b088327</strong>.
+    The app now has a single daily loop — open, see the cost, clear the queue — and every grade feeds the
+    data that will make that queue smaller per unit of retention.</p>
+
+    <div class="proof">
+        <span class="gold">9 due · ≈6 min</span>
+        <span class="arrow">→ practiced 2 cards →</span>
+        <span class="gold">7 due · ≈5 min</span>
+        <span class="note">live Pinchtab run: banner, one-click cross-library session, and refresh all verified end-to-end</span>
+    </div>
+
+    <div class="metrics">
+        <div class="metric"><div class="num">90</div><div class="lbl">backend pytest</div></div>
+        <div class="metric"><div class="num">89</div><div class="lbl">frontend vitest</div></div>
+        <div class="metric"><div class="num">13/13</div><div class="lbl">playwright e2e</div></div>
+        <div class="metric"><div class="num">4/4</div><div class="lbl">pinchtab manual QA</div></div>
+    </div>
+
+    <div class="list">
+        <div class="fix">
+            <span class="check">✓</span>
+            <div>
+                <h2>Library-wide Today queue</h2>
+                <p>Targetless <code>due_only</code> session over every passage's active revision, uncapped —
+                a due queue must be clearable, and FSRS bounds its size. Home banner promises the length from
+                the same planner and latency means that build the session, and the promise held in QA
+                (≈6 min for 9, ≈5 for 7). The old due-banner is replaced; "review →" remains one click away.</p>
+            </div>
+            <span class="qa">QA PASS</span>
+        </div>
+        <div class="fix">
+            <span class="check">✓</span>
+            <div>
+                <h2>Review logs persisted — the optimizer's raw material</h2>
+                <p>Every grade stores the py-fsrs log it used to discard (<code>fsrs_review_logs</code>, alembic
+                migration, attempt-cascade so <strong>⌘Z retracts the log with the review</strong> — pinned by a
+                workflow test). Latency logged only on single-segment attempts so fans can't teach the optimizer
+                one latency many times.</p>
+            </div>
+            <span class="qa unit">UNIT + WORKFLOW TESTED</span>
+        </div>
+        <div class="fix">
+            <span class="check">✓</span>
+            <div>
+                <h2>Personal FSRS weights, torch kept out of the app</h2>
+                <p><code>scripts/optimize_fsrs.py</code> (via <code>uv run --extra optimizer</code>) refuses to fit
+                under 400 logged reviews, writes fitted parameters to the <code>fsrs_parameters</code> setting, and
+                the scheduler reads them on every review with safe fallback on absent or malformed values. Same 0.9
+                target, fewer reviews once your history is deep enough to fit.</p>
+            </div>
+            <span class="qa unit">UNIT TESTED · FIT PENDING DATA</span>
+        </div>
+        <div class="fix">
+            <span class="check">✓</span>
+            <div>
+                <h2>Retention mirror, forecast, streak, dock badge</h2>
+                <p><code>GET /analytics/today</code> carries measured recall rate (last 30 days, shown once ≥20
+                logged reviews), the 7-day due forecast (day 0 holds the backlog — verified updating in lockstep
+                with grading), the consecutive-day streak (chip appears from 2 days), and on desktop the due count
+                lands on the dock icon via the new <code>set_due_badge</code> Tauri command (cargo check green;
+                badge itself needs the packaged app to eyeball).</p>
+            </div>
+            <span class="qa">QA PASS (BROWSER SCOPE)</span>
+        </div>
+    </div>
+
+    <div class="next">
+        <strong>What to do with it:</strong> just practice — every session now grows the review log. Once the
+        Today banner's habit has produced a few hundred reviews, run
+        <code>uv run --extra optimizer python scripts/optimize_fsrs.py</code> from <code>backend/</code> and the
+        scheduler switches to your personal memory model. The retention chip will tell you whether 0.9 is honest
+        for you. Parked by your ruling and recorded in the memory bank: corpus rotation, the needed-by date,
+        and the formula index.
+    </div>
+</div>
+</body>
+</html>

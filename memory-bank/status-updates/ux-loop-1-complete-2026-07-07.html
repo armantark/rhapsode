@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UX Loop 1 — Complete · 2026-07-07</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0c0e12; --surface: #161a21; --surface-2: #1e232c; --border: #2a3040;
+    --text: #e8ecf4; --text-dim: #8b95a8; --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.15);
+    --red: #ff5c5c; --green: #4ade80; --amber: #fbbf24; --purple: #a78bfa;
+    --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; font-weight: 300;
+    padding: 40px 24px 80px; line-height: 1.55; }
+.wrap { max-width: 1040px; margin: 0 auto; }
+.badge { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.12em; color: var(--green); background: rgba(74, 222, 128, 0.1);
+    border: 1px solid var(--green); border-radius: 999px; padding: 4px 14px;
+    display: inline-block; margin-bottom: 18px; }
+h1 { font-weight: 700; font-size: 1.8rem; margin-bottom: 10px; }
+.sub { color: var(--text-dim); font-size: 0.95rem; max-width: 800px; margin-bottom: 26px; }
+.sub strong { color: var(--text); font-weight: 500; }
+.list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 26px; }
+.fix { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px 20px; display: grid; grid-template-columns: 24px 1fr; gap: 14px; align-items: start; }
+.fix .check { color: var(--green); font-weight: 700; }
+.fix h2 { font-size: 0.98rem; font-weight: 700; margin-bottom: 4px; }
+.fix p { color: var(--text-dim); font-size: 0.84rem; }
+.fix p strong { color: var(--text); font-weight: 500; }
+.fix code { font-family: 'JetBrains Mono', monospace; font-size: 0.78em; color: var(--amber); }
+.metrics { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--text-dim);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; }
+.metrics strong { color: var(--green); }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <span class="badge">UX LOOP · ITERATION 1 · COMPLETE</span>
+    <h1>Deletion, living cards, and a vanishing-collection bug</h1>
+    <p class="sub">On <strong>origin/main @ 18f12be</strong>. The planned three items landed, and the loop's
+    first full-suite run flushed out a real data-loss-looking bug as a bonus.</p>
+
+    <div class="list">
+        <div class="fix"><span class="check">✓</span><div>
+            <h2>Passages can finally be deleted</h2>
+            <p><code>DELETE /passages/{id}</code> unlinks media files before the DB cascades take the rows;
+            the UI is a two-step inline confirm naming exactly what dies (revisions, review history, sessions,
+            recordings). Covered by a workflow test (rows + files gone) and a new e2e.</p>
+        </div></div>
+        <div class="fix"><span class="check">✓</span><div>
+            <h2>Library cards read at a glance</h2>
+            <p><code>GET /analytics/library</code> feeds chips per passage — <strong>3 due · 42/104 durable ·
+            12 learning</strong>, or "not started" for fresh texts — so the library is a dashboard, not a list
+            of names.</p>
+        </div></div>
+        <div class="fix"><span class="check">✓</span><div>
+            <h2>Bonus: created collections could silently vanish</h2>
+            <p>The cold-server e2e failure was real: a slow initial <code>listCollections</code> response could
+            land <em>after</em> a create and clobber the just-appended collection from the page. Loads now carry
+            a sequence number that mutations invalidate. Worth remembering as a pattern for other list pages.</p>
+        </div></div>
+        <div class="fix"><span class="check">✓</span><div>
+            <h2>Shortcuts dialog takes focus on open</h2>
+            <p>Keyboard and screen-reader users now land inside the dialog instead of behind the backdrop.</p>
+        </div></div>
+    </div>
+
+    <p class="metrics"><strong>92</strong> backend pytest · ruff · strict mypy · contract regen ·
+    <strong>89</strong> vitest · svelte-check 0/0 · build · <strong>14/14</strong> Playwright ×2 consecutive runs</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pedagogy Review — Plan · 2026-07-06</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0c0e12; --surface: #161a21; --surface-2: #1e232c; --border: #2a3040;
+    --text: #e8ecf4; --text-dim: #8b95a8; --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.15);
+    --red: #ff5c5c; --green: #4ade80; --amber: #fbbf24; --purple: #a78bfa;
+    --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; }
+body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Outfit', sans-serif; font-weight: 300;
+    padding: 40px 24px 80px; line-height: 1.55;
+}
+.wrap { max-width: 1080px; margin: 0 auto; }
+.badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.12em; color: var(--accent); background: var(--accent-glow);
+    border: 1px solid var(--accent); border-radius: 999px; padding: 4px 14px;
+    display: inline-block; margin-bottom: 18px;
+}
+h1 { font-weight: 700; font-size: 2rem; margin-bottom: 10px; }
+.sub { color: var(--text-dim); font-size: 0.95rem; max-width: 760px; margin-bottom: 12px; }
+.verdict {
+    border-left: 3px solid var(--green); background: var(--surface);
+    padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 0.9rem;
+    color: var(--text-dim); max-width: 760px; margin-bottom: 36px;
+}
+.verdict strong { color: var(--text); font-weight: 500; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 44px; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+.card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px; transition: transform 0.15s, box-shadow 0.15s;
+}
+.card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+.card.wide { grid-column: 1 / -1; }
+.pri {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 8px;
+    border-radius: 4px; display: inline-block; margin-bottom: 10px;
+}
+.pri.critical { color: var(--red); border: 1px solid var(--red); }
+.pri.high { color: var(--amber); border: 1px solid var(--amber); }
+.pri.medium { color: var(--green); border: 1px solid var(--green); }
+.card h2 { font-weight: 700; font-size: 1.05rem; margin-bottom: 8px; }
+.card p { color: var(--text-dim); font-size: 0.86rem; margin-bottom: 12px; }
+.card p strong { color: var(--text); font-weight: 500; }
+.panes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 560px) { .panes { grid-template-columns: 1fr; } }
+.pane {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px;
+}
+.pane-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 8px; display: block;
+}
+.pane.before .pane-label { color: var(--red); }
+.pane.after .pane-label { color: var(--green); }
+.mono { font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; line-height: 1.9; }
+.mono .dim { color: var(--text-dim); }
+.mono .gold { color: var(--amber); }
+.stagebar { display: flex; flex-direction: column; gap: 3px; }
+.files { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.file {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 2px 8px; color: var(--text-dim);
+}
+table { border-collapse: collapse; width: 100%; font-size: 0.8rem; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+th { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; letter-spacing: 0.1em;
+     text-transform: uppercase; color: var(--text-dim); font-weight: 600; }
+td.bad { color: var(--red); } td.good { color: var(--green); }
+td .btn-mock {
+    display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
+    border: 1px solid var(--border); border-radius: 6px; padding: 2px 9px;
+}
+.steps h2 { font-weight: 700; font-size: 1.2rem; margin-bottom: 18px; }
+.step { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 14px; }
+.step-num {
+    font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 0.8rem;
+    background: var(--accent); color: #fff; border-radius: 6px;
+    width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.step p { color: var(--text-dim); font-size: 0.88rem; }
+.step p strong { color: var(--text); font-weight: 500; }
+.rank-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; }
+.rank {
+    border: 1px solid var(--border); background: var(--surface); border-radius: 6px;
+    padding: 3px 8px;
+}
+.rank.hot { border-color: var(--red); color: var(--red); }
+.rank.due { border-color: var(--amber); color: var(--amber); }
+.rank.new { border-color: var(--accent); color: var(--accent); }
+.rank.cold { color: var(--text-dim); }
+.arrow { color: var(--text-dim); }
+.kept {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px 20px; margin-bottom: 44px;
+}
+.kept h3 { font-size: 0.85rem; font-weight: 700; margin-bottom: 8px; color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase; }
+.kept ul { padding-left: 18px; color: var(--text-dim); font-size: 0.84rem; }
+.kept li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <span class="badge">PRE-IMPLEMENTATION PLAN · PEDAGOGY REVIEW</span>
+    <h1>The five weakest parts of Rhapsode's practice loop</h1>
+    <p class="sub">Full review of the merged app (backend planning/scheduling, prep, practice UI).
+    The architecture is strong — deterministic practice loop, honest undo, ruled decisions. The weaknesses
+    are concentrated where the drills meet memory science: one scheduling bug that rewards failure, one
+    fading drill built backwards, and three smaller alignment gaps.</p>
+    <div class="verdict"><strong>Scope check:</strong> every fix below respects the recorded grill rulings
+    (Anki labels, ladder semantics, neutral peek, 0.9 retention). Nothing here touches the LLM, models, or API signatures.</div>
+
+    <div class="grid">
+        <div class="card wide">
+            <span class="pri critical">Critical · scheduling</span>
+            <h2>"Hard" (errors in recall) schedules as a <em>pass</em> in FSRS</h2>
+            <p>The button hint says <strong>"Hard — Errors in recall"</strong>, and everywhere else the app treats
+            it as a failure: it flags the segment difficult, resets/demotes the mastery ladder, and counts in
+            weak-link analytics. But <code class="mono">RATING_MAP</code> sends it to FSRS as
+            <strong>Rating.Hard — a successful recall</strong>. Stability grows, the interval extends, and the line
+            you just recited <em>wrong</em> drifts out of the review queue exactly when it needs reps.</p>
+            <div class="panes">
+                <div class="pane before"><span class="pane-label">Before</span>
+                    <table>
+                        <tr><th>Button</th><th>Meaning</th><th>FSRS</th></tr>
+                        <tr><td><span class="btn-mock" style="color:var(--purple)">1 Again</span></td><td>Needed the text</td><td class="good">Again (lapse)</td></tr>
+                        <tr><td><span class="btn-mock" style="color:var(--red)">2 Hard</span></td><td>Errors in recall</td><td class="bad">Hard (pass!)</td></tr>
+                        <tr><td><span class="btn-mock" style="color:var(--amber)">3 Good</span></td><td>Recalled w/ pauses</td><td class="good">Good</td></tr>
+                        <tr><td><span class="btn-mock" style="color:var(--green)">4 Easy</span></td><td>Perfect recall</td><td class="good">Easy</td></tr>
+                    </table>
+                </div>
+                <div class="pane after"><span class="pane-label">After</span>
+                    <table>
+                        <tr><th>Button</th><th>Meaning</th><th>FSRS</th></tr>
+                        <tr><td><span class="btn-mock" style="color:var(--purple)">1 Again</span></td><td>Needed the text</td><td class="good">Again (lapse)</td></tr>
+                        <tr><td><span class="btn-mock" style="color:var(--red)">2 Hard</span></td><td>Errors in recall</td><td class="good">Again (lapse)</td></tr>
+                        <tr><td><span class="btn-mock" style="color:var(--amber)">3 Good</span></td><td>Recalled w/ pauses</td><td class="good">Good</td></tr>
+                        <tr><td><span class="btn-mock" style="color:var(--green)">4 Easy</span></td><td>Perfect recall</td><td class="good">Easy</td></tr>
+                    </table>
+                </div>
+            </div>
+            <p style="margin-top:10px">The two failure kinds stay distinguishable in the ladder and analytics
+            (Again wipes the streak; Hard demotes one step — ruling B2 untouched). Only the <em>schedule</em> now
+            agrees that errors are a lapse. For verbatim recitation, an error <em>is</em> a failed card.</p>
+            <div class="files"><span class="file">backend/src/rhapsode/services/scheduling.py</span><span class="file">backend/tests/test_domain.py</span></div>
+        </div>
+
+        <div class="card">
+            <span class="pri high">High · drill design</span>
+            <h2>Progressive fading hides the line's <em>opening</em> first</h2>
+            <p>The app's own doctrine (<code class="mono">_lead_in</code>): recitation is chained, and the strongest
+            cue is the line's opening. Yet fading removes the opening <em>first</em> — stage 2 demands the hardest act
+            (produce the opening with zero cue) while handing you the tail to read. The ramp is inverted.</p>
+            <div class="panes">
+                <div class="pane before"><span class="pane-label">Before · support fades from the front</span>
+                    <div class="mono stagebar">
+                        <span>arma virumque cano</span>
+                        <span><span class="dim">••••</span> virumque cano</span>
+                        <span><span class="dim">•••• ••••••••</span> cano</span>
+                        <span class="dim">•••• •••••••• ••••</span>
+                    </div>
+                </div>
+                <div class="pane after"><span class="pane-label">After · support fades toward the cue</span>
+                    <div class="mono stagebar">
+                        <span>arma virumque cano</span>
+                        <span>arma virumque <span class="dim">••••</span></span>
+                        <span>arma <span class="dim">•••••••• ••••</span></span>
+                        <span class="dim">•••• •••••••• ••••</span>
+                    </div>
+                </div>
+            </div>
+            <p style="margin-top:10px">Difficulty now ramps monotonically, and the last supported stage
+            (opening only) is exactly the <strong>cue_recall</strong> card the ladder graduates to. Japanese
+            token fading mirrors the same direction.</p>
+            <div class="files"><span class="file">backend/…/planning.py</span><span class="file">frontend/…/PromptCard.svelte</span><span class="file">tests × 2</span></div>
+        </div>
+
+        <div class="card">
+            <span class="pri high">High · session planning</span>
+            <h2>Smart-session triage is due-blind</h2>
+            <p>Triage ranks weak links → learning → new → maintenance, but never consults
+            <code class="mono">due_at</code>. An <strong>overdue durable line (memory decaying now)</strong> ranks below
+            introducing brand-new material, and when the 12-item cap bites, not-yet-due lines can crowd out due ones.
+            Spaced repetition's entire point is being due-aware.</p>
+            <div class="panes" style="grid-template-columns: 1fr;">
+                <div class="pane before"><span class="pane-label">Before</span>
+                    <div class="rank-row"><span class="rank hot">weak</span><span class="arrow">→</span><span class="rank">learning</span><span class="arrow">→</span><span class="rank new">new</span><span class="arrow">→</span><span class="rank cold">all review/durable (due or not)</span></div>
+                </div>
+                <div class="pane after"><span class="pane-label">After</span>
+                    <div class="rank-row"><span class="rank hot">weak</span><span class="arrow">→</span><span class="rank">learning</span><span class="arrow">→</span><span class="rank due">due review/durable</span><span class="arrow">→</span><span class="rank new">new</span><span class="arrow">→</span><span class="rank cold">not-due maintenance</span></div>
+                </div>
+            </div>
+            <p style="margin-top:10px">Anki's rule, applied: repair, then push, then <strong>reviews before new</strong>,
+            then maintenance only with leftover room.</p>
+            <div class="files"><span class="file">backend/…/planning.py</span><span class="file">backend/tests/test_domain.py</span></div>
+        </div>
+
+        <div class="card">
+            <span class="pri medium">Medium · drill design</span>
+            <h2>Juncture fading cards drill the head with no anchor</h2>
+            <p>A juncture exists to bind <em>tail of line N → head of line N+1</em>. Recall modes anchor correctly
+            (the tail is the lead-in), but the <strong>fading card shows only the head</strong> — by the final stage
+            you're reciting "the next line's opening" with no indication of which transition you're crossing.
+            The association being trained isn't on the card.</p>
+            <div class="panes">
+                <div class="pane before"><span class="pane-label">Before</span>
+                    <div class="mono stagebar">
+                        <span class="dim">Recite the next line's opening…</span>
+                        <span class="dim">••• •••••• ••</span>
+                    </div>
+                </div>
+                <div class="pane after"><span class="pane-label">After</span>
+                    <div class="mono stagebar">
+                        <span class="gold">… πολλὰς δ᾽ ἰφθίμους</span>
+                        <span class="dim">Recite the next line's opening…</span>
+                        <span class="dim">••• •••••• ••</span>
+                    </div>
+                </div>
+            </div>
+            <p style="margin-top:10px">The fading prompt now carries the juncture's cue (the previous line's tail)
+            as a persistent lead-in, so the transition is practiced as a transition at every stage.</p>
+            <div class="files"><span class="file">backend/…/planning.py</span><span class="file">frontend/…/PromptCard.svelte</span></div>
+        </div>
+
+        <div class="card wide">
+            <span class="pri medium">Medium · self-assessment honesty</span>
+            <h2>Recall cards can be graded without ever checking the answer</h2>
+            <p>The UI already says <em>"Recite from memory, then press Space to check before grading"</em> — but nothing
+            enforces it. In Anki you cannot grade before seeing the answer, because self-assessment without verification
+            inflates grades: verbatim errors are precisely the ones the reciter doesn't hear. Fix: on recall modes
+            (cue recall, random start, weak link, chaining, full passage) the grade bar stays disabled until the answer
+            is shown. The <strong>peek stays neutral</strong> (ruling untouched) — checking just becomes the required step
+            it was always described as. Fading and shadowing cards, where the text is on screen, are unaffected.</p>
+            <div class="files"><span class="file">frontend/src/routes/practice/[id]/+page.svelte</span><span class="file">frontend/e2e/practice-flow.spec.ts</span></div>
+        </div>
+    </div>
+
+    <div class="kept">
+        <h3>Reviewed and deliberately left alone</h3>
+        <ul>
+            <li><strong>clean→Easy / hesitant→Good FSRS mapping</strong> — defensible under the outcome-hint semantics; changing it would contradict the Anki-label ruling for marginal gain.</li>
+            <li><strong>Full-passage grade fanning one rating to all segments</strong> — coarse but ruled and coherent.</li>
+            <li><strong>Latency mean without outlier clamping</strong> — explicitly ruled (A2).</li>
+            <li><strong>desired_retention 0.9</strong> — ruled (E1 note).</li>
+            <li><strong>Lifetime difficulty_rate in weak-link analytics</strong> — display-only; the planner's repair-decay signal is already correct.</li>
+        </ul>
+    </div>
+
+    <div class="steps">
+        <h2>Implementation order</h2>
+        <div class="step"><div class="step-num">1</div><p><strong>FSRS lapse fix</strong> — <code class="mono">RATING_MAP["incorrect"] = Rating.Again</code>; extend scheduling tests to pin the lapse behavior.</p></div>
+        <div class="step"><div class="step-num">2</div><p><strong>Fading direction</strong> — backend <code class="mono">progressive_masks</code> masks the tail first (ellipsis units stay visible); mirror in PromptCard's Japanese token stages; update both test suites.</p></div>
+        <div class="step"><div class="step-num">3</div><p><strong>Due-aware triage</strong> — thread the due-set into <code class="mono">_triage_rank</code>; new rank order with tests.</p></div>
+        <div class="step"><div class="step-num">4</div><p><strong>Juncture fading anchor</strong> — fading prompt carries <code class="mono">lead_in</code> for junctures; PromptCard renders it above the stages.</p></div>
+        <div class="step"><div class="step-num">5</div><p><strong>Check-before-grade</strong> — disable GradeBar until reveal on recall modes; adjust e2e flows that grade blind.</p></div>
+        <div class="step"><div class="step-num">6</div><p><strong>Verify</strong> — backend pytest + ruff + mypy + contract check; frontend vitest + svelte-check + build; Playwright e2e; browser smoke on a live session; results artifact.</p></div>
+    </div>
+</div>
+</body>
+</html>

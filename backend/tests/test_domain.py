@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from fsrs import Rating
 from pydantic import ValidationError
 
 from rhapsode import models, schemas
@@ -25,15 +26,18 @@ from rhapsode.services.planning import (
     register_practice_mode,
     smart_mode_for,
 )
-from rhapsode.services.scheduling import _next_clean_streak, mastery_stage
+from rhapsode.services.scheduling import RATING_MAP, _next_clean_streak, mastery_stage
 
 
-def test_progressive_masks_remove_support() -> None:
+def test_progressive_masks_fade_toward_the_opening_cue() -> None:
+    # The opening is the retrieval cue (_lead_in doctrine), so support must
+    # fade from the end: each stage demands a longer recalled tail, and the
+    # last supported stage is the cue_recall shape.
     masks = progressive_masks("arma virumque cano")
     assert masks == [
         "arma virumque cano",
-        "•••• virumque cano",
-        "•••• •••••••• cano",
+        "arma virumque ••••",
+        "arma •••••••• ••••",
         "•••• •••••••• ••••",
     ]
 
@@ -43,10 +47,22 @@ def test_progressive_masks_handle_no_space_scripts_gradually() -> None:
 
     assert masks == [
         "空こぼれ落ちた",
-        "••ぼれ落ちた",
-        "••••落ちた",
-        "•••••ちた",
+        "空こぼれ落••",
+        "空こぼ••••",
+        "空こ•••••",
         "•••••••",
+    ]
+
+
+def test_progressive_masks_never_hide_juncture_ellipsis() -> None:
+    # A juncture head ends in "…" — a continuation marker, not recallable
+    # content. It stays visible at every stage.
+    masks = progressive_masks("Μοῦσα θεά ἄειδε …")
+    assert masks == [
+        "Μοῦσα θεά ἄειδε …",
+        "Μοῦσα θεά ••••• …",
+        "Μοῦσα ••• ••••• …",
+        "••••• ••• ••••• …",
     ]
 
 
@@ -405,6 +421,42 @@ def test_smart_plan_caps_session_size_and_triages(session_factory: object) -> No
         assert set(planned_ordinals) >= {15, 16, 17, 18, 19}
         # ...and the session still flows in passage order.
         assert planned_ordinals == sorted(planned_ordinals)
+
+
+def test_smart_plan_serves_due_reviews_before_new_material(session_factory: object) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="greek-due", name="Ancient Greek")
+        passage = models.Passage(title="Iliad 2", language_profile=language)
+        revision = models.PassageRevision(
+            passage=passage, revision_number=1, source_text="..."
+        )
+        # Lines 0-1 are durable but NOT due; 2-3 are durable and overdue;
+        # 4-13 are brand new. The cap holds 12, so something must lose.
+        revision.segments = [
+            models.Segment(kind="line", ordinal=index, text=f"line {index}")
+            for index in range(14)
+        ]
+        db.add(passage)
+        db.commit()
+        for segment in revision.segments[:4]:
+            overdue = segment.ordinal >= 2
+            db.add(
+                models.ReviewState(
+                    segment_id=segment.id,
+                    fsrs_card_json="{}",
+                    due_at=datetime.now(UTC) + timedelta(days=-1 if overdue else 30),
+                    mastery_stage="durable",
+                    clean_count=5,
+                    attempt_count=6,
+                )
+            )
+        db.commit()
+
+        plan = build_smart_plan(db, revision, ["line"])
+        ordinals = {segment.id: segment.ordinal for segment in revision.segments}
+        planned = {ordinals[item["segment_id"]] for item in plan}
+        # Overdue reviews outrank new material; not-yet-due maintenance loses.
+        assert planned == set(range(2, 14))
 
 
 def test_collection_smart_plan_shares_one_cap_across_revisions(session_factory: object) -> None:
@@ -1286,6 +1338,16 @@ def test_chaining_modes_explain_memory_range() -> None:
         assert prompt["line_start"] == 1
         assert prompt["line_end"] == 2
         assert prompt["chain_segment_ids"] == [line.id, following.id]
+
+
+def test_both_failure_ratings_schedule_as_lapses() -> None:
+    # "incorrect" means errors in verbatim recall — a failed card. Scheduling
+    # it as FSRS Hard (a pass) would extend the interval on exactly the lines
+    # that need reps; only the ladder distinguishes the two failure kinds.
+    assert RATING_MAP["revealed"] == Rating.Again
+    assert RATING_MAP["incorrect"] == Rating.Again
+    assert RATING_MAP["hesitant"] == Rating.Good
+    assert RATING_MAP["clean"] == Rating.Easy
 
 
 def test_mastery_stages() -> None:

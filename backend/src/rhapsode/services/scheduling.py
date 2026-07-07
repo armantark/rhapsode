@@ -8,10 +8,14 @@ from sqlalchemy.orm import Session
 from rhapsode import models
 from rhapsode.config import get_settings
 
+# "incorrect" (the Hard button, "errors in recall") schedules as a LAPSE: FSRS
+# treats Rating.Hard as a successful recall, which would grow the interval on
+# exactly the lines that were just recited wrong. The ladder and analytics keep
+# the revealed/incorrect distinction (grill B2); only the schedule unifies them.
 RATING_MAP = {
     "clean": Rating.Easy,
     "hesitant": Rating.Good,
-    "incorrect": Rating.Hard,
+    "incorrect": Rating.Again,
     "revealed": Rating.Again,
 }
 

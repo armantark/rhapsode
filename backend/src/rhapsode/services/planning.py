@@ -31,14 +31,24 @@ def progressive_masks(text: str) -> list[str]:
     else:
         units = [char for char in text if not char.isspace()]
         joiner = ""
-    if len(units) <= 1:
-        return [text, _dot_mask(text)]
+    # Support fades from the END toward the opening: the opening is the
+    # retrieval cue (see _lead_in), so each stage asks for a longer recalled
+    # tail and the last supported stage converges on the cue_recall card the
+    # ladder graduates to. Ellipsis units are continuation markers on juncture
+    # heads, not content, so they are never masked.
+    maskable = [index for index, unit in enumerate(units) if unit != "…"]
+    if len(maskable) <= 1:
+        return [text, _mask_units(units, set(maskable), joiner)]
     stages = [text]
-    for hidden in _progressive_hidden_counts(len(units)):
-        masked = [_dot_mask(unit) for unit in units[:hidden]]
-        visible = units[hidden:]
-        stages.append(joiner.join([*masked, *visible]))
+    for hidden in _progressive_hidden_counts(len(maskable)):
+        stages.append(_mask_units(units, set(maskable[len(maskable) - hidden :]), joiner))
     return stages
+
+
+def _mask_units(units: list[str], hidden: set[int], joiner: str) -> str:
+    return joiner.join(
+        _dot_mask(unit) if index in hidden else unit for index, unit in enumerate(units)
+    )
 
 
 def _progressive_hidden_counts(total: int) -> list[int]:
@@ -150,14 +160,21 @@ def prompt_for(
             }
         case "progressive_fading":
             # A juncture is the next line's head, not a whole line, so its fading
-            # drill stops at the head rather than running to a line end.
-            instruction = (
-                "Recite the next line's opening as the support fades."
-                if target.kind == "juncture"
-                else "Recite the whole line to the end as the support fades."
-            )
+            # drill stops at the head rather than running to a line end. The
+            # association being trained is tail→head, so the previous line's
+            # tail rides along as a persistent lead-in — without it, the final
+            # faded stage asks for "the next line's opening" with no indication
+            # of which transition is being crossed.
+            if target.kind == "juncture":
+                prompt: dict[str, Any] = {
+                    "instruction": "Recite the next line's opening as the support fades.",
+                    "stages": progressive_masks(target.text),
+                }
+                if target.cue:
+                    prompt["lead_in"] = target.cue
+                return prompt
             return {
-                "instruction": instruction,
+                "instruction": "Recite the whole line to the end as the support fades.",
                 "stages": progressive_masks(target.text),
             }
         case "forward_chaining":
@@ -419,17 +436,19 @@ def _has_reference_audio(db: Session, revision_id: str) -> bool:
     return bool(count)
 
 
-def _triage_rank(stage: str | None, difficult: bool) -> int:
+def _triage_rank(stage: str | None, difficult: bool, due: bool) -> int:
     """When the cap bites, spend the session where it pays most: repair weak
-    links, push learning segments, then introduce new material, and only then
-    maintain what is already solid."""
+    links, push learning segments, then service DUE reviews (their memory is
+    decaying now), then introduce new material, and only then maintain solid
+    lines that are not yet due — the spaced-repetition "reviews before new"
+    rule, so a long budget doesn't crowd due maintenance out with novelty."""
     if difficult and stage not in (None, "new"):
         return 0
     if stage == "learning":
         return 1
     if stage is None or stage == "new":
-        return 2
-    return 3
+        return 3
+    return 2 if due else 4
 
 
 def _line_segments(segments: list[models.Segment]) -> list[models.Segment]:
@@ -509,6 +528,7 @@ def build_smart_plan_for_revisions(
         for revision, _segments in revision_segments
     }
     difficult_ids = _difficult_segment_ids(db)
+    due_ids = due_segment_ids(db, [segment.id for segment in all_segments])
     revisions_with_reference = {
         revision.id
         for revision, _segments in revision_segments
@@ -558,7 +578,11 @@ def build_smart_plan_for_revisions(
             for segment in segments
         ),
         key=lambda entry: (
-            _triage_rank(stages.get(entry[2].id), entry[2].id in difficult_ids),
+            _triage_rank(
+                stages.get(entry[2].id),
+                entry[2].id in difficult_ids,
+                entry[2].id in due_ids,
+            ),
             entry[0],
             entry[2].ordinal,
         ),

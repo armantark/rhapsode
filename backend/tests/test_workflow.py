@@ -892,7 +892,9 @@ def test_prep_suggestions_fill_gaps_without_overwriting(
     passage: dict[str, object],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def stub_generate(language_name: str, lines: list[str]) -> list[prep.LineSuggestion]:
+    def stub_generate(
+        language_name: str, lines: list[str], api_key: str | None = None
+    ) -> list[prep.LineSuggestion]:
         assert language_name == "Ancient Greek"
         return [
             prep.LineSuggestion(
@@ -942,8 +944,10 @@ def test_prep_suggestions_unavailable_without_key(
     passage: dict[str, object],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def raising(language_name: str, lines: list[str]) -> list[prep.LineSuggestion]:
-        raise prep.PrepUnavailableError("GEMINI_API_KEY is not configured.")
+    def raising(
+        language_name: str, lines: list[str], api_key: str | None = None
+    ) -> list[prep.LineSuggestion]:
+        raise prep.PrepUnavailableError("No Gemini API key is configured.")
 
     monkeypatch.setattr(prep, "_generate", raising)
     revision = passage["active_revision"]

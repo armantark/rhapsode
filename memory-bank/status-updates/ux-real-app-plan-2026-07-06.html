@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Real-App UX Pass — Plan · 2026-07-06</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0c0e12; --surface: #161a21; --surface-2: #1e232c; --border: #2a3040;
+    --text: #e8ecf4; --text-dim: #8b95a8; --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.15);
+    --red: #ff5c5c; --green: #4ade80; --amber: #fbbf24; --purple: #a78bfa;
+    --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; }
+body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Outfit', sans-serif; font-weight: 300;
+    padding: 40px 24px 80px; line-height: 1.55;
+}
+.wrap { max-width: 1060px; margin: 0 auto; }
+.badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.12em; color: var(--accent); background: var(--accent-glow);
+    border: 1px solid var(--accent); border-radius: 999px; padding: 4px 14px;
+    display: inline-block; margin-bottom: 18px;
+}
+h1 { font-weight: 700; font-size: 1.9rem; margin-bottom: 10px; }
+.sub { color: var(--text-dim); font-size: 0.95rem; max-width: 800px; margin-bottom: 30px; }
+.sub strong { color: var(--text); font-weight: 500; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 30px; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+.card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+}
+.card.wide { grid-column: 1 / -1; }
+.pri {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 8px;
+    border-radius: 4px; display: inline-block; margin-bottom: 10px;
+}
+.pri.burr { color: var(--red); border: 1px solid var(--red); }
+.pri.surface { color: var(--amber); border: 1px solid var(--amber); }
+.pri.polish { color: var(--purple); border: 1px solid var(--purple); }
+.card h2 { font-weight: 700; font-size: 1.05rem; margin-bottom: 8px; }
+.card p { color: var(--text-dim); font-size: 0.86rem; margin-bottom: 10px; }
+.card p strong { color: var(--text); font-weight: 500; }
+.card p code { font-family: 'JetBrains Mono', monospace; font-size: 0.78em; color: var(--amber); }
+.card ul { padding-left: 18px; color: var(--text-dim); font-size: 0.84rem; }
+.card li { margin-bottom: 5px; }
+.card li code { font-family: 'JetBrains Mono', monospace; font-size: 0.78em; color: var(--amber); }
+.files { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+.file {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 2px 8px; color: var(--text-dim);
+}
+.steps h2 { font-weight: 700; font-size: 1.15rem; margin-bottom: 14px; }
+.step { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 12px; }
+.step-num {
+    font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 0.8rem;
+    background: var(--accent); color: #fff; border-radius: 6px;
+    width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.step p { color: var(--text-dim); font-size: 0.87rem; }
+.step p strong { color: var(--text); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <span class="badge">PRE-IMPLEMENTATION PLAN · REAL-APP UX PASS</span>
+    <h1>Burrs first, then the missing surfaces</h1>
+    <p class="sub">Your steer: the actual UX, not packaging. Real apps are distinguishable mostly by the
+    <strong>absence of burrs</strong> — so those go first (both launcher bugs QA hit have root causes in hand) —
+    then the three missing surfaces: Settings, a first-run sample, and discoverable shortcuts.</p>
+
+    <div class="grid">
+        <div class="card wide">
+            <span class="pri burr">Burrs · root causes found</span>
+            <h2>Launcher fixes</h2>
+            <ul>
+                <li><strong>Double-click disclosure:</strong> the manual-modes <code>&lt;details&gt;</code> has no
+                <code>open</code> binding, so the async data load re-renders it shut right after the first click.
+                Fix: <code>bind:open</code> to state. (Closes the pending follow-up chip.)</li>
+                <li><strong>Mode selection resets:</strong> <code>chosenModes</code>/<code>chosenKinds</code> are
+                plain state — persist the last manual selection in localStorage like the minutes chip already is.</li>
+                <li><strong>Wrong hint on typed cards:</strong> "press Space to check" is untrue while focus is in
+                the typed-recall textarea (Space types a space). The hint becomes mode-aware.</li>
+            </ul>
+            <div class="files"><span class="file">passages/[id]/+page.svelte</span><span class="file">practice/[id]/+page.svelte</span></div>
+        </div>
+
+        <div class="card">
+            <span class="pri surface">Missing surface</span>
+            <h2>Settings page</h2>
+            <p>The app currently configures itself through a repo-root <code>.env</code> and env vars — the
+            single biggest "dev tool" tell. New <code>/settings</code> route (plus nav link) backed by the
+            existing AppSetting API:</p>
+            <ul>
+                <li><strong>Gemini key</strong> — masked input stored as a setting; <code>prep.py</code> reads
+                setting-first, env-fallback. The practice loop still never touches the LLM.</li>
+                <li><strong>Scheduler status</strong> — retention target, and whether personal FSRS weights are
+                active or defaults (read-only; the fit stays a script per plan).</li>
+                <li><strong>Backup health</strong> — folder path + "last snapshot: N hours ago" from a small
+                <code>GET /system/status</code>.</li>
+                <li><strong>Sound & mic defaults</strong> — the existing localStorage toggles, surfaced in one place.</li>
+            </ul>
+            <div class="files"><span class="file">routes/settings/+page.svelte</span><span class="file">router.py</span><span class="file">prep.py</span><span class="file">+layout.svelte</span></div>
+        </div>
+
+        <div class="card">
+            <span class="pri polish">First minutes + discoverability</span>
+            <h2>Sample passage & shortcuts overlay</h2>
+            <p><strong>Sample:</strong> the empty library's dead-end gains "Load a sample passage" — a
+            client-side create of Iliad 1.1–5 with line segments through the normal API, so the first five
+            minutes teach the practice loop instead of demanding data entry. No backend change.</p>
+            <p><strong>Shortcuts:</strong> a global <code>?</code> overlay (Esc closes, inputs ignored) listing
+            what's currently invisible: Space to check, 1–4 to grade, ⌘Z to undo, M to drop cue marks in the
+            aligner. Rendered once in the layout.</p>
+            <div class="files"><span class="file">routes/+page.svelte</span><span class="file">+layout.svelte</span></div>
+        </div>
+    </div>
+
+    <div class="steps">
+        <h2>Order</h2>
+        <div class="step"><div class="step-num">1</div><p><strong>Burrs</strong> — disclosure binding, selection persistence, mode-aware hint; dismiss the follow-up chip.</p></div>
+        <div class="step"><div class="step-num">2</div><p><strong>Backend bits</strong> — Gemini key setting-first in prep, <code>GET /system/status</code>, tests, contract + client regen.</p></div>
+        <div class="step"><div class="step-num">3</div><p><strong>Settings page + nav link</strong>, sample-passage button, shortcuts overlay; targeted vitest.</p></div>
+        <div class="step"><div class="step-num">4</div><p><strong>Verify</strong> — full suites, Playwright, Pinchtab pass (disclosure single-click included), results artifact.</p></div>
+    </div>
+</div>
+</body>
+</html>

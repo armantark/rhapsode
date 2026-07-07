@@ -58,6 +58,18 @@ class PrepUnavailableError(RuntimeError):
     pass
 
 
+GEMINI_KEY_SETTING = "gemini_api_key"
+
+
+def resolve_api_key(db: Session) -> str | None:
+    """Settings-first, env fallback: a real app configures its key in its own
+    settings screen, but existing repo-root .env setups keep working."""
+    setting = db.get(models.AppSetting, GEMINI_KEY_SETTING)
+    if setting is not None and isinstance(setting.value, str) and setting.value.strip():
+        return setting.value.strip()
+    return get_settings().gemini_api_key
+
+
 def _prompt(language_name: str, lines: list[str]) -> str:
     def words_for_line(text: str) -> list[str]:
         whitespace_words = text.split()
@@ -125,15 +137,19 @@ def _prompt(language_name: str, lines: list[str]) -> str:
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, max=8), reraise=True)
-def _generate(language_name: str, lines: list[str]) -> list[LineSuggestion]:
-    settings = get_settings()
-    if not settings.gemini_api_key:
-        raise PrepUnavailableError("GEMINI_API_KEY is not configured.")
+def _generate(
+    language_name: str, lines: list[str], api_key: str | None = None
+) -> list[LineSuggestion]:
+    api_key = api_key or get_settings().gemini_api_key
+    if not api_key:
+        raise PrepUnavailableError(
+            "No Gemini API key is configured. Add one in Settings (or GEMINI_API_KEY)."
+        )
     from google import genai
 
-    client = genai.Client(api_key=settings.gemini_api_key)
+    client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
-        model=settings.gemini_model,
+        model=get_settings().gemini_model,
         contents=_prompt(language_name, lines),
         config={
             "response_mime_type": "application/json",
@@ -153,7 +169,10 @@ def suggest_prep(
     exists yet. Returns counts of what was written, per layer."""
     # Resolved at call time so tests can monkeypatch the module-level hook.
     if generate is None:
-        generate = _generate
+        api_key = resolve_api_key(db)
+
+        def generate(language_name: str, lines: list[str]) -> list[LineSuggestion]:
+            return _generate(language_name, lines, api_key)
     lines = sorted(
         (segment for segment in revision.segments if segment.kind == "line"),
         key=lambda segment: segment.ordinal,

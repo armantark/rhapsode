@@ -622,8 +622,14 @@
 				</p>
 			{:else if canReveal}
 				<p class="muted small">
-					Recite from memory, then press <kbd>Space</kbd> to check — grading unlocks after
-					the check.
+					{#if currentItem.mode === 'typed_recall'}
+						<!-- Space types into the textarea, so pointing at it would lie. -->
+						Type from memory, then click “Show answer to check” — grading unlocks after
+						the check.
+					{:else}
+						Recite from memory, then press <kbd>Space</kbd> to check — grading unlocks after
+						the check.
+					{/if}
 				</p>
 			{/if}
 		{/if}

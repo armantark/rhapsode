@@ -23,6 +23,7 @@ import type {
 	SegmentInput,
 	SessionCreate,
 	Setting,
+	SystemStatus,
 	WeakLink
 } from './types';
 import { getApiBase } from './platform';
@@ -96,6 +97,7 @@ async function send<T>(method: string, path: string, options: SendOptions = {}):
 
 export const api = {
 	health: () => send<Health>('GET', '/health'),
+	systemStatus: () => send<SystemStatus>('GET', '/system/status'),
 
 	listLanguages: () => send<LanguageProfile[]>('GET', '/languages'),
 

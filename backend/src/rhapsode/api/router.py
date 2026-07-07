@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 from rhapsode import __version__, models, schemas
 from rhapsode.api.deps import get_session
 from rhapsode.config import get_settings
+from rhapsode.services import backup as backup_service
 from rhapsode.services import collections as collection_service
 from rhapsode.services import media as media_service
 from rhapsode.services import notes as note_service
@@ -43,6 +44,24 @@ def _library_revisions(db: Session) -> list[models.PassageRevision]:
 @router.get("/health", response_model=schemas.HealthRead, tags=["system"])
 def health() -> schemas.HealthRead:
     return schemas.HealthRead(status="ok", version=__version__)
+
+
+@router.get("/system/status", response_model=schemas.SystemStatusRead, tags=["system"])
+def system_status(db: Db) -> schemas.SystemStatusRead:
+    settings = get_settings()
+    database_path = settings.database_path()
+    last_backup_at = (
+        backup_service.newest_snapshot_at(database_path, settings.backup_dir)
+        if database_path is not None
+        else None
+    )
+    return schemas.SystemStatusRead(
+        backup_dir=str(settings.backup_dir),
+        last_backup_at=last_backup_at,
+        gemini_key_configured=prep.resolve_api_key(db) is not None,
+        fsrs_personal_parameters=scheduling._fsrs_parameters(db) is not None,
+        desired_retention=settings.desired_retention,
+    )
 
 
 @router.get("/languages", response_model=list[schemas.LanguageProfileRead], tags=["languages"])

@@ -49,6 +49,11 @@
 	let chosenModes: PracticeMode[] = $state(['cue_recall']);
 	let chosenKinds: string[] = $state(['line']);
 	let startingSession = $state(false);
+	// The disclosure needs explicit state: without it, the async passage load
+	// re-renders the native <details> shut right after the first click.
+	let modesOpen = $state(false);
+	// The last manual selection survives navigation, like the minutes chip.
+	const MODES_KEY = 'rhapsode.manualModes';
 	// Time budget chips (grill A3): null = the planner's fixed item cap.
 	const MINUTES_KEY = 'rhapsode.sessionMinutes';
 	const MINUTE_CHOICES = [5, 15, 30];
@@ -84,8 +89,24 @@
 	onMount(() => {
 		const stored = Number(localStorage.getItem(MINUTES_KEY));
 		minutesChoice = MINUTE_CHOICES.includes(stored) ? stored : null;
+		try {
+			const storedModes = JSON.parse(localStorage.getItem(MODES_KEY) ?? '[]');
+			if (Array.isArray(storedModes) && storedModes.length) {
+				chosenModes = storedModes.filter((mode): mode is PracticeMode =>
+					PRACTICE_MODES.includes(mode)
+				);
+				if (!chosenModes.length) chosenModes = ['cue_recall'];
+			}
+		} catch {
+			// corrupted preference: fall through to the default
+		}
 		void load();
 	});
+
+	function toggleMode(mode: PracticeMode) {
+		chosenModes = toggle(chosenModes, mode) as PracticeMode[];
+		localStorage.setItem(MODES_KEY, JSON.stringify(chosenModes));
+	}
 
 	async function load() {
 		loading = true;
@@ -337,14 +358,14 @@
 					learning ones, cold-start mastered ones, drill weak links and line junctures.
 					Session length comes from your own pace in past attempts.
 				</p>
-				<details>
+				<details bind:open={modesOpen}>
 					<summary class="muted small">Choose modes manually</summary>
 				<div class="choices">
 					{#each PRACTICE_MODES as mode (mode)}
 						<button
 							class:active={chosenModes.includes(mode)}
 							aria-pressed={chosenModes.includes(mode)}
-							onclick={() => (chosenModes = toggle(chosenModes, mode) as PracticeMode[])}
+							onclick={() => toggleMode(mode)}
 						>{mode.replaceAll('_', ' ')}</button>
 					{/each}
 				</div>

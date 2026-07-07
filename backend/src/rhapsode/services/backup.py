@@ -35,6 +35,11 @@ def startup_snapshot(database_path: Path, backup_dir: Path) -> Path | None:
     return snapshot_sqlite(database_path, backup_dir, "startup")
 
 
+def newest_snapshot_at(database_path: Path, backup_dir: Path) -> datetime | None:
+    """When the last snapshot landed — the settings screen's backup-health line."""
+    return _newest_snapshot_mtime(backup_dir, database_path)
+
+
 def _snapshots(backup_dir: Path, database_path: Path) -> list[Path]:
     if not backup_dir.exists():
         return []

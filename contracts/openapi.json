@@ -1557,6 +1557,48 @@
         "title": "SettingRead",
         "type": "object"
       },
+      "SystemStatusRead": {
+        "description": "Settings-screen health: where data safety and configuration stand.",
+        "properties": {
+          "backup_dir": {
+            "title": "Backup Dir",
+            "type": "string"
+          },
+          "desired_retention": {
+            "title": "Desired Retention",
+            "type": "number"
+          },
+          "fsrs_personal_parameters": {
+            "title": "Fsrs Personal Parameters",
+            "type": "boolean"
+          },
+          "gemini_key_configured": {
+            "title": "Gemini Key Configured",
+            "type": "boolean"
+          },
+          "last_backup_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Backup At"
+          }
+        },
+        "required": [
+          "backup_dir",
+          "last_backup_at",
+          "gemini_key_configured",
+          "fsrs_personal_parameters",
+          "desired_retention"
+        ],
+        "title": "SystemStatusRead",
+        "type": "object"
+      },
       "TodayForecastDay": {
         "properties": {
           "date": {
@@ -3483,6 +3525,27 @@
         "summary": "Put Setting",
         "tags": [
           "settings"
+        ]
+      }
+    },
+    "/api/v1/system/status": {
+      "get": {
+        "operationId": "system_status_api_v1_system_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatusRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "System Status",
+        "tags": [
+          "system"
         ]
       }
     }

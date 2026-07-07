@@ -378,6 +378,18 @@ class PluginRead(ORMModel):
     config: dict[str, Any]
 
 
+class SystemStatusRead(BaseModel):
+    """Settings-screen health: where data safety and configuration stand."""
+
+    backup_dir: str
+    last_backup_at: datetime | None
+    gemini_key_configured: bool
+    # True once scripts/optimize_fsrs.py has written personally fitted
+    # weights; False means the population defaults are scheduling.
+    fsrs_personal_parameters: bool
+    desired_retention: float
+
+
 class SettingInput(BaseModel):
     value: Any
 

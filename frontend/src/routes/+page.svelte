@@ -40,6 +40,47 @@
 		}
 	});
 
+	// First-run: a ready-made passage so the first five minutes teach the
+	// practice loop instead of demanding data entry. Plain create through the
+	// normal API — nothing special about it once it exists.
+	const SAMPLE_LINES = [
+		'Μῆνιν ἄειδε, θεά, Πηληϊάδεω Ἀχιλῆος',
+		'οὐλομένην, ἣ μυρί᾽ Ἀχαιοῖς ἄλγε᾽ ἔθηκε,',
+		'πολλὰς δ᾽ ἰφθίμους ψυχὰς Ἄϊδι προΐαψεν',
+		'ἡρώων, αὐτοὺς δὲ ἑλώρια τεῦχε κύνεσσιν',
+		'οἰωνοῖσί τε πᾶσι· Διὸς δ᾽ ἐτελείετο βουλή.'
+	];
+	let creatingSample = $state(false);
+
+	async function createSample() {
+		const greek = languages.find((profile) => profile.slug === 'ancient-greek');
+		if (!greek) {
+			error = 'The Ancient Greek language profile is missing; create a passage manually.';
+			return;
+		}
+		creatingSample = true;
+		error = '';
+		try {
+			const created = await api.createPassage({
+				title: 'Sample: Iliad 1.1–5',
+				language_profile_id: greek.id,
+				description: 'The opening invocation — try a smart session on it.',
+				source_text: SAMPLE_LINES.join('\n'),
+				segments: SAMPLE_LINES.map((text, index) => ({
+					client_id: `sample-line-${index + 1}`,
+					kind: 'line',
+					ordinal: index,
+					text
+				}))
+			});
+			await goto(`/passages/${created.id}`);
+		} catch (cause) {
+			error = `Could not create the sample: ${cause instanceof Error ? cause.message : cause}`;
+		} finally {
+			creatingSample = false;
+		}
+	}
+
 	// One button, whole library, exactly what FSRS says is due — the daily
 	// front door.
 	async function practiceToday() {
@@ -114,7 +155,12 @@
 {:else if passages.length === 0 && !error}
 	<div class="card empty">
 		<p>No passages yet. Add your first text — Greek, Armenian, Latin, Japanese, or anything else.</p>
-		<a href="/passages/new"><button class="primary">Create a passage</button></a>
+		<div class="empty-actions">
+			<a href="/passages/new"><button class="primary">Create a passage</button></a>
+			<button onclick={createSample} disabled={creatingSample}>
+				{creatingSample ? 'Creating…' : 'Try a sample — Iliad 1.1–5'}
+			</button>
+		</div>
 	</div>
 {:else}
 	<div class="grid">
@@ -249,6 +295,14 @@
 	.empty {
 		text-align: center;
 		padding: 48px;
+	}
+
+	.empty-actions {
+		display: flex;
+		justify-content: center;
+		gap: 12px;
+		flex-wrap: wrap;
+		margin-top: 14px;
 	}
 
 	.tag {

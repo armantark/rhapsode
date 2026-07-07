@@ -46,8 +46,10 @@ test('full loop: create, render Unicode, practice, grade, review', async ({ page
 	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
 
 	// Item 1: the cue card shows the verbatim lead-in (the literal recall cue
-	// now lives behind "Need a hint?"). Grade clean via the "Easy" shortcut (4).
+	// now lives behind "Need a hint?"). Recall cards require the check before
+	// grading, so Space flips the card first; then grade via "Easy" (4).
 	await expect(page.getByText('Recite this line to the end.')).toBeVisible();
+	await page.keyboard.press(' ');
 	await page.keyboard.press('4');
 	await expect(page.getByText(/Easy · mastery/)).toBeVisible();
 
@@ -95,6 +97,7 @@ test('an interrupted session resumes at the persisted cursor after reload', asyn
 	const sessionUrl = page.url();
 
 	await expect(page.getByText('Recite this line to the end.')).toBeVisible();
+	await page.keyboard.press(' '); // check first — grading unlocks after the reveal
 	await page.keyboard.press('3'); // "Good" → hesitant on item 1
 	await expect(page.getByText(/Good · mastery/)).toBeVisible();
 
@@ -118,8 +121,9 @@ test('Cmd+Z reopens the last graded card and rewinds the tally', async ({ page }
 	await startManualSession(page);
 	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
 
-	// Grade item 1, advancing the cursor.
+	// Check, then grade item 1, advancing the cursor.
 	await expect(page.getByText('Recite this line to the end.')).toBeVisible();
+	await page.keyboard.press(' ');
 	await page.keyboard.press('4');
 	await expect(page.getByText('1/2 items')).toBeVisible();
 
@@ -205,6 +209,11 @@ test('smart sessions rotate a learning line through distinct exercises', async (
 		await page.getByRole('button', { name: '✦ Smart session' }).click();
 		await expect(page).toHaveURL(/\/practice\/[\w-]+/);
 		await expect(page.getByText(expectedMode, { exact: true })).toBeVisible();
+		// Recall modes require the check before grading; fading does not.
+		const reveal = page.getByRole('button', { name: /Show answer/ });
+		if (await reveal.isVisible()) {
+			await reveal.click();
+		}
 		await page.keyboard.press('3'); // Good keeps the line in learning.
 		await expect(page.getByText('Session complete')).toBeVisible();
 		await page.goto(passageUrl);

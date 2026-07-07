@@ -565,15 +565,20 @@
 			{micEnabled ? '🎙 recording enabled' : '🎙 enable recording'}
 		</button>
 
-		<GradeBar onGrade={grade} disabled={submitting} />
+		<!-- Recall cards require the check before grading (Anki model: the answer
+		     is always seen before the grade). Verbatim errors are exactly the ones
+		     the reciter doesn't hear, so grading blind would inflate the schedule.
+		     The peek itself stays neutral — it never forces a grade. -->
+		<GradeBar onGrade={grade} disabled={submitting || canReveal} />
 		{#if revealed}
 			<p class="muted small">
 				Answer shown — grade yourself honestly. Pick <strong>Again</strong> only if you
 				couldn't recall it.
 			</p>
-		{:else}
+		{:else if canReveal}
 			<p class="muted small">
-				Recite from memory, then press <kbd>Space</kbd> to check before grading.
+				Recite from memory, then press <kbd>Space</kbd> to check — grading unlocks after
+				the check.
 			</p>
 		{/if}
 		{#if lastFeedback}

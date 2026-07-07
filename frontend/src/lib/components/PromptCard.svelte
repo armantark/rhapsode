@@ -107,6 +107,15 @@
 	const hintNode = $derived.by(() =>
 		japanese && effectiveHint ? nodeForText(effectiveHint) : null
 	);
+	// A juncture fading card carries the previous line's tail as a persistent
+	// anchor — the association being trained is tail→head, so the transition
+	// must stay identifiable even at the fully faded stage.
+	const fadeLeadIn = $derived(
+		item.mode === 'progressive_fading' && typeof prompt.lead_in === 'string' ? prompt.lead_in : ''
+	);
+	const fadeLeadInNode = $derived.by(() =>
+		japanese && fadeLeadIn ? nodeForText(fadeLeadIn) : null
+	);
 	const fullPassageNodes = $derived.by(() =>
 		japanese && item.mode === 'full_passage'
 			? nodes.filter((candidate) => candidate.kind === 'line').sort((a, b) => a.ordinal - b.ordinal)
@@ -158,10 +167,13 @@
 	);
 	const japaneseStages = $derived.by(() => {
 		if (!practiceRuby || japaneseTokens.length < 2) return [];
+		// Support fades from the END toward the opening: the opening is the
+		// retrieval cue, so each stage asks for a longer recalled tail (mirrors
+		// backend progressive_masks).
 		return [0, ...hiddenCounts(japaneseTokens.length)].map((hidden) =>
 			japaneseTokens.map((token, index) => ({
 				token,
-				hidden: index < hidden,
+				hidden: index >= japaneseTokens.length - hidden,
 				mask: dotMask(token.text)
 			}))
 		);
@@ -251,6 +263,18 @@
 			</p>
 		{/if}
 	{:else if item.mode === 'progressive_fading' && stages.length}
+		{#if fadeLeadIn}
+			<div class="cue-line">
+				{#if fadeLeadInNode}
+					<div class="cue rich-cue">
+						<SegmentText node={fadeLeadInNode} {profile} layers={[]} showRuby={readingEnabled} />
+					</div>
+				{:else}
+					<span class="cue passage-text" {lang} style:font-family={fonts}>{fadeLeadIn}</span>
+				{/if}
+				<span class="muted">… carry on into the next line</span>
+			</div>
+		{/if}
 		{#if japaneseStages.length}
 			<div class="passage-text rich-prompt fade-token-row">
 				{#each japaneseStages[stageIndex] ?? [] as piece (piece.token.id)}

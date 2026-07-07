@@ -145,18 +145,38 @@ describe('built-in mode rendering', () => {
 			'お',
 			'ほし'
 		]);
+		// Support fades from the END: the opening stays visible longest because
+		// it is the retrieval cue (mirrors backend progressive_masks).
 		await fireEvent.click(screen.getByRole('button', { name: 'Fade further' }));
 		expect([...container.querySelectorAll('.fade-token-mask')].map((node) => node.textContent)).toEqual([
 			'•',
-			'••••••'
+			'•'
 		]);
-		expect([...container.querySelectorAll('rt')].map((node) => node.textContent)).toEqual(['ほし']);
+		expect([...container.querySelectorAll('rt')].map((node) => node.textContent)).toEqual([
+			'そら',
+			'お'
+		]);
 		await fireEvent.click(screen.getByRole('button', { name: 'Fade further' }));
 		await fireEvent.click(screen.getByRole('button', { name: 'Fade further' }));
 		await fireEvent.click(screen.getByRole('button', { name: 'Fade further' }));
 		expect(container.querySelector('rt')).toBeNull();
 		expect(container.querySelectorAll('.fade-token-mask')).toHaveLength(6);
 		expect(screen.getByText('stage 5/5')).toBeInTheDocument();
+	});
+
+	it('juncture fading keeps the previous line tail visible as the anchor', () => {
+		render(PromptCard, {
+			item: item('progressive_fading', {
+				instruction: "Recite the next line's opening as the support fades.",
+				lead_in: '… ἣν ἀπηύρων',
+				stages: ['τὴν δ᾽ ἐγὼ …', 'τὴν δ᾽ ••• …', '••• ••• ••• …']
+			}),
+			onReveal: vi.fn()
+		});
+		// The tail→head association is what the card trains, so the tail anchor
+		// must be present at every fading stage.
+		expect(screen.getByText('… ἣν ἀπηύρων')).toBeInTheDocument();
+		expect(screen.getByText('τὴν δ᾽ ἐγὼ …')).toBeInTheDocument();
 	});
 
 	it('forward chaining hides the chain until the learner checks it', async () => {

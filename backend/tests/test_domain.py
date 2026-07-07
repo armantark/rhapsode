@@ -1319,9 +1319,16 @@ def test_every_mode_states_its_recitation_extent() -> None:
     assert "first 2 words" in seam_instruction, seam_instruction
     assert "stop" in seam_instruction
     # First exposure fades a juncture too; it must not claim a "whole line".
-    fade_instruction = prompt_for("progressive_fading", juncture, [juncture])["instruction"].lower()
+    fade_prompt = prompt_for("progressive_fading", juncture, [juncture])
+    fade_instruction = fade_prompt["instruction"].lower()
     assert "opening" in fade_instruction, fade_instruction
     assert "whole line" not in fade_instruction
+    # The tail→head association is what the card trains, so the previous
+    # line's tail rides along as a persistent anchor; the final faded stage
+    # must still identify which transition is being crossed. Lines need no
+    # anchor — the card starts at full support, which names the line.
+    assert fade_prompt["lead_in"] == "… gamma delta"
+    assert "lead_in" not in prompt_for("progressive_fading", line, context)
 
 
 def test_chaining_modes_explain_memory_range() -> None:

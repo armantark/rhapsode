@@ -142,6 +142,8 @@
 	}
 </script>
 
+<svelte:head><title>{collection ? `${collection.name} · Rhapsode` : 'Collection · Rhapsode'}</title></svelte:head>
+
 {#if loading}
 	<Skeleton rows={4} card />
 {:else if !collection}

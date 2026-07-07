@@ -284,6 +284,8 @@
 	}
 </script>
 
+<svelte:head><title>{passage ? `${passage.title} · Rhapsode` : 'Passage · Rhapsode'}</title></svelte:head>
+
 {#if loading}
 	<Skeleton rows={5} card />
 {:else if !passage}

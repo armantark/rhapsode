@@ -49,6 +49,8 @@
 	}
 </script>
 
+<svelte:head><title>Collections · Rhapsode</title></svelte:head>
+
 <header class="head">
 	<div>
 		<span class="eyebrow">Collections</span>

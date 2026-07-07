@@ -481,6 +481,8 @@
 	}
 </script>
 
+<svelte:head><title>{sessionTitle ? `${sessionTitle} · Rhapsode` : 'Practice · Rhapsode'}</title></svelte:head>
+
 <svelte:window onblur={pauseClock} onfocus={resumeClock} onkeydown={onWindowKeydown} />
 <svelte:document onvisibilitychange={() => (document.hidden ? pauseClock() : resumeClock())} />
 

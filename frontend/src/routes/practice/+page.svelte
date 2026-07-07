@@ -71,6 +71,8 @@
 	}
 </script>
 
+<svelte:head><title>Sessions · Rhapsode</title></svelte:head>
+
 <span class="eyebrow">Practice</span>
 <h1>Sessions</h1>
 

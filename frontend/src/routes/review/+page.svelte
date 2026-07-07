@@ -162,6 +162,8 @@
 	];
 </script>
 
+<svelte:head><title>Review · Rhapsode</title></svelte:head>
+
 <span class="eyebrow">Review</span>
 <h1>The long game</h1>
 

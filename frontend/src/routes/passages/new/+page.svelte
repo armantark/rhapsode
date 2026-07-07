@@ -54,6 +54,8 @@
 	}
 </script>
 
+<svelte:head><title>New passage · Rhapsode</title></svelte:head>
+
 <span class="eyebrow">New passage</span>
 <h1>Add a text to memorize</h1>
 

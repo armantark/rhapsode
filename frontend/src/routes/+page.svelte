@@ -104,6 +104,8 @@
 	}
 </script>
 
+<svelte:head><title>Library · Rhapsode</title></svelte:head>
+
 <header class="head">
 	<div>
 		<span class="eyebrow">Passage library</span>

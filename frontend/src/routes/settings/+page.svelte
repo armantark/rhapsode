@@ -71,6 +71,8 @@
 	}
 </script>
 
+<svelte:head><title>Settings · Rhapsode</title></svelte:head>
+
 <header class="head">
 	<div>
 		<span class="eyebrow">Configuration</span>

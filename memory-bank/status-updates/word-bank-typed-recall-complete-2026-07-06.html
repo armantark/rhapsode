@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Bank + Typed Recall — Complete · 2026-07-06</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0c0e12; --surface: #161a21; --surface-2: #1e232c; --border: #2a3040;
+    --text: #e8ecf4; --text-dim: #8b95a8; --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.15);
+    --red: #ff5c5c; --green: #4ade80; --amber: #fbbf24; --purple: #a78bfa;
+    --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; }
+body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Outfit', sans-serif; font-weight: 300;
+    padding: 40px 24px 80px; line-height: 1.55;
+}
+.wrap { max-width: 1060px; margin: 0 auto; }
+.badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.12em; color: var(--green); background: rgba(74, 222, 128, 0.1);
+    border: 1px solid var(--green); border-radius: 999px; padding: 4px 14px;
+    display: inline-block; margin-bottom: 18px;
+}
+h1 { font-weight: 700; font-size: 1.9rem; margin-bottom: 10px; }
+.sub { color: var(--text-dim); font-size: 0.95rem; max-width: 800px; margin-bottom: 30px; }
+.sub strong { color: var(--text); font-weight: 500; }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 34px; }
+@media (max-width: 900px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+.metric {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px; text-align: center;
+}
+.metric .num { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 1.5rem; color: var(--green); }
+.metric .lbl { color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em;
+    font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 30px; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+.card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+}
+.card h2 { font-weight: 700; font-size: 1.05rem; margin-bottom: 8px; }
+.card h2 .qa { color: var(--green); font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; margin-left: 8px; }
+.card p { color: var(--text-dim); font-size: 0.86rem; margin-bottom: 12px; }
+.card p strong { color: var(--text); font-weight: 500; }
+.mock {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px;
+}
+.mock-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim);
+    display: block; margin-bottom: 10px;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.76rem;
+    border: 1px solid var(--amber); color: var(--amber);
+    border-radius: 8px; padding: 4px 10px;
+}
+.chip.placed { border-color: var(--border); color: var(--text); background: var(--bg); }
+.slotline {
+    border-bottom: 1px dashed var(--border); margin-bottom: 10px;
+    display: flex; gap: 8px; align-items: center; padding-bottom: 8px;
+}
+.typedbox {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; padding: 8px 10px;
+    color: var(--text); margin-bottom: 8px;
+}
+.truth {
+    border-left: 3px solid var(--amber); padding-left: 10px;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--text);
+}
+.tagpill {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.56rem; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--amber); border: 1px solid var(--border);
+    border-radius: 999px; padding: 1px 6px; margin-right: 6px;
+}
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 10px; }
+@media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+.panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px;
+}
+.panel h3 {
+    font-size: 0.8rem; font-weight: 600; color: var(--text-dim); margin-bottom: 12px;
+    font-family: 'JetBrains Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.panel ul { padding-left: 18px; color: var(--text-dim); font-size: 0.85rem; }
+.panel li { margin-bottom: 7px; }
+.panel li strong { color: var(--text); font-weight: 500; }
+.panel code { font-family: 'JetBrains Mono', monospace; font-size: 0.78em; color: var(--amber); }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <span class="badge">COMPLETED · NEW EXERCISE MODES</span>
+    <h1>word_bank and typed_recall are live on main</h1>
+    <p class="sub">Both modes shipped exactly as ruled: <strong>word bank leads the learning rotation</strong>
+    (rebuild order while all the words are given), and lines <strong>graduate to typed recall</strong> at
+    review/durable (full written production, visually self-checked). No matcher, no parsing, no LLM — the
+    learner's eye and the same four-button grade bar remain the instrument. Pushed as
+    <strong>origin/main @ 4b0129f</strong>.</p>
+
+    <div class="metrics">
+        <div class="metric"><div class="num">90</div><div class="lbl">backend pytest</div></div>
+        <div class="metric"><div class="num">86</div><div class="lbl">frontend vitest</div></div>
+        <div class="metric"><div class="num">13/13</div><div class="lbl">playwright e2e</div></div>
+        <div class="metric"><div class="num">3/3</div><div class="lbl">pinchtab manual QA</div></div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h2>word_bank <span class="qa">QA: PASS</span></h2>
+            <p>Chips deal in a guaranteed non-natural order (the order IS what's being recalled); tap to place,
+            tap to take back; the grade bar stays locked until "Show answer to check". Junctures never receive it —
+            ordering a 3-word head is trivial — including in the minutes-fill rotation.</p>
+            <div class="mock">
+                <span class="mock-label">Verified in browser (Iliad sandbox)</span>
+                <div class="slotline"><span class="chip placed">Μῆνιν</span><span class="chip placed">ἄειδε,</span></div>
+                <div class="chips"><span class="chip">Ἀχιλῆος</span><span class="chip">θεά,</span><span class="chip">Πηληϊάδεω</span></div>
+            </div>
+        </div>
+        <div class="card">
+            <h2>typed_recall <span class="qa">QA: PASS</span></h2>
+            <p>Gold lead-in cue, textarea, then the attempt survives the reveal — stacked directly above the true
+            line in the passage font for the visual check. Works for lines and as a typed juncture bridge
+            ("type just the next line's first N words"). Number keys can't grade while typing (input focus is
+            excluded), and Space types a space instead of revealing.</p>
+            <div class="mock">
+                <span class="mock-label">Verified in browser</span>
+                <div class="typedbox"><span class="tagpill">your attempt</span>test attempt</div>
+                <div class="truth">Μῆνιν ἄειδε, θεά, Πηληϊάδεω Ἀχιλῆος</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="cols">
+        <div class="panel">
+            <h3>What changed where</h3>
+            <ul>
+                <li><strong>PracticeMode enum</strong> gained both modes; OpenAPI contract and the TypeScript client
+                regenerated; the manual launcher lists both buttons.</li>
+                <li><strong>Rotation:</strong> learning = <code>word_bank</code> → cue_recall → chaining → fading;
+                graduated = random_start → <code>typed_recall</code> → chaining → cue_recall; graduated junctures add
+                <code>typed_recall</code> third. Latency defaults: 40s / 60s until personal history takes over.</li>
+                <li><strong>PromptCard</strong> got both renderers; per-item state reset is now guarded on the item id
+                so a reveal can never wipe an in-progress draft or arrangement.</li>
+                <li><strong>Smart-rotation e2e</strong> updated: a learning line's second smart session now deals
+                word bank before cue recall.</li>
+            </ul>
+        </div>
+        <div class="panel">
+            <h3>QA notes (minor, non-blocking)</h3>
+            <ul>
+                <li>The "Choose modes manually" disclosure needed <strong>two clicks</strong> to expand under
+                headless Chrome — possibly a synthetic-click artifact. Flagged as a separate follow-up chip.</li>
+                <li>Manual mode selection resets to the default cue_recall on each passage-page visit — looks
+                intended, noted for awareness.</li>
+                <li>Pinchtab 0.7.8 exposes no console-log endpoint, so "no console errors" is inferred from clean
+                UI behavior across ~a dozen card transitions (same caveat as the pedagogy-pass QA).</li>
+            </ul>
+        </div>
+    </div>
+</div>
+</body>
+</html>

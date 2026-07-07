@@ -202,6 +202,20 @@
   Each iteration verified with the full suites; loops 1-2 browser-verified
   via Pinchtab.
 
+- Continuous UX loop, second window (2026-07-07, iterations 5-7): phone-width
+  overflow fixed (the unwrappable nav forced every page past 600px at 390px;
+  review tables scroll in their own container — all pages verified at exactly
+  390px), big sessions (>24 items) render a slim progress bar instead of dot
+  rows, a real Escape keypress verified closing the shortcuts overlay
+  (Pinchtab could never deliver it), per-page document titles everywhere
+  (detail routes carry the passage/collection/session name), the completion
+  screen closes the daily loop ("Keep going — N still due" one-click next
+  session, or "Queue clear for today"), and collection deletion now uses the
+  same inline two-step confirm as passages (no browser dialogs remain in the
+  app). Verified per iteration: svelte-check 0/0, 89 vitest, build, 14/14
+  Playwright, plus live Playwright checks of the mobile widths, titles, and
+  the completion flow.
+
 ## Remaining
 
 - Push to GitHub and trigger first tagged draft release.

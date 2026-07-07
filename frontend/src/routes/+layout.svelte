@@ -126,10 +126,19 @@
 	nav {
 		display: flex;
 		align-items: baseline;
-		gap: 26px;
+		/* Wraps on narrow viewports — an unwrappable nav row was forcing the
+		   whole document past 600px on a 390px phone screen. */
+		flex-wrap: wrap;
+		gap: 10px 26px;
 		padding: 22px 0;
 		border-bottom: 1px solid var(--border);
 		margin-bottom: 28px;
+	}
+
+	@media (max-width: 700px) {
+		nav {
+			gap: 8px 16px;
+		}
 	}
 
 	.brand {

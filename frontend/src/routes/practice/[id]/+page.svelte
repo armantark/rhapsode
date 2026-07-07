@@ -524,16 +524,30 @@
 		</div>
 	</header>
 
-	<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax={items.length} aria-valuenow={doneCount}>
-		{#each items as item (item.id)}
-			<span
-				class="dot"
-				class:done={item.completed}
-				class:current={item.id === currentItem?.id}
-				title="#{item.position + 1} {item.mode}"
-			></span>
-		{/each}
-	</div>
+	{#if items.length > 24}
+		<!-- A big Today queue would wrap into rows of dots; a slim bar carries
+		     the same signal without eating the screen. -->
+		<div
+			class="progress progress-bar"
+			role="progressbar"
+			aria-valuemin="0"
+			aria-valuemax={items.length}
+			aria-valuenow={doneCount}
+		>
+			<div class="progress-fill" style:width="{(doneCount / Math.max(1, items.length)) * 100}%"></div>
+		</div>
+	{:else}
+		<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax={items.length} aria-valuenow={doneCount}>
+			{#each items as item (item.id)}
+				<span
+					class="dot"
+					class:done={item.completed}
+					class:current={item.id === currentItem?.id}
+					title="#{item.position + 1} {item.mode}"
+				></span>
+			{/each}
+		</div>
+	{/if}
 
 	{#if error}<p class="error-banner" role="alert">{error}</p>{/if}
 
@@ -774,6 +788,21 @@
 		border-radius: 4px;
 		background: var(--surface-2);
 		border: 1px solid var(--border);
+	}
+
+	.progress-bar {
+		height: 8px;
+		border-radius: 999px;
+		background: var(--surface-2);
+		border: 1px solid var(--border);
+		overflow: hidden;
+	}
+
+	.progress-fill {
+		height: 100%;
+		background: var(--green);
+		border-radius: 999px;
+		transition: width 0.25s ease-out;
 	}
 
 	.dot.done {

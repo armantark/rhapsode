@@ -197,6 +197,7 @@
 				>{startingDue === revisionId ? 'Starting…' : `▶ Practice ${group.count} due — ${group.title}`}</button>
 			{/each}
 		</div>
+		<div class="table-scroll">
 		<table>
 			<thead><tr><th>Segment</th><th>Stage</th><th>Due</th><th>Clean / attempts</th></tr></thead>
 			<tbody>
@@ -216,6 +217,7 @@
 				{/each}
 			</tbody>
 		</table>
+		</div>
 	{/if}
 {:else if tab === 'mastery'}
 	{#if allStates.length === 0}
@@ -250,6 +252,7 @@
 	{#if weak.length === 0}
 		<p class="muted">No weak links — or no difficult attempts yet.</p>
 	{:else}
+		<div class="table-scroll">
 		<table>
 			<thead><tr><th>Segment</th><th>Difficulty</th><th>Hard / total</th><th>Hesitation</th></tr></thead>
 			<tbody>
@@ -266,6 +269,7 @@
 				{/each}
 			</tbody>
 		</table>
+		</div>
 	{/if}
 {:else if tab === 'best'}
 	{#if best.length === 0}
@@ -286,6 +290,12 @@
 <style>
 	h1 {
 		margin: 6px 0 16px;
+	}
+
+	/* Tables keep their natural width and scroll inside their own container
+	   on narrow viewports instead of stretching the page. */
+	.table-scroll {
+		overflow-x: auto;
 	}
 
 	.tabs {

@@ -255,6 +255,25 @@ push, install smoke) remains the other open thread.
   $state-backed nullables to `never` inside $derived — cast via a local
   (documented in practice page and home page).
 
+- Real-app UX pass (2026-07-06, Arman's steer: actual UX, not Tauri
+  packaging): (1) launcher burrs fixed — the manual-modes <details> now binds
+  its open state (the async passage load was re-rendering it shut, which was
+  the "double-click" QA finding), the last manual mode selection persists in
+  localStorage (`rhapsode.manualModes`) like the minutes chip, and the
+  check-before-grade hint is mode-aware (typed_recall points at the button,
+  not Space). (2) /settings page + nav link: Gemini key stored as the
+  `gemini_api_key` app setting with env fallback (prep.resolve_api_key;
+  _generate now takes an api_key param — test stubs accept it), backup health
+  from GET /system/status (backup dir, newest snapshot time via
+  backup.newest_snapshot_at, key configured, personal-weights active,
+  retention target), sound/mic localStorage defaults surfaced. (3) Empty
+  library offers "Try a sample — Iliad 1.1-5" (client-side create through the
+  normal API; no backend). (4) Global "?" keyboard-shortcuts overlay in the
+  layout (Esc/click-outside closes; a small ? nav button for mouse users).
+  Parked from the "real app" review: cutting desktop-v0.0.2 (v0.0.1 from
+  June 12 predates the entire pedagogy overhaul), signing/notarization
+  (needs Arman's Apple Developer account).
+
 ## Verified Results
 
 - Backend: 57 pytest, ruff, strict mypy, contract `--check` all green.

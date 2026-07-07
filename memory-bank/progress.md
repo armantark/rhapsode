@@ -183,6 +183,13 @@
   Ruff, strict mypy, contract + client regen, 89 frontend Vitest,
   svelte-check, production build, 13/13 Playwright, cargo check.
 
+- Real-app UX pass (2026-07-06): launcher disclosure/persistence/hint fixes,
+  Settings page (Gemini key setting-first with env fallback, backup health via
+  GET /system/status, scheduler status, practice defaults), first-run sample
+  passage button, global "?" shortcuts overlay. 90 backend pytest, Ruff,
+  strict mypy, contract + client regen, 89 frontend Vitest, svelte-check 0/0,
+  production build, 13/13 Playwright.
+
 ## Remaining
 
 - Push to GitHub and trigger first tagged draft release.

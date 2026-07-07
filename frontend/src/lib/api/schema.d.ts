@@ -21,6 +21,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analytics/library": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Library Stats
+         * @description Per-passage progress so library cards say where each passage stands
+         *     instead of just naming it.
+         */
+        get: operations["library_stats_api_v1_analytics_library_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/mastery": {
         parameters: {
             query?: never;
@@ -316,7 +337,14 @@ export interface paths {
         get: operations["get_passage_api_v1_passages__passage_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Passage
+         * @description Remove a passage and everything it owns. The DB cascades handle rows
+         *     (revisions → segments → annotations/review states/notes; its sessions and
+         *     attempts go too), but media files live on disk and would orphan — unlink
+         *     them first. Deliberately destructive; the UI names what dies.
+         */
+        delete: operations["delete_passage_api_v1_passages__passage_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -802,6 +830,28 @@ export interface components {
             /** Slug */
             slug: string;
         };
+        /**
+         * LibraryPassageStats
+         * @description Per-passage progress for the library cards, over practiceable units
+         *     (the planner's grain + junctures). `started` is False until any unit has
+         *     a review state, so fresh passages read "not started" rather than 0/N.
+         */
+        LibraryPassageStats: {
+            /** Due */
+            due: number;
+            /** Durable */
+            durable: number;
+            /** Learning */
+            learning: number;
+            /** Passage Id */
+            passage_id: string;
+            /** Review */
+            review: number;
+            /** Started */
+            started: boolean;
+            /** Total Units */
+            total_units: number;
+        };
         /** MasteryPage */
         MasteryPage: {
             /** Items */
@@ -1231,6 +1281,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    library_stats_api_v1_analytics_library_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryPassageStats"][];
                 };
             };
         };
@@ -1946,6 +2016,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PassageDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_passage_api_v1_passages__passage_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                passage_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
                 };
             };
             /** @description Validation Error */

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UX Loop 1 — Plan · 2026-07-06</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0c0e12; --surface: #161a21; --surface-2: #1e232c; --border: #2a3040;
+    --text: #e8ecf4; --text-dim: #8b95a8; --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.15);
+    --red: #ff5c5c; --green: #4ade80; --amber: #fbbf24; --purple: #a78bfa;
+    --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; font-weight: 300;
+    padding: 40px 24px 80px; line-height: 1.55; }
+.wrap { max-width: 1040px; margin: 0 auto; }
+.badge { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.12em; color: var(--accent); background: var(--accent-glow);
+    border: 1px solid var(--accent); border-radius: 999px; padding: 4px 14px;
+    display: inline-block; margin-bottom: 18px; }
+h1 { font-weight: 700; font-size: 1.8rem; margin-bottom: 10px; }
+.sub { color: var(--text-dim); font-size: 0.95rem; max-width: 800px; margin-bottom: 28px; }
+.sub strong { color: var(--text); font-weight: 500; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 26px; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+.card.wide { grid-column: 1 / -1; }
+.pri { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 8px; border-radius: 4px;
+    display: inline-block; margin-bottom: 10px; }
+.pri.gap { color: var(--red); border: 1px solid var(--red); }
+.pri.info { color: var(--amber); border: 1px solid var(--amber); }
+.pri.a11y { color: var(--purple); border: 1px solid var(--purple); }
+.card h2 { font-weight: 700; font-size: 1.05rem; margin-bottom: 8px; }
+.card p { color: var(--text-dim); font-size: 0.86rem; margin-bottom: 10px; }
+.card p strong { color: var(--text); font-weight: 500; }
+.card p code { font-family: 'JetBrains Mono', monospace; font-size: 0.78em; color: var(--amber); }
+.mock { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.mock .title { font-weight: 500; margin-bottom: 6px; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; border: 1px solid var(--border);
+    color: var(--text-dim); border-radius: 999px; padding: 2px 8px; }
+.chip.due { border-color: var(--amber); color: var(--amber); }
+.files { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+.file { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; color: var(--text-dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <span class="badge">UX LOOP · ITERATION 1 · PLAN</span>
+    <h1>Passage deletion, living library cards, dialog focus</h1>
+    <p class="sub">First iteration of the continuous-UX goal: one structural gap (you literally cannot delete a
+    passage), one dead surface (library cards say nothing about your progress), one a11y nit.</p>
+
+    <div class="grid">
+        <div class="card">
+            <span class="pri gap">Structural gap</span>
+            <h2>Delete a passage — safely</h2>
+            <p>No <code>DELETE /passages/{id}</code> exists. The DB cascades are already sound (revisions →
+            segments → annotations/review states/notes; sessions go with their passage), but <strong>media files
+            would orphan on disk</strong> — the endpoint unlinks each revision's assets first. UI: a danger-zone
+            row on the passage page with an explicit confirm naming what dies (practice history included).</p>
+            <div class="files"><span class="file">router.py</span><span class="file">passages/[id]/+page.svelte</span><span class="file">client.ts</span></div>
+        </div>
+        <div class="card">
+            <span class="pri info">Dead surface</span>
+            <h2>Library cards that know your progress</h2>
+            <p>New <code>GET /analytics/library</code>: per-passage due count and mastery distribution over
+            practiceable units. Cards grow a compact chip row:</p>
+            <div class="mock">
+                <div class="title">Iliad 1.1–100</div>
+                <div class="chips"><span class="chip due">3 due</span><span class="chip">42/104 durable</span><span class="chip">12 learning</span></div>
+            </div>
+            <p style="margin-top:8px">Unpracticed passages show "not started" instead of fake zeros.</p>
+            <div class="files"><span class="file">router.py</span><span class="file">schemas.py</span><span class="file">routes/+page.svelte</span></div>
+        </div>
+        <div class="card wide">
+            <span class="pri a11y">A11y nit</span>
+            <h2>Focus the shortcuts dialog on open</h2>
+            <p>The dialog has <code>tabindex="-1"</code> but never receives focus, so screen readers and Esc-from-keyboard
+            land wrong. One <code>$effect</code> to focus it when it mounts.</p>
+            <div class="files"><span class="file">+layout.svelte</span></div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

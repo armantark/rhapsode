@@ -324,6 +324,20 @@ class MasteryPage(BaseModel):
     offset: int
 
 
+class LibraryPassageStats(BaseModel):
+    """Per-passage progress for the library cards, over practiceable units
+    (the planner's grain + junctures). `started` is False until any unit has
+    a review state, so fresh passages read "not started" rather than 0/N."""
+
+    passage_id: str
+    total_units: int
+    started: bool
+    due: int
+    durable: int
+    review: int
+    learning: int
+
+
 class TodayForecastDay(BaseModel):
     date: date
     due: int

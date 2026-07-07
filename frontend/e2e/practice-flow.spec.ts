@@ -258,3 +258,16 @@ test('recordings stay browser-local until explicitly saved as best', async ({ pa
 	await expect(page.getByText(GREEK_LINE_1).first()).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Delete recording' })).toBeVisible();
 });
+
+test('deleting a passage takes a two-step confirm and clears the library', async ({ page }) => {
+	const title = `Delete e2e ${Date.now()}`;
+	await createGreekPassage(page, title);
+
+	// Step one only opens the confirm — nothing is deleted yet.
+	await page.getByRole('button', { name: 'Delete this passage…' }).click();
+	await expect(page.getByText(/cannot be undone/)).toBeVisible();
+
+	await page.getByRole('button', { name: 'Yes, delete it all' }).click();
+	await expect(page.getByRole('heading', { name: 'Your repertoire' })).toBeVisible();
+	await expect(page.getByText(title)).not.toBeVisible();
+});

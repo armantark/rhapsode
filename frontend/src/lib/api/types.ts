@@ -40,6 +40,7 @@ export type AttemptRating = components['schemas']['AttemptRating'];
 export type ReviewState = components['schemas']['ReviewStateRead'];
 export type Today = components['schemas']['TodayRead'];
 export type SystemStatus = components['schemas']['SystemStatusRead'];
+export type LibraryPassageStats = components['schemas']['LibraryPassageStats'];
 export type WeakLink = components['schemas']['WeakLinkRead'];
 export type Setting = components['schemas']['SettingRead'];
 export type PrepSuggestResult = components['schemas']['PrepSuggestResult'];

@@ -63,6 +63,25 @@
 	let suggesting = $state(false);
 	let prepSummary = $state('');
 
+	// Deletion is a two-step inline confirm that names what dies — no browser
+	// confirm() dialog, no accidental single click.
+	let confirmingDelete = $state(false);
+	let deleting = $state(false);
+
+	async function deletePassage() {
+		if (!passage) return;
+		deleting = true;
+		error = '';
+		try {
+			await api.deletePassage(passage.id);
+			await goto('/');
+		} catch (cause) {
+			error = `Could not delete the passage: ${cause instanceof Error ? cause.message : cause}`;
+			deleting = false;
+			confirmingDelete = false;
+		}
+	}
+
 	// Junctures are derived drill targets, not text: they practice but never
 	// display or edit.
 	const visibleSegments = $derived.by(() =>
@@ -434,6 +453,25 @@
 	{:else}
 		<p class="error-banner">This passage has no active revision.</p>
 	{/if}
+
+	<section class="danger">
+		{#if confirmingDelete}
+			<p class="muted small">
+				Deleting <strong>{passage.title}</strong> removes its revisions, annotations, review
+				history, practice sessions, and recordings. This cannot be undone.
+			</p>
+			<div class="danger-actions">
+				<button class="danger-confirm" onclick={deletePassage} disabled={deleting}>
+					{deleting ? 'Deleting…' : 'Yes, delete it all'}
+				</button>
+				<button onclick={() => (confirmingDelete = false)} disabled={deleting}>Cancel</button>
+			</div>
+		{:else}
+			<button class="danger-open" onclick={() => (confirmingDelete = true)}>
+				Delete this passage…
+			</button>
+		{/if}
+	</section>
 {/if}
 
 <style>
@@ -523,6 +561,37 @@
 	.start {
 		width: 100%;
 		padding: 12px;
+		margin-top: 8px;
+	}
+
+	.danger {
+		margin-top: 34px;
+		padding-top: 14px;
+		border-top: 1px solid var(--border);
+	}
+
+	.danger-open {
+		background: none;
+		border: none;
+		padding: 0;
+		font-size: 0.78rem;
+		color: var(--text-dim);
+		text-decoration: underline dotted;
+		cursor: pointer;
+	}
+
+	.danger-open:hover,
+	.danger-confirm {
+		color: var(--red, #ff5c5c);
+	}
+
+	.danger-confirm {
+		border-color: var(--red, #ff5c5c);
+	}
+
+	.danger-actions {
+		display: flex;
+		gap: 10px;
 		margin-top: 8px;
 	}
 

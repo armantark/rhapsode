@@ -642,6 +642,50 @@
         "title": "LanguageProfileRead",
         "type": "object"
       },
+      "LibraryPassageStats": {
+        "description": "Per-passage progress for the library cards, over practiceable units\n(the planner's grain + junctures). `started` is False until any unit has\na review state, so fresh passages read \"not started\" rather than 0/N.",
+        "properties": {
+          "due": {
+            "title": "Due",
+            "type": "integer"
+          },
+          "durable": {
+            "title": "Durable",
+            "type": "integer"
+          },
+          "learning": {
+            "title": "Learning",
+            "type": "integer"
+          },
+          "passage_id": {
+            "title": "Passage Id",
+            "type": "string"
+          },
+          "review": {
+            "title": "Review",
+            "type": "integer"
+          },
+          "started": {
+            "title": "Started",
+            "type": "boolean"
+          },
+          "total_units": {
+            "title": "Total Units",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "passage_id",
+          "total_units",
+          "started",
+          "due",
+          "durable",
+          "review",
+          "learning"
+        ],
+        "title": "LibraryPassageStats",
+        "type": "object"
+      },
       "MasteryPage": {
         "properties": {
           "items": {
@@ -1819,6 +1863,32 @@
         ]
       }
     },
+    "/api/v1/analytics/library": {
+      "get": {
+        "description": "Per-passage progress so library cards say where each passage stands\ninstead of just naming it.",
+        "operationId": "library_stats_api_v1_analytics_library_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LibraryPassageStats"
+                  },
+                  "title": "Response Library Stats Api V1 Analytics Library Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Library Stats",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
     "/api/v1/analytics/mastery": {
       "get": {
         "operationId": "mastery_api_v1_analytics_mastery_get",
@@ -2786,6 +2856,51 @@
       }
     },
     "/api/v1/passages/{passage_id}": {
+      "delete": {
+        "description": "Remove a passage and everything it owns. The DB cascades handle rows\n(revisions → segments → annotations/review states/notes; its sessions and\nattempts go too), but media files live on disk and would orphan — unlink\nthem first. Deliberately destructive; the UI names what dies.",
+        "operationId": "delete_passage_api_v1_passages__passage_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "passage_id",
+            "required": true,
+            "schema": {
+              "title": "Passage Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Delete Passage Api V1 Passages  Passage Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Passage",
+        "tags": [
+          "passages"
+        ]
+      },
       "get": {
         "operationId": "get_passage_api_v1_passages__passage_id__get",
         "parameters": [

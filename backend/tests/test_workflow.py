@@ -608,6 +608,88 @@ def test_review_logs_persist_per_grade_and_undo_retracts_them(
     assert log_count() == 0
 
 
+def test_delete_passage_removes_rows_and_media_files(
+    client: TestClient,
+    session_factory: object,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+    tmp_path: object,
+) -> None:
+    from pathlib import Path
+
+    from sqlalchemy import func, select
+
+    from rhapsode import models
+
+    revision = passage["active_revision"]
+    # Practice once so review states and a session exist, then attach media.
+    seeded = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "modes": ["cue_recall"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    ).json()
+    client.post(
+        f"/api/v1/sessions/{seeded['id']}/attempts",
+        json={"item_id": seeded["items"][0]["id"], "rating": "hesitant"},
+        headers=mutation(),
+    )
+    media_file = Path(str(tmp_path)) / "reference.mp3"
+    media_file.write_bytes(b"fake-audio")
+    with session_factory() as db:  # type: ignore[operator]
+        db.add(
+            models.MediaAsset(
+                revision_id=revision["id"],
+                category="reference",
+                mime_type="audio/mpeg",
+                original_name="reference.mp3",
+                storage_path=str(media_file),
+                size_bytes=10,
+                cue_points=[],
+            )
+        )
+        db.commit()
+
+    deleted = client.delete(f"/api/v1/passages/{passage['id']}", headers=mutation())
+    assert deleted.status_code == 200, deleted.text
+    assert client.get(f"/api/v1/passages/{passage['id']}").status_code == 404
+    # The media file left the disk with the rows.
+    assert not media_file.exists()
+    with session_factory() as db:  # type: ignore[operator]
+        for model in (models.Segment, models.ReviewState, models.PracticeSession):
+            assert (db.scalar(select(func.count()).select_from(model)) or 0) == 0
+
+
+def test_library_stats_report_per_passage_progress(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    # Fresh passage: present but not started.
+    stats = client.get("/api/v1/analytics/library").json()
+    assert len(stats) == 1
+    entry = stats[0]
+    assert entry["passage_id"] == passage["id"]
+    assert entry["started"] is False
+    # 2 lines + 1 juncture are the practiceable units.
+    assert entry["total_units"] == 3
+    assert entry["due"] == 0
+
+    revision = passage["active_revision"]
+    seeded = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "modes": ["cue_recall"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    ).json()
+    client.post(
+        f"/api/v1/sessions/{seeded['id']}/attempts",
+        json={"item_id": seeded["items"][0]["id"], "rating": "hesitant"},
+        headers=mutation(),
+    )
+    entry = client.get("/api/v1/analytics/library").json()[0]
+    assert entry["started"] is True
+    assert entry["learning"] == 1
+
+
 def test_library_wide_today_queue(
     client: TestClient,
     session_factory: object,

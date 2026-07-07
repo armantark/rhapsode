@@ -3,11 +3,12 @@
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api/client';
 	import { isTauri } from '$lib/api/platform';
-	import type { LanguageProfile, Passage, Today } from '$lib/api/types';
+	import type { LanguageProfile, LibraryPassageStats, Passage, Today } from '$lib/api/types';
 
 	let passages: Passage[] = $state([]);
 	let languages: LanguageProfile[] = $state([]);
 	let today: Today | null = $state(null);
+	let statsByPassage: Map<string, LibraryPassageStats> = $state(new Map());
 	let loading = $state(true);
 	let launching = $state(false);
 	let error = $state('');
@@ -23,11 +24,16 @@
 
 	onMount(async () => {
 		try {
-			[passages, languages, today] = await Promise.all([
+			const [loadedPassages, loadedLanguages, loadedToday, stats] = await Promise.all([
 				api.listPassages(),
 				api.listLanguages(),
-				api.today()
+				api.today(),
+				api.libraryStats()
 			]);
+			passages = loadedPassages;
+			languages = loadedLanguages;
+			today = loadedToday;
+			statsByPassage = new Map(stats.map((entry) => [entry.passage_id, entry]));
 			// The desktop dock icon does the daily pulling: badge = due count.
 			if (isTauri()) {
 				const { invoke } = await import('@tauri-apps/api/core');
@@ -165,10 +171,26 @@
 {:else}
 	<div class="grid">
 		{#each passages as passage (passage.id)}
+			{@const stats = statsByPassage.get(passage.id)}
 			<a class="passage card" href="/passages/{passage.id}">
 				<span class="tag">{languageById.get(passage.language_profile_id)?.name ?? 'Unknown language'}</span>
 				<h2>{passage.title}</h2>
 				{#if passage.description}<p class="muted">{passage.description}</p>{/if}
+				{#if stats}
+					<div class="stat-chips">
+						{#if !stats.started}
+							<span class="stat-chip">not started</span>
+						{:else}
+							{#if stats.due > 0}
+								<span class="stat-chip due">{stats.due} due</span>
+							{/if}
+							<span class="stat-chip">{stats.durable}/{stats.total_units} durable</span>
+							{#if stats.learning > 0}
+								<span class="stat-chip">{stats.learning} learning</span>
+							{/if}
+						{/if}
+					</div>
+				{/if}
 			</a>
 		{/each}
 	</div>
@@ -295,6 +317,28 @@
 	.empty {
 		text-align: center;
 		padding: 48px;
+	}
+
+	.stat-chips {
+		display: flex;
+		gap: 6px;
+		flex-wrap: wrap;
+		margin-top: auto;
+		padding-top: 6px;
+	}
+
+	.stat-chip {
+		font-family: var(--font-mono);
+		font-size: 0.66rem;
+		color: var(--text-dim);
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		padding: 2px 8px;
+	}
+
+	.stat-chip.due {
+		color: var(--gold);
+		border-color: var(--gold);
 	}
 
 	.empty-actions {

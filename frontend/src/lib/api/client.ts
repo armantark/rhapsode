@@ -8,6 +8,7 @@ import type {
 	CuePoint,
 	Health,
 	LanguageProfile,
+	LibraryPassageStats,
 	Media,
 	MediaCategory,
 	Passage,
@@ -105,6 +106,8 @@ export const api = {
 	getPassage: (passageId: string) => send<PassageDetail>('GET', `/passages/${passageId}`),
 	createPassage: (input: PassageInput, key?: string) =>
 		send<PassageDetail>('POST', '/passages', { body: input, key }),
+	deletePassage: (passageId: string, key?: string) =>
+		send<Record<string, boolean>>('DELETE', `/passages/${passageId}`, { key }),
 
 	getRevision: (revisionId: string) => send<Revision>('GET', `/revisions/${revisionId}`),
 	createRevision: (passageId: string, input: RevisionInput, key?: string) =>
@@ -191,6 +194,7 @@ export const api = {
 		send<PracticeSession>('POST', `/sessions/${sessionId}/complete`, { key }),
 
 	today: () => send<Today>('GET', '/analytics/today'),
+	libraryStats: () => send<LibraryPassageStats[]>('GET', '/analytics/library'),
 	dueReviews: (before?: string) => send<ReviewState[]>('GET', '/analytics/due', { query: { before } }),
 	weakLinks: (revisionId?: string) =>
 		send<WeakLink[]>('GET', '/analytics/weak-links', { query: { revision_id: revisionId } }),

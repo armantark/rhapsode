@@ -47,6 +47,13 @@
 			shortcutsOpen = false;
 		}
 	}
+
+	// Move focus into the dialog when it opens so keyboard and screen-reader
+	// users land inside it rather than behind the backdrop.
+	let shortcutsDialog: HTMLDivElement | null = $state(null);
+	$effect(() => {
+		if (shortcutsOpen) shortcutsDialog?.focus();
+	});
 </script>
 
 <svelte:window onkeydown={onWindowKeydown} />
@@ -92,6 +99,7 @@
 			aria-modal="true"
 			aria-label="Keyboard shortcuts"
 			tabindex="-1"
+			bind:this={shortcutsDialog}
 			onclick={(event) => event.stopPropagation()}
 		>
 			<h2>Keyboard shortcuts</h2>

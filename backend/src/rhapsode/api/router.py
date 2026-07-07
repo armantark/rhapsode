@@ -131,6 +131,32 @@ def create_passage(payload: schemas.PassageInput, db: Db) -> schemas.PassageDeta
     )
 
 
+@router.delete("/passages/{passage_id}", tags=["passages"])
+def delete_passage(passage_id: str, db: Db) -> dict[str, bool]:
+    """Remove a passage and everything it owns. The DB cascades handle rows
+    (revisions → segments → annotations/review states/notes; its sessions and
+    attempts go too), but media files live on disk and would orphan — unlink
+    them first. Deliberately destructive; the UI names what dies."""
+    passage = db.get(models.Passage, passage_id)
+    if passage is None:
+        raise not_found("Passage")
+    revision_ids = list(
+        db.scalars(
+            select(models.PassageRevision.id).where(
+                models.PassageRevision.passage_id == passage_id
+            )
+        )
+    )
+    if revision_ids:
+        for asset in db.scalars(
+            select(models.MediaAsset).where(models.MediaAsset.revision_id.in_(revision_ids))
+        ):
+            media_service.remove_asset(asset.storage_path)
+    db.delete(passage)
+    db.commit()
+    return {"deleted": True}
+
+
 @router.get("/passages/{passage_id}", response_model=schemas.PassageDetail, tags=["passages"])
 def get_passage(passage_id: str, db: Db) -> schemas.PassageDetail:
     passage = db.get(models.Passage, passage_id)
@@ -912,6 +938,47 @@ def today(db: Db) -> schemas.TodayRead:
         streak_days=streak,
         forecast=forecast,
     )
+
+
+@router.get(
+    "/analytics/library",
+    response_model=list[schemas.LibraryPassageStats],
+    tags=["analytics"],
+)
+def library_stats(db: Db) -> list[schemas.LibraryPassageStats]:
+    """Per-passage progress so library cards say where each passage stands
+    instead of just naming it."""
+    results: list[schemas.LibraryPassageStats] = []
+    for revision in _library_revisions(db):
+        kinds = planning.practiceable_kinds(revision)
+        unit_ids = [
+            segment.id for segment in revision.segments if segment.kind in kinds
+        ]
+        stages = (
+            list(
+                db.scalars(
+                    select(models.ReviewState.mastery_stage).where(
+                        models.ReviewState.segment_id.in_(unit_ids)
+                    )
+                )
+            )
+            if unit_ids
+            else []
+        )
+        results.append(
+            schemas.LibraryPassageStats(
+                passage_id=revision.passage_id,
+                total_units=len(unit_ids),
+                started=bool(stages),
+                # SQL-side dueness: SQLite hands back naive datetimes, so the
+                # aware/naive comparison stays in the database like elsewhere.
+                due=len(planning.due_segment_ids(db, unit_ids)),
+                durable=stages.count("durable"),
+                review=stages.count("review"),
+                learning=stages.count("learning"),
+            )
+        )
+    return results
 
 
 @router.get("/analytics/mastery", response_model=schemas.MasteryPage, tags=["analytics"])

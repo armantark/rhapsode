@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recital · Heard Cues · Meaning Recall — Complete · 2026-07-06</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0c0e12; --surface: #161a21; --surface-2: #1e232c; --border: #2a3040;
+    --text: #e8ecf4; --text-dim: #8b95a8; --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.15);
+    --red: #ff5c5c; --green: #4ade80; --amber: #fbbf24; --purple: #a78bfa;
+    --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; }
+body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Outfit', sans-serif; font-weight: 300;
+    padding: 40px 24px 80px; line-height: 1.55;
+}
+.wrap { max-width: 1060px; margin: 0 auto; }
+.badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.12em; color: var(--green); background: rgba(74, 222, 128, 0.1);
+    border: 1px solid var(--green); border-radius: 999px; padding: 4px 14px;
+    display: inline-block; margin-bottom: 18px;
+}
+h1 { font-weight: 700; font-size: 1.9rem; margin-bottom: 10px; }
+.sub { color: var(--text-dim); font-size: 0.95rem; max-width: 800px; margin-bottom: 30px; }
+.sub strong { color: var(--text); font-weight: 500; }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 34px; }
+@media (max-width: 900px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+.metric {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px; text-align: center;
+}
+.metric .num { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 1.5rem; color: var(--green); }
+.metric .lbl { color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em;
+    font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+.list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 34px; }
+.fix {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 20px;
+    display: grid; grid-template-columns: 24px 1fr auto; gap: 14px; align-items: start;
+}
+.fix .check { color: var(--green); font-weight: 700; }
+.fix h2 { font-size: 0.98rem; font-weight: 700; margin-bottom: 4px; }
+.fix p { color: var(--text-dim); font-size: 0.84rem; }
+.fix p strong { color: var(--text); font-weight: 500; }
+.fix code { font-family: 'JetBrains Mono', monospace; font-size: 0.78em; color: var(--amber); }
+.qa {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 600;
+    letter-spacing: 0.1em; padding: 2px 8px; border-radius: 4px; white-space: nowrap;
+    color: var(--green); border: 1px solid var(--green);
+}
+.qa.unit { color: var(--purple); border-color: var(--purple); }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+.panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px;
+}
+.panel h3 {
+    font-size: 0.8rem; font-weight: 600; color: var(--text-dim); margin-bottom: 12px;
+    font-family: 'JetBrains Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.panel ul { padding-left: 18px; color: var(--text-dim); font-size: 0.85rem; }
+.panel li { margin-bottom: 7px; }
+.panel li strong { color: var(--text); font-weight: 500; }
+.panel code { font-family: 'JetBrains Mono', monospace; font-size: 0.78em; color: var(--amber); }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <span class="badge">COMPLETED · SCAMPER BATCH</span>
+    <h1>Recital, heard cues, and meaning recall are live</h1>
+    <p class="sub">All four approved ideas shipped and verified on <strong>origin/main @ e1cef8a</strong>.
+    The practice loop now covers the one condition it couldn't simulate before — <strong>performing with no
+    net</strong> — and full-passage work finally produces per-line signal instead of one fanned grade.</p>
+
+    <div class="metrics">
+        <div class="metric"><div class="num">87</div><div class="lbl">backend pytest</div></div>
+        <div class="metric"><div class="num">89</div><div class="lbl">frontend vitest</div></div>
+        <div class="metric"><div class="num">13/13</div><div class="lbl">playwright e2e</div></div>
+        <div class="metric"><div class="num">4/4</div><div class="lbl">pinchtab manual QA</div></div>
+    </div>
+
+    <div class="list">
+        <div class="fix">
+            <span class="check">✓</span>
+            <div>
+                <h2>recital — perform with no net, grade from the stumble map</h2>
+                <p>No grade bar at all (verified absent in the accessibility tree). Numbers-only chips during the
+                performance, texts on the adjust screen, flags carried across. Stumbled lines lapse
+                (<code>incorrect</code>), clean lines pass (<code>hesitant</code>), junctures inherit their landing
+                line. Undo rolls the whole recital back. Known limit, recorded in the memory bank: per-line stumbles
+                feed FSRS and the mastery ladder but not the weak-link difficulty flag (one attempt row per recital).</p>
+            </div>
+            <span class="qa">QA PASS</span>
+        </div>
+        <div class="fix">
+            <span class="check">✓</span>
+            <div>
+                <h2>Heard-cue junctures</h2>
+                <p>Recall and fading juncture cards carry the previous line's LineAligner span and a
+                "▶ Hear the cue" button when aligned reference audio exists. The sandbox has no audio, so browser QA
+                verified the degradation path: cards byte-identical to before, zero play elements. The span-selection
+                logic (previous line's span, lines untouched) is pinned by a backend unit test.</p>
+            </div>
+            <span class="qa unit">QA PASS · AUDIO PATH UNIT-TESTED</span>
+        </div>
+        <div class="fix">
+            <span class="check">✓</span>
+            <div>
+                <h2>meaning_recall — translation as the cue</h2>
+                <p>Gates on a drafted translation the way shadowing gates on audio; graduated lines only, junctures
+                never. Manual sessions filter to translated lines — the sandbox has none, so QA confirmed the graceful
+                "no practiceable segments" error; the happy path is pinned by a workflow test (targets only the
+                translated line, prompt carries the exact translation) and a card-rendering vitest.</p>
+            </div>
+            <span class="qa unit">QA PASS · HAPPY PATH UNIT-TESTED</span>
+        </div>
+        <div class="fix">
+            <span class="check">✓</span>
+            <div>
+                <h2>Pacing gap on the recital confirm</h2>
+                <p>When every line has an aligned span, the post-confirm feedback appends
+                "you ≈Ns · reference ≈Ms" from the focused-time clock and the summed spans. Pure arithmetic,
+                client-side, absent when spans are absent.</p>
+            </div>
+            <span class="qa unit">SHIPS WITH RECITAL</span>
+        </div>
+    </div>
+
+    <div class="cols">
+        <div class="panel">
+            <h3>Also fixed in passing</h3>
+            <ul>
+                <li><strong>Latent completion bug:</strong> <code>submit_attempt</code> counted remaining items via SQL
+                before flushing <code>item.completed</code>, so any <code>autoflush=False</code> session factory never
+                completed a session. Now flushes first; exposed by the new recital workflow test.</li>
+            </ul>
+        </div>
+        <div class="panel">
+            <h3>Carry-over observations</h3>
+            <ul>
+                <li>The "Choose modes manually" disclosure still needs two clicks under headless Chrome — already
+                flagged as a follow-up chip.</li>
+                <li>To exercise meaning_recall and heard cues on real material: run prep (translations) on a passage
+                and align its reference audio in LineAligner — the Iliad passage in the dev DB already qualifies for
+                the audio half.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+</body>
+</html>

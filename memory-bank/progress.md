@@ -190,6 +190,18 @@
   strict mypy, contract + client regen, 89 frontend Vitest, svelte-check 0/0,
   production build, 13/13 Playwright.
 
+- Continuous UX loop (2026-07-07, iterations 1-4): passage deletion
+  (DELETE /passages with media-file cleanup, two-step confirm, e2e), library
+  card stats via GET /analytics/library, a stale-list-response race fix on
+  the collections page (created collections could silently vanish — loads
+  now carry a mutation-invalidated sequence number, a pattern worth reusing),
+  review-page polish (all-due launcher, ladder-ordered mastery groups,
+  relative overdue labels), a proper title for library-wide Today sessions
+  in the sessions list (was a raw UUID), a per-line mastery gutter on the
+  reading view, and shimmer skeletons replacing "Loading…" on all pages.
+  Each iteration verified with the full suites; loops 1-2 browser-verified
+  via Pinchtab.
+
 ## Remaining
 
 - Push to GitHub and trigger first tagged draft release.

@@ -28,6 +28,29 @@ def test_mutations_require_and_replay_idempotency(
     assert second.headers["Idempotency-Replayed"] == "true"
 
 
+def test_concurrent_same_key_mutations_never_5xx(
+    client: TestClient, greek_passage_payload: dict[str, object]
+) -> None:
+    # A client retry can race its own original request under the threaded
+    # server: both pass the middleware's "no record" lookup, then the second
+    # INSERT hits the unique constraint. The loser must be swallowed, never
+    # surfaced as a 500 or an unhandled IntegrityError.
+    from concurrent.futures import ThreadPoolExecutor
+
+    headers = {"Idempotency-Key": "race-key"}
+
+    def fire() -> int:
+        response = client.post("/api/v1/passages", json=greek_passage_payload, headers=headers)
+        return response.status_code
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        statuses = list(pool.map(lambda _: fire(), range(8)))
+
+    assert all(status < 500 for status in statuses), statuses
+    # Every request either created it or replayed the record — all agree.
+    assert set(statuses) == {201}
+
+
 def test_practiced_revision_is_immutable(
     client: TestClient,
     mutation: Callable[..., dict[str, str]],

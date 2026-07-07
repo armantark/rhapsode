@@ -3,6 +3,7 @@ from typing import Any, cast
 
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import StreamingResponse
@@ -59,7 +60,14 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                         response_json=content,
                     )
                 )
-                db.commit()
+                try:
+                    db.commit()
+                except IntegrityError:
+                    # A concurrent request with the same key won the insert
+                    # race (the SELECT above is check-then-insert with no
+                    # lock). The record already exists, so dropping ours is
+                    # correct — we still return this request's own response.
+                    db.rollback()
         headers = dict(response.headers)
         headers.pop("content-length", None)
         return Response(

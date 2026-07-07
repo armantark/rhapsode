@@ -2,9 +2,10 @@
 
 ## Current Focus
 
-Tauri v2 desktop release is wired end-to-end: PyInstaller sidecar, Rust lifecycle,
-frontend API discovery, CI draft-release workflow, and sidecar smoke verification.
-Remaining work is manual release validation (signing, first tag push, install smoke).
+Pedagogy hardening pass (2026-07-06) after merging all feature branches into
+main: FSRS lapse mapping, fading direction, due-aware triage, juncture fading
+anchor, and check-before-grade. Desktop release validation (signing, first tag
+push, install smoke) remains the other open thread.
 
 ## Active Decisions
 
@@ -16,6 +17,27 @@ Remaining work is manual release validation (signing, first tag push, install sm
   revealed/incorrect/hesitant/clean. Showing the answer is a NEUTRAL self-check
   (Anki model): it never forces a grade. The peek is recorded as an
   informational `revealed` flag on the attempt, independent of the rating.
+  Since 2026-07-06 the converse IS enforced: on recall modes (cue_recall,
+  random_start, weak_link, chaining, full_passage) the grade bar stays disabled
+  until the answer has been shown — verbatim errors are the ones the reciter
+  doesn't hear, so grading blind inflated the schedule.
+- FSRS lapse mapping (2026-07-06): "incorrect" (the Hard button, "errors in
+  recall") schedules as Rating.Again, not Rating.Hard — FSRS treats Hard as a
+  successful recall, which grew the interval on exactly the lines just recited
+  wrong. The ladder still distinguishes the two failure kinds (grill B2:
+  revealed wipes the streak, incorrect demotes one step); only the schedule
+  unifies them as lapses. hesitant→Good, clean→Easy are unchanged.
+- Progressive fading direction (2026-07-06): support fades from the END of the
+  line toward the opening, because the opening is the retrieval cue (_lead_in
+  doctrine). Each stage demands a longer recalled tail and the last supported
+  stage converges on the cue_recall card shape. Ellipsis units on juncture
+  heads are never masked. Japanese token fading in PromptCard mirrors this.
+- Juncture fading cards (2026-07-06) carry `lead_in` (the previous line's
+  tail) as a persistent gold anchor above the stages, so the tail→head
+  association is trained even at the fully faded stage.
+- Smart-session triage is due-aware (2026-07-06): rank order is weak links →
+  learning → DUE review/durable → new → not-yet-due maintenance. Reviews come
+  before new material; not-due maintenance only fills leftover room.
 - Every attempt stores a `review_snapshot` (prior review state of each segment
   it touched), so `POST /sessions/{id}/undo` rolls the last card back exactly —
   re-opens the item, rewinds FSRS/mastery, and reactivates a just-completed

@@ -17,7 +17,7 @@ implications we committed to:
 
 - Attention is the scarce resource: sessions must be short and winnable, so
   the smart planner caps sessions at 12 items and triages (weak links →
-  learning → new → maintenance).
+  learning → due reviews → new → not-yet-due maintenance).
 - Motivation is deadline-driven: the due-count banner and one-click
   "practice due" buttons act as the deadline surrogate.
 - One-click start beats configuration: smart sessions are the default; manual

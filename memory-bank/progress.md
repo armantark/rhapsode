@@ -145,6 +145,18 @@
   song/visible-answer payloads to bounded range payloads. Full backend pytest,
   backend Ruff, backend `mypy src`, frontend Vitest, and svelte-check pass.
 
+- Pedagogy hardening pass (2026-07-06), after merging all feature branches
+  into main: (1) "incorrect" (Hard, "errors in recall") now schedules as an
+  FSRS lapse (Rating.Again) instead of a pass; (2) progressive fading removes
+  support from the tail toward the opening cue, mirrored in Japanese token
+  fading, with juncture-head ellipses never masked; (3) smart triage serves
+  due review/durable segments before new material and demotes not-yet-due
+  maintenance to last; (4) juncture fading cards carry the previous line's
+  tail as a persistent lead-in anchor; (5) recall cards lock the grade bar
+  until the answer is checked (the peek itself stays neutral). Full backend
+  pytest (80), Ruff, strict mypy, contract check, 84 frontend Vitest,
+  svelte-check, production build, and 13/13 Playwright pass.
+
 ## Remaining
 
 - Push to GitHub and trigger first tagged draft release.

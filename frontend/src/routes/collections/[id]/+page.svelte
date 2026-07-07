@@ -103,9 +103,11 @@
 		await run(() => api.reorderCollectionMembers(collection!.id, order));
 	}
 
+	// Inline two-step confirm, matching the passage page — no browser dialog.
+	let confirmingDelete = $state(false);
+
 	async function destroy() {
 		if (!collection) return;
-		if (!confirm(`Delete the collection “${collection.name}”? Its passages are not affected.`)) return;
 		busy = true;
 		try {
 			await api.deleteCollection(collection.id);
@@ -113,6 +115,7 @@
 		} catch (cause) {
 			error = `Could not delete: ${cause instanceof Error ? cause.message : cause}`;
 			busy = false;
+			confirmingDelete = false;
 		}
 	}
 
@@ -165,7 +168,15 @@
 		<div class="head-actions">
 			<RollupBadges rollup={collection.rollup} />
 			{#if !renaming}<button onclick={() => (renaming = true)}>Rename</button>{/if}
-			<button class="danger" onclick={destroy} disabled={busy}>Delete</button>
+			{#if confirmingDelete}
+				<span class="muted small">Passages are not affected.</span>
+				<button class="danger" onclick={destroy} disabled={busy}>
+					{busy ? 'Deleting…' : 'Yes, delete'}
+				</button>
+				<button onclick={() => (confirmingDelete = false)} disabled={busy}>Cancel</button>
+			{:else}
+				<button class="danger" onclick={() => (confirmingDelete = true)}>Delete…</button>
+			{/if}
 		</div>
 	</header>
 

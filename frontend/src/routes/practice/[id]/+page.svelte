@@ -64,6 +64,23 @@
 	let flash: AttemptRating | null = $state(null);
 	let flashToken = $state(0);
 	let celebrate = $state(false);
+	// What's still waiting after this session — the completion screen offers
+	// to keep the momentum rolling instead of dead-ending at analytics.
+	let remainingDue: number | null = $state(null);
+	let continuing = $state(false);
+
+	async function continueWithDue() {
+		continuing = true;
+		try {
+			const next = await api.createSession({ due_only: true });
+			// A same-route param change would not remount this page (data loads
+			// in onMount), so take a full navigation to the fresh session.
+			window.location.assign(`/practice/${next.id}`);
+		} catch (cause) {
+			error = `Could not start the next session: ${cause instanceof Error ? cause.message : cause}`;
+			continuing = false;
+		}
+	}
 	let soundOn = $state(true);
 	// Consecutive clean recalls this tab — a competence/curiosity driver that
 	// escalates the reward (brighter tone, growing chip).
@@ -374,6 +391,11 @@
 				await finish();
 				celebrate = true;
 				playComplete();
+				try {
+					remainingDue = (await api.today()).due_count;
+				} catch {
+					remainingDue = null;
+				}
 			}
 		} catch (cause) {
 			error = `Could not submit the attempt: ${cause instanceof Error ? cause.message : cause}`;
@@ -681,7 +703,17 @@
 				analytics. Press <kbd>⌘Z</kbd> to reopen the last card.
 			</p>
 			<div class="row">
-				<a href="/review"><button class="primary">Open review →</button></a>
+				{#if remainingDue !== null && remainingDue > 0}
+					<button class="primary" onclick={continueWithDue} disabled={continuing}>
+						{continuing ? 'Building…' : `▶ Keep going — ${remainingDue} still due`}
+					</button>
+					<a href="/review"><button>Open review →</button></a>
+				{:else}
+					{#if remainingDue === 0}
+						<p class="muted small queue-clear">Queue clear for today. 🏛</p>
+					{/if}
+					<a href="/review"><button class="primary">Open review →</button></a>
+				{/if}
 				<a href="/practice"><button>All sessions</button></a>
 			</div>
 		</div>
@@ -948,6 +980,12 @@
 	.summary .row {
 		display: flex;
 		gap: 10px;
+		align-items: center;
+		flex-wrap: wrap;
+	}
+
+	.queue-clear {
+		margin: 0;
 	}
 
 	.summary.celebrate {

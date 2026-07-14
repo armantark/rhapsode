@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Source reference backfill · Complete</title>
+  <style>
+    :root{--bg:#0c0e12;--surface:#161a21;--surface-2:#1e232c;--border:#2a3040;--text:#e8ecf4;--text-dim:#8b95a8;--accent:#4f8cff;--accent-glow:rgba(79,140,255,.15);--red:#ff5c5c;--green:#4ade80;--amber:#fbbf24;--purple:#a78bfa;--radius:12px}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% 0,rgba(74,222,128,.11),transparent 34%),var(--bg);color:var(--text);font:15px/1.55 Outfit,Inter,system-ui,sans-serif}main{width:min(1120px,calc(100% - 32px));margin:42px auto 72px}.badge,.label,.metric small,.file{font:700 11px/1.2 "JetBrains Mono",ui-monospace,monospace;letter-spacing:.09em;text-transform:uppercase}.badge{display:inline-block;padding:7px 10px;border:1px solid color-mix(in srgb,var(--green) 55%,var(--border));border-radius:999px;color:var(--green);background:rgba(74,222,128,.08)}h1{font-size:clamp(30px,5vw,52px);line-height:1.05;letter-spacing:-.035em;margin:18px 0 10px}header p{max-width:760px;color:var(--text-dim);font-size:17px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:28px 0}.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}.metric b{display:block;font-size:28px;line-height:1.1;color:var(--green)}.metric small{color:var(--text-dim)}.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}.card h2{font-size:19px;margin:6px 0 14px}.label{color:var(--green)}.practice{background:#0e1117;border:1px solid var(--border);border-radius:10px;padding:18px}.kicker{font:700 9px ui-monospace,monospace;letter-spacing:.16em;color:var(--amber)}.title{font-size:22px;font-weight:750;margin:4px 0}.sub{font-size:12px;color:var(--text-dim)}.prompt{margin-top:16px;background:var(--surface-2);border-radius:9px;padding:14px}.tag{display:inline-block;font:700 9px ui-monospace,monospace;color:var(--purple);margin-right:8px}.instruction{font-size:13px;color:var(--text-dim)}.answer{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:baseline;margin-top:22px;font:18px Georgia,serif}.ref{font:700 11px ui-monospace,monospace;color:var(--amber)}.rows{display:flex;flex-direction:column;gap:10px}.row{display:grid;grid-template-columns:120px 1fr;gap:12px;padding:12px;background:var(--surface-2);border-radius:9px}.row b{color:var(--green)}ul{padding-left:20px;color:var(--text-dim)}li+li{margin-top:8px}.state{grid-column:1/-1;display:flex;gap:14px;align-items:flex-start}.shield{font-size:28px}.file{display:inline-block;margin:7px 4px 0 0;padding:4px 7px;border-radius:6px;background:var(--surface-2);color:var(--text-dim)}@media(max-width:800px){.metrics{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.state{display:grid;grid-template-columns:auto 1fr}.row{grid-template-columns:1fr}main{margin-top:26px}}@media(max-width:460px){.metrics{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<main>
+  <header><span class="badge">Completed · live backfill</span><h1>The card now knows where it is.</h1><p>Canonical source references are first-class display metadata, the open Iliad card is source-aware, and local ordinals remain untouched beneath the interface.</p></header>
+  <section class="metrics">
+    <div class="metric"><b>2</b><small>Passages backfilled</small></div>
+    <div class="metric"><b>5</b><small>Canonical line labels</small></div>
+    <div class="metric"><b>2</b><small>Open chains refreshed</small></div>
+    <div class="metric"><b>16/16</b><small>Isolated E2E</small></div>
+  </section>
+  <section class="grid">
+    <article class="card"><span class="label">Live result</span><h2>Current collection card</h2><div class="practice"><div class="kicker">COLLECTION PRACTICE</div><div class="title">Iliad thus far</div><div class="sub">Now practicing · Iliad 1.6–7</div><div class="prompt"><span class="tag">FORWARD CHAINING</span><span class="instruction">From memory, recite Iliad 1.6, then check.</span><div class="answer"><span class="ref">Iliad 1.6</span><span>ἐξ οὗ δὴ τὰ πρῶτα διαστήτην ἐρίσαντε</span></div></div></div></article>
+    <article class="card"><span class="label">Data backfill</span><h2>Requested ranges</h2><div class="rows"><div class="row"><span>Iliad 6-7</span><b>Iliad 1.6–7</b></div><div class="row"><span>Lines</span><span>Iliad 1.6 · Iliad 1.7</span></div><div class="row"><span>Iliad 8-10</span><b>Iliad 1.8–10</b></div><div class="row"><span>Lines</span><span>Iliad 1.8 · 1.9 · 1.10</span></div></div></article>
+    <article class="card"><span class="label">Contract</span><h2>General without guessing</h2><ul><li>Revision and segment labels are optional and user/import supplied.</li><li>Chaining uses canonical labels only when the whole requested range has them.</li><li>Unlabeled content says “line N in this passage.”</li><li>No title parsing and no dependency on meter annotations.</li></ul><span class="file">OpenAPI</span><span class="file">Alembic</span><span class="file">Svelte</span></article>
+    <article class="card"><span class="label">Proof</span><h2>All gates green</h2><ul><li>98 backend tests, Ruff, strict mypy, OpenAPI check.</li><li>92 frontend tests, Svelte 0/0, production build.</li><li>16/16 Playwright against its isolated database.</li><li>Read-only live API + SQLite checks and isolated PinchTab inspection.</li></ul></article>
+    <article class="card state"><div class="shield">🛡</div><div><span class="label">State protection</span><h2>No practice progress changed</h2><p class="sub">No grade, advance, undo, completion, attempt, cursor, or review-state mutation was performed. The visual click happened only in PinchTab’s isolated browser tab; the full interaction suite used the dedicated E2E database.</p></div></article>
+  </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Source reference backfill · Plan</title>
+  <style>
+    :root{--bg:#0c0e12;--surface:#161a21;--surface-2:#1e232c;--border:#2a3040;--text:#e8ecf4;--text-dim:#8b95a8;--accent:#4f8cff;--accent-glow:rgba(79,140,255,.15);--red:#ff5c5c;--green:#4ade80;--amber:#fbbf24;--purple:#a78bfa;--radius:12px}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0,var(--accent-glow),transparent 34%),var(--bg);color:var(--text);font:15px/1.55 Outfit,Inter,system-ui,sans-serif}main{width:min(1120px,calc(100% - 32px));margin:42px auto 72px}.badge,.label,.file{font:700 11px/1.2 "JetBrains Mono",ui-monospace,monospace;letter-spacing:.09em;text-transform:uppercase}.badge{display:inline-block;padding:7px 10px;border:1px solid color-mix(in srgb,var(--accent) 55%,var(--border));border-radius:999px;color:var(--accent);background:var(--accent-glow)}h1{font-size:clamp(30px,5vw,52px);line-height:1.05;letter-spacing:-.035em;margin:18px 0 10px}header p{max-width:720px;color:var(--text-dim);font-size:17px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:30px}.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}.card h2{margin:7px 0 12px;font-size:19px}.label{color:var(--amber)}.split{display:grid;grid-template-columns:1fr 1fr;gap:10px}.pane{min-height:190px;padding:15px;border-radius:10px;background:#0e1117;border:1px solid var(--border)}.pane.after{border-color:color-mix(in srgb,var(--green) 45%,var(--border))}.pane strong{display:block;color:var(--text-dim);font:700 10px ui-monospace,monospace;letter-spacing:.1em;margin-bottom:13px}.kicker{font:700 9px ui-monospace,monospace;letter-spacing:.16em;color:var(--amber)}.mock-title{font-size:21px;font-weight:750;margin:5px 0}.mock-sub{font-size:12px;color:var(--text-dim)}.mock-card{margin-top:18px;border:1px solid var(--border);border-radius:9px;padding:12px}.mock-tag{font:700 9px ui-monospace,monospace;color:var(--purple)}.mock-copy{font-size:12px;color:var(--text-dim);margin:9px 0}.greek{font:18px Georgia,serif;margin-top:18px}.bad{color:var(--red)}.good{color:var(--green)}.flow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:center;margin-top:14px}.step{background:var(--surface-2);border-radius:10px;padding:14px;min-height:98px}.num{display:grid;place-items:center;width:25px;height:25px;border-radius:7px;background:var(--accent);font-weight:800;margin-bottom:8px}.file{display:inline-block;margin:5px 4px 0 0;padding:4px 7px;border-radius:6px;background:var(--surface-2);color:var(--text-dim)}.rule{padding:14px;background:var(--surface-2);border-radius:10px;margin-top:10px}.rule b{color:var(--green)}ul{padding-left:20px;color:var(--text-dim)}li+li{margin-top:8px}.scope{grid-column:1/-1}@media(max-width:800px){.grid,.split,.flow{grid-template-columns:1fr}main{margin-top:26px}.pane{min-height:0}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="badge">Pre-implementation plan</span>
+    <h1>Make “line 1” tell the truth.</h1>
+    <p>The open collection card is practicing the first local segment of a passage, but the learner needs the canonical location: Iliad 1.6. This pass separates those identities without disturbing scheduling.</p>
+  </header>
+  <section class="grid">
+    <article class="card scope">
+      <span class="label">Target experience</span>
+      <h2>Collection, passage, and source location each get one job</h2>
+      <div class="split">
+        <div class="pane">
+          <strong>Before · ambiguous</strong><div class="kicker">COLLECTION PRACTICE</div><div class="mock-title">Iliad thus far</div><div class="mock-sub">Iliad 6-7</div><div class="mock-card"><div class="mock-tag">FORWARD CHAINING</div><div class="mock-copy">From memory, recite <span class="bad">line 1</span>, then check.</div><div class="greek"><span class="bad">1</span> · ἐξ οὗ δὴ τὰ πρῶτα…</div></div>
+        </div>
+        <div class="pane after">
+          <strong>After · source-aware</strong><div class="kicker">COLLECTION PRACTICE</div><div class="mock-title">Iliad thus far</div><div class="mock-sub">Now practicing · Iliad 1.6–7</div><div class="mock-card"><div class="mock-tag">FORWARD CHAINING · ILIAD 1.6</div><div class="mock-copy">From memory, recite <span class="good">Iliad 1.6</span>, then check.</div><div class="greek"><span class="good">1.6</span> · ἐξ οὗ δὴ τὰ πρῶτα…</div></div>
+        </div>
+      </div>
+    </article>
+    <article class="card">
+      <span class="label">Contract rule</span><h2>Optional source reference, stable local ordinal</h2>
+      <div class="rule"><b>Canonical reference present:</b> display it everywhere the learner chooses or checks a line.</div>
+      <div class="rule"><b>No reference present:</b> say “the first line in this passage,” never bare “line 1.”</div>
+      <p class="mock-sub">Local ordinals remain untouched for chaining, junctures, appends, and grading.</p>
+    </article>
+    <article class="card">
+      <span class="label">Backfill</span><h2>Only the currently open passage</h2>
+      <ul><li>Whole passage: <b>Iliad 1.6–7</b></li><li>First line: <b>Iliad 1.6</b></li><li>Second line: <b>Iliad 1.7</b></li><li>Rewrite incomplete persisted prompts so the open session updates immediately.</li></ul>
+    </article>
+    <article class="card scope">
+      <span class="label">Execution path</span><h2>Small typed change, proven end to end</h2>
+      <div class="flow">
+        <div class="step"><span class="num">1</span>Add optional reference fields + migration.<br><span class="file">models.py</span><span class="file">schemas.py</span></div>
+        <div class="step"><span class="num">2</span>Format source-aware ranges and update the card/header.<br><span class="file">planning.py</span><span class="file">PromptCard.svelte</span></div>
+        <div class="step"><span class="num">3</span>Backfill SQLite, refresh active prompts, and verify the open URL.<br><span class="file">rhapsode.db</span><span class="file">PinchTab</span></div>
+      </div>
+    </article>
+  </section>
+</main>
+</body>
+</html>

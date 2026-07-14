@@ -62,6 +62,16 @@
 					<label for="text-{draft.clientId}">Text</label>
 					<textarea id="text-{draft.clientId}" rows="1" bind:value={draft.text}></textarea>
 				</div>
+				{#if draft.kind !== 'token'}
+					<div class="field reference">
+						<label for="reference-{draft.clientId}">Source reference</label>
+						<input
+							id="reference-{draft.clientId}"
+							bind:value={draft.referenceLabel}
+							placeholder="Iliad 1.6"
+						/>
+					</div>
+				{/if}
 				<div class="field cue">
 					<label for="cue-{draft.clientId}">Cue</label>
 					<input id="cue-{draft.clientId}" bind:value={draft.cue} placeholder="recall cue" />
@@ -135,6 +145,10 @@
 	}
 
 	.field.cue {
+		width: 180px;
+	}
+
+	.field.reference {
 		width: 180px;
 	}
 

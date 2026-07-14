@@ -146,6 +146,7 @@
 	const profile = $derived(activeRevisionId ? (profileMap[activeRevisionId] ?? null) : null);
 	const referenceMedia = $derived(activeRevisionId ? (mediaMap[activeRevisionId] ?? []) : []);
 	const passageTitle = $derived(activeRevisionId ? (titleMap[activeRevisionId] ?? '') : '');
+	const passageReference = $derived(revision?.reference_label || passageTitle);
 	// Collection sessions show the collection name in the header but still need
 	// the per-card passage title for saved-best filenames.
 	const sessionTitle = $derived(collectionName || passageTitle);
@@ -523,7 +524,9 @@
 		<div>
 			<span class="eyebrow">{collectionName ? 'Collection practice' : 'Practice session'}</span>
 			<h1>{sessionTitle}</h1>
-			{#if collectionName && passageTitle}<p class="muted small head-sub">{passageTitle}</p>{/if}
+			{#if collectionName && passageReference}
+				<p class="muted small head-sub">Now practicing · {passageReference}</p>
+			{/if}
 		</div>
 		<div class="head-actions">
 			{#if streak >= 2}

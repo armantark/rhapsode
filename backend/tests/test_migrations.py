@@ -152,3 +152,20 @@ def test_personal_note_migration_adds_segment_owned_overlay(tmp_path: Path) -> N
     assert columns["text"][3] == 1
     assert columns["updated_at"][3] == 1
     assert any(row[2] == "segments" and row[6] == "CASCADE" for row in foreign_keys)
+
+
+def test_source_reference_migration_adds_nullable_display_labels(tmp_path: Path) -> None:
+    database_path = tmp_path / "rhapsode.db"
+    config = migration_config(database_path)
+    command.upgrade(config, "head")
+
+    with sqlite3.connect(database_path) as connection:
+        revision_columns = {
+            row[1]: row for row in connection.execute("PRAGMA table_info(passage_revisions)")
+        }
+        segment_columns = {
+            row[1]: row for row in connection.execute("PRAGMA table_info(segments)")
+        }
+
+    assert revision_columns["reference_label"][3] == 0
+    assert segment_columns["reference_label"][3] == 0

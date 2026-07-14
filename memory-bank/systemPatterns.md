@@ -9,6 +9,10 @@
 - All mutation endpoints accept `Idempotency-Key` and replay stored responses.
 - Service functions own domain behavior; API routers translate HTTP concerns.
 - Session plans and prompt items are persisted for restart-safe practice.
+- Source references are optional display metadata on revisions and segments.
+  They never replace local ordinals, which remain the stable keys for chaining,
+  junctures, appends, and review history. Chaining copy prefers complete source
+  references; otherwise it explicitly scopes ordinals "in this passage."
 - Active sessions are resumable for 24 idle hours. Backend lifecycle checks
   move older unfinished sessions to `expired`; normal session listings omit
   them, while direct reads preserve their plan and attempts for history.

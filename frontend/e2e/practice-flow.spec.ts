@@ -89,6 +89,29 @@ test('manual random start does not begin at the first line', async ({ page }) =>
 	await expect(page.getByText(GREEK_LINE_2).first()).toBeVisible();
 });
 
+test('source references identify chaining lines without passage-local ambiguity', async ({ page }) => {
+	const title = `Source refs e2e ${Date.now()}`;
+	await page.goto('/passages/new');
+	await page.getByLabel('Title').fill(title);
+	await page.getByLabel('Language').selectOption({ label: 'Ancient Greek' });
+	await page.getByLabel('Source reference for this passage').fill('Iliad 1.6–7');
+	await page.getByLabel(/Source text/).fill(`${GREEK_LINE_1}\n${GREEK_LINE_2}`);
+	await page.getByRole('button', { name: 'Generate line segments' }).click();
+	await page.getByLabel('Source reference', { exact: true }).nth(0).fill('Iliad 1.6');
+	await page.getByLabel('Source reference', { exact: true }).nth(1).fill('Iliad 1.7');
+	await page.getByRole('button', { name: 'Create passage' }).click();
+
+	await page.getByText('Choose modes manually').click();
+	await page.getByRole('button', { name: 'cue recall' }).click();
+	await page.getByRole('button', { name: 'forward chaining' }).click();
+	await page.getByRole('button', { name: '▶ Start manual session' }).click();
+
+	await expect(page.getByText('From memory, recite Iliad 1.6, then check.')).toBeVisible();
+	await expect(page.getByText('Recite Iliad 1.6 from memory.')).toBeVisible();
+	await page.getByRole('button', { name: /Show answer/ }).click();
+	await expect(page.locator('.chain-reference')).toHaveText('Iliad 1.6');
+});
+
 test('an interrupted session resumes at the persisted cursor after reload', async ({ page }) => {
 	const title = `Recovery e2e ${Date.now()}`;
 	await createGreekPassage(page, title);

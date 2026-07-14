@@ -89,12 +89,22 @@ describe('draftsToInputs', () => {
 		expect(input.cue).toBeNull();
 		expect(input.annotations).toEqual([{ layer: 'translation', value: 'alone' }]);
 	});
+
+	it('round-trips optional source references', () => {
+		const [draft] = autoSegment('arma virumque');
+		draft.referenceLabel = 'Aeneid 1.1';
+
+		const [input] = draftsToInputs([draft]);
+
+		expect(input.reference_label).toBe('Aeneid 1.1');
+	});
 });
 
 function fakeSegment(partial: Partial<Segment> & Pick<Segment, 'id' | 'kind' | 'ordinal' | 'text'>): Segment {
 	return {
 		revision_id: 'rev-1',
 		parent_id: null,
+		reference_label: null,
 		cue: null,
 		metadata_json: {},
 		annotations: [],

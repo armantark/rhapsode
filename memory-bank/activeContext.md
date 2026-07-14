@@ -9,6 +9,12 @@ push, install smoke) remains the other open thread.
 
 ## Active Decisions
 
+- Source-reference labels (2026-07-13) are first-class, optional display
+  metadata on `PassageRevision` and `Segment`. They are user/import supplied,
+  never parsed from titles or inferred from meter. Practice keeps local line
+  ordinals internally but shows canonical labels when present; the fallback is
+  explicitly scoped ("line 1 in this passage"). The live `Iliad 6-7` and
+  `Iliad 8-10` revisions are backfilled as `Iliad 1.6–7` and `Iliad 1.8–10`.
 - Local-first single-user app with no authentication.
 - Python 3.13 and SQLite WAL; startup + pre-migration snapshots (24h gate,
   keep 14) in `services/backup.py`; point `RHAPSODE_BACKUP_DIR` at a synced

@@ -245,8 +245,17 @@ def _attach_juncture_audio_cue(
         prompt["audio_cue"] = cue
 
 
-def _range_label(start: int, end: int) -> str:
-    return f"line {start}" if start == end else f"lines {start}-{end}"
+def _range_label(
+    start: int, end: int, context: list[models.Segment] | None = None
+) -> str:
+    references = [segment.reference_label for segment in (context or [])]
+    if references and all(references):
+        if len(references) == 1:
+            return references[0] or ""
+        return f"{references[0]} through {references[-1]}"
+    if start == end:
+        return f"line {start} in this passage"
+    return f"lines {start}-{end} in this passage"
 
 
 def _chain_prompt(
@@ -255,11 +264,12 @@ def _chain_prompt(
     numbers = line_numbers or list(range(1, len(context) + 1))
     start = numbers[0] if numbers else 1
     end = numbers[-1] if numbers else start
-    label = _range_label(start, end)
+    label = _range_label(start, end, context)
     return {
         "instruction": f"From memory, recite {label}, then check.",
         "chain": [segment.text for segment in context],
         "chain_segment_ids": [segment.id for segment in context],
+        "chain_reference_labels": [segment.reference_label for segment in context],
         "line_start": start,
         "line_end": end,
         "prefix_length": end,

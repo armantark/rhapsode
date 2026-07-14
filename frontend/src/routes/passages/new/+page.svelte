@@ -12,6 +12,7 @@
 	let work = $state('');
 	let languageProfileId = $state('');
 	let sourceText = $state('');
+	let referenceLabel = $state('');
 	let drafts: DraftSegment[] = $state([]);
 	let error = $state('');
 	let creating = $state(false);
@@ -38,10 +39,11 @@
 			// straight from source text falls back to one line per line.
 			const effectiveDrafts = drafts.length ? drafts : autoSegment(sourceText);
 			const created = await api.createPassage({
-				title: title.trim(),
-				description: description.trim() || null,
-				language_profile_id: languageProfileId,
-				source_text: sourceText,
+					title: title.trim(),
+					description: description.trim() || null,
+					language_profile_id: languageProfileId,
+					source_text: sourceText,
+					reference_label: referenceLabel.trim() || null,
 				hierarchy: work.trim() ? { work: work.trim() } : {},
 				segments: draftsToInputs(effectiveDrafts, profile)
 			});
@@ -86,6 +88,11 @@
 			<label for="work">Work (hierarchy)</label>
 			<input id="work" bind:value={work} placeholder="Iliad" />
 		</div>
+	</div>
+
+	<div class="field">
+		<label for="reference">Source reference for this passage</label>
+		<input id="reference" bind:value={referenceLabel} placeholder="Iliad 1.6–7" />
 	</div>
 
 	<div class="field">

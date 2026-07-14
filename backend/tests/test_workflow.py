@@ -372,6 +372,51 @@ def test_collection_session_spans_member_passages(
     }
 
 
+def test_source_references_round_trip_into_chaining_prompts(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    greek_passage_payload: dict[str, object],
+) -> None:
+    source_segments = greek_passage_payload["segments"]
+    assert isinstance(source_segments, list)
+    referenced_segments: list[dict[str, object]] = []
+    for index, segment in enumerate(source_segments):
+        assert isinstance(segment, dict)
+        referenced_segments.append(
+            {**segment, "reference_label": f"Iliad 1.{index + 6}"}
+        )
+    payload = {
+        **greek_passage_payload,
+        "title": "Iliad reference contract",
+        "reference_label": "Iliad 1.6–7",
+        "segments": referenced_segments,
+    }
+    created = client.post("/api/v1/passages", json=payload, headers=mutation()).json()
+    revision = created["active_revision"]
+
+    assert revision["reference_label"] == "Iliad 1.6–7"
+    assert [
+        segment["reference_label"]
+        for segment in revision["segments"]
+        if segment["kind"] == "line"
+    ] == ["Iliad 1.6", "Iliad 1.7"]
+
+    session = client.post(
+        "/api/v1/sessions",
+        json={
+            "revision_id": revision["id"],
+            "modes": ["forward_chaining"],
+            "segment_kinds": ["line"],
+        },
+        headers=mutation(),
+    ).json()
+
+    assert session["items"][0]["prompt"]["range_label"] == "Iliad 1.6"
+    assert session["items"][1]["prompt"]["range_label"] == (
+        "Iliad 1.6 through Iliad 1.7"
+    )
+
+
 def test_due_only_session_targets_due_segments(
     client: TestClient,
     session_factory: object,

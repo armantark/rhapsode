@@ -121,6 +121,7 @@ def create_passage(payload: schemas.PassageInput, db: Db) -> schemas.PassageDeta
         passage,
         schemas.RevisionInput(
             source_text=payload.source_text,
+            reference_label=payload.reference_label,
             hierarchy=payload.hierarchy,
             segments=payload.segments,
         ),

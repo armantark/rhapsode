@@ -123,6 +123,7 @@ def add_segments(
             kind=item.kind,
             ordinal=item.ordinal,
             text=item.text,
+            reference_label=item.reference_label,
             cue=item.cue,
             metadata_json=item.metadata_json,
         )
@@ -157,6 +158,7 @@ def create_revision(
         passage_id=passage.id,
         revision_number=int(number or 0) + 1,
         source_text=payload.source_text,
+        reference_label=payload.reference_label,
         hierarchy=payload.hierarchy,
     )
     db.add(revision)

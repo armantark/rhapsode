@@ -917,6 +917,8 @@ export interface components {
             };
             /** Language Profile Id */
             language_profile_id: string;
+            /** Reference Label */
+            reference_label?: string | null;
             /** Segments */
             segments?: components["schemas"]["SegmentInput"][];
             /** Source Text */
@@ -1053,6 +1055,8 @@ export interface components {
             hierarchy?: {
                 [key: string]: unknown;
             };
+            /** Reference Label */
+            reference_label?: string | null;
             /** Segments */
             segments?: components["schemas"]["SegmentInput"][];
             /** Source Text */
@@ -1070,6 +1074,8 @@ export interface components {
             passage_id: string;
             /** Practiced */
             practiced: boolean;
+            /** Reference Label */
+            reference_label: string | null;
             /** Revision Number */
             revision_number: number;
             /** Segments */
@@ -1095,6 +1101,8 @@ export interface components {
             ordinal: number;
             /** Parent Client Id */
             parent_client_id?: string | null;
+            /** Reference Label */
+            reference_label?: string | null;
             /** Text */
             text: string;
         };
@@ -1116,6 +1124,8 @@ export interface components {
             ordinal: number;
             /** Parent Id */
             parent_id: string | null;
+            /** Reference Label */
+            reference_label: string | null;
             /** Revision Id */
             revision_id: string;
             /** Text */

@@ -40,6 +40,7 @@ export interface DraftSegment {
 	clientId: string;
 	kind: string;
 	text: string;
+	referenceLabel: string;
 	cue: string;
 	annotations: DraftAnnotation[];
 	children: DraftSegment[];
@@ -51,7 +52,15 @@ export function newDraftId(): string {
 }
 
 export function makeDraft(kind: string, text = ''): DraftSegment {
-	return { clientId: newDraftId(), kind, text, cue: '', annotations: [], children: [] };
+	return {
+		clientId: newDraftId(),
+		kind,
+		text,
+		referenceLabel: '',
+		cue: '',
+		annotations: [],
+		children: []
+	};
 }
 
 /**
@@ -89,6 +98,7 @@ export function draftsToInputs(
 			kind: draft.kind,
 			ordinal: ordinal++,
 			text: draft.text,
+			reference_label: draft.referenceLabel.trim() || null,
 			cue: draft.cue.trim() ? draft.cue.trim() : null,
 			annotations: draft.annotations
 				.filter((annotation) => annotation.layer.trim() && annotation.value.trim())
@@ -114,6 +124,7 @@ export function segmentsToDrafts(segments: Segment[]): DraftSegment[] {
 		clientId: node.id,
 		kind: node.kind,
 		text: node.text,
+		referenceLabel: node.reference_label ?? '',
 		cue: node.cue ?? '',
 		annotations: (node.annotations ?? []).map((annotation) => ({
 			layer: annotation.layer,

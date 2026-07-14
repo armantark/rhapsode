@@ -16,7 +16,8 @@ function node(partial: Partial<SegmentNode>): SegmentNode {
 		metadata_json: {},
 		annotations: [],
 		children: [],
-		...partial
+		...partial,
+		reference_label: partial.reference_label ?? null
 	};
 }
 

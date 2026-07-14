@@ -866,6 +866,17 @@
             "title": "Language Profile Id",
             "type": "string"
           },
+          "reference_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Label"
+          },
           "segments": {
             "items": {
               "$ref": "#/components/schemas/SegmentInput"
@@ -1207,6 +1218,17 @@
             "title": "Hierarchy",
             "type": "object"
           },
+          "reference_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Label"
+          },
           "segments": {
             "items": {
               "$ref": "#/components/schemas/SegmentInput"
@@ -1244,6 +1266,17 @@
             "title": "Practiced",
             "type": "boolean"
           },
+          "reference_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Label"
+          },
           "revision_number": {
             "title": "Revision Number",
             "type": "integer"
@@ -1265,6 +1298,7 @@
           "passage_id",
           "revision_number",
           "source_text",
+          "reference_label",
           "hierarchy",
           "practiced"
         ],
@@ -1325,6 +1359,17 @@
               }
             ],
             "title": "Parent Client Id"
+          },
+          "reference_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Label"
           },
           "text": {
             "title": "Text",
@@ -1387,6 +1432,17 @@
             ],
             "title": "Parent Id"
           },
+          "reference_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Label"
+          },
           "revision_id": {
             "title": "Revision Id",
             "type": "string"
@@ -1403,6 +1459,7 @@
           "kind",
           "ordinal",
           "text",
+          "reference_label",
           "cue",
           "metadata_json"
         ],

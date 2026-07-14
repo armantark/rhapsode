@@ -225,3 +225,14 @@
 - Extend the reference-audio URL map beyond Iliad 1.1-100 as practice grows.
 - Prose chunk drafting via LLM is deferred until a prose passage exists.
 - Continuous UX loop, iteration 9 (2026-07-07): append lines to a practiced passage without forking. New POST /revisions/{id}/segments (append_segments) is allowed on practiced revisions because it never changes an existing recall target — prior lines keep their IDs, text, ordinals, and review states; the boundary juncture and source_text extend. Passage-page "Add lines" panel. Editing existing lines still forks (correct). Fixed a real staleness bug it surfaced: reading revision.segments cached the collection so the response returned the pre-append set until db.expire_all(). Known benign log flagged as a follow-up chip: IdempotencyMiddleware logs a PendingRollbackError when persisting the record for a 4xx response (e.g. double-submitted attempt 409); request behaves correctly. 93 backend pytest, ruff, mypy, contract regen, 89 vitest, svelte-check, build, 15/15 Playwright.
+- Source-reference labels shipped (2026-07-13): optional revision and segment
+  labels flow through the OpenAPI contract, new/forked passage authoring,
+  collection practice headers, chaining instructions, and revealed answer
+  gutters. Unlabeled passages now say "line N in this passage" instead of
+  implying a canonical citation. `scripts/backfill_source_references.py`
+  backfilled the live `Iliad 6-7` and `Iliad 8-10` revisions and refreshed two
+  incomplete active chaining prompts without changing the session cursor,
+  completion, attempts, or review state. Verified with 98 backend tests, Ruff,
+  strict mypy, OpenAPI check, 92 frontend tests, svelte-check 0/0, production
+  build, 16/16 isolated Playwright, read-only API/SQLite probes, and an isolated
+  PinchTab visual check of the open card.

@@ -61,6 +61,11 @@
 	const instruction = $derived(typeof prompt.instruction === 'string' ? prompt.instruction : '');
 	const stages = $derived(Array.isArray(prompt.stages) ? (prompt.stages as string[]) : []);
 	const chain = $derived(Array.isArray(prompt.chain) ? (prompt.chain as string[]) : []);
+	const chainReferences = $derived(
+		Array.isArray(prompt.chain_reference_labels)
+			? (prompt.chain_reference_labels as Array<string | null>)
+			: []
+	);
 	const isChaining = $derived(item.mode === 'forward_chaining' || item.mode === 'backward_chaining');
 	const chainRange = $derived.by(() => {
 		if (typeof prompt.range_label === 'string') return prompt.range_label;
@@ -107,7 +112,11 @@
 		return nodeForText(text) ?? node;
 	});
 	const chainDisplays = $derived.by(() =>
-		chain.map((text) => ({ text, node: japanese ? nodeForText(text) : null }))
+		chain.map((text, index) => ({
+			text,
+			reference: chainReferences[index] || `Line ${index + 1} of ${chain.length}`,
+			node: japanese ? nodeForText(text) : null
+		}))
 	);
 	const hintNode = $derived.by(() =>
 		japanese && effectiveHint ? nodeForText(effectiveHint) : null
@@ -648,17 +657,20 @@
 
 	{#if revealed && (revealText || isChaining)}
 		{#if isChaining && chainDisplays.length}
-			<ol class="chain revealed-text revealed-chain">
+			<ul class="chain revealed-text revealed-chain">
 				{#each chainDisplays as link (link.text)}
 					{#if link.node}
 						<li class="passage-text chain-rich">
+							<span class="chain-reference">{link.reference}</span>
 							<SegmentText node={link.node} {profile} {layers} showRuby={readingEnabled} />
 						</li>
 					{:else}
-						<li class="passage-text" {lang} style:font-family={fonts}>{link.text}</li>
+						<li class="passage-text" {lang} style:font-family={fonts}>
+							<span class="chain-reference">{link.reference}</span>{link.text}
+						</li>
 					{/if}
 				{/each}
-			</ol>
+			</ul>
 		{:else if annotated && node}
 			<div class="revealed-text annotated">
 				<SegmentText {node} {profile} {layers} showRuby={readingEnabled} />
@@ -721,7 +733,25 @@
 
 	.chain {
 		margin: 0;
-		padding-inline-start: 24px;
+		padding: 0;
+		list-style: none;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+
+	.chain li {
+		display: grid;
+		grid-template-columns: minmax(44px, auto) 1fr;
+		align-items: baseline;
+		gap: 12px;
+	}
+
+	.chain-reference {
+		font-family: var(--font-mono);
+		font-size: 0.72rem;
+		color: var(--gold);
+		white-space: nowrap;
 	}
 
 	.chain-rich :global(.segment),

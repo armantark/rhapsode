@@ -233,6 +233,7 @@
 		try {
 			await api.createRevision(passage.id, {
 				source_text: forkSourceText,
+				reference_label: revision?.reference_label ?? null,
 				hierarchy: revision?.hierarchy ?? {},
 				segments: draftsToInputs(drafts, profile)
 			});

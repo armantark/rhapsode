@@ -23,6 +23,7 @@ function lineNode(text: string): SegmentNode {
 		text,
 		ordinal: 0,
 		parent_id: null,
+		reference_label: null,
 		cue: null,
 		annotations: [],
 		metadata_json: {},
@@ -312,7 +313,29 @@ describe('built-in mode rendering', () => {
 		expect(onReveal).toHaveBeenCalledOnce();
 		await rerender({ revealed: true });
 		const links = screen.getAllByRole('listitem');
-		expect(links.map((node) => node.textContent)).toEqual(['first', 'second']);
+		expect(links.map((node) => node.textContent)).toEqual([
+			'Line 1 of 2first',
+			'Line 2 of 2second'
+		]);
+	});
+
+	it('forward chaining shows canonical references instead of passage-local list numbers', () => {
+		const { container } = render(PromptCard, {
+			item: item('forward_chaining', {
+				instruction: 'From memory, recite Iliad 1.6 through Iliad 1.7, then check.',
+				chain: ['first', 'second'],
+				chain_reference_labels: ['Iliad 1.6', 'Iliad 1.7'],
+				range_label: 'Iliad 1.6 through Iliad 1.7'
+			}),
+			revealed: true,
+			onReveal: vi.fn()
+		});
+
+		expect(screen.getByText('Recite Iliad 1.6 through Iliad 1.7 from memory.')).toBeInTheDocument();
+		expect([...container.querySelectorAll('.chain-reference')].map((node) => node.textContent)).toEqual([
+			'Iliad 1.6',
+			'Iliad 1.7'
+		]);
 	});
 
 	it('revealed Japanese chaining answers show ruby when reading is enabled', () => {

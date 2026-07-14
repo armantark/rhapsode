@@ -240,9 +240,9 @@ def test_smart_plan_rotates_line_exercises_and_builds_forward_context(
             ["line 0", "line 1", "line 2"],
         ]
         assert [item["prompt"]["range_label"] for item in plan] == [
-            "line 1",
-            "lines 1-2",
-            "lines 1-3",
+            "line 1 in this passage",
+            "lines 1-2 in this passage",
+            "lines 1-3 in this passage",
         ]
         assert [item["prompt"]["chain_segment_ids"] for item in plan] == [
             [revision.segments[0].id],
@@ -311,9 +311,9 @@ def test_smart_plan_backward_chaining_uses_current_learned_prefix(
             ["line 2"],
         ]
         assert [item["prompt"]["range_label"] for item in backward] == [
-            "lines 1-3",
-            "lines 2-3",
-            "line 3",
+            "lines 1-3 in this passage",
+            "lines 2-3 in this passage",
+            "line 3 in this passage",
         ]
 
 
@@ -1494,11 +1494,28 @@ def test_chaining_modes_explain_memory_range() -> None:
         prompt = prompt_for(mode, line, context, line_numbers=[1, 2])
         instruction = prompt["instruction"].lower()
         assert "from memory" in instruction, (mode, instruction)
-        assert "lines 1-2" in instruction, (mode, instruction)
-        assert prompt["range_label"] == "lines 1-2"
+        assert "lines 1-2 in this passage" in instruction, (mode, instruction)
+        assert prompt["range_label"] == "lines 1-2 in this passage"
         assert prompt["line_start"] == 1
         assert prompt["line_end"] == 2
         assert prompt["chain_segment_ids"] == [line.id, following.id]
+
+
+def test_chaining_prefers_source_references_over_local_ordinals() -> None:
+    first = models.Segment(
+        kind="line", ordinal=0, text="alpha beta", reference_label="Iliad 1.6"
+    )
+    second = models.Segment(
+        kind="line", ordinal=1, text="gamma delta", reference_label="Iliad 1.7"
+    )
+
+    prompt = prompt_for("forward_chaining", first, [first, second], line_numbers=[1, 2])
+
+    assert prompt["range_label"] == "Iliad 1.6 through Iliad 1.7"
+    assert prompt["instruction"] == (
+        "From memory, recite Iliad 1.6 through Iliad 1.7, then check."
+    )
+    assert prompt["chain_reference_labels"] == ["Iliad 1.6", "Iliad 1.7"]
 
 
 def test_both_failure_ratings_schedule_as_lapses() -> None:

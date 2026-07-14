@@ -176,6 +176,20 @@ Poll `GET http://127.0.0.1:<RHAPSODE_PORT>/api/v1/health` until
 Cross-compile is not handled by the build script; CI should run the script on
 each platform runner with `--target-triple` matching that runner.
 
+## Source reference labels (2026-07-13)
+
+- `PassageInput.reference_label`, `RevisionInput.reference_label`, and
+  `RevisionRead.reference_label` are optional display labels for a whole
+  selection, such as `Iliad 1.6–7`.
+- `SegmentInput.reference_label` is optional; `SegmentRead.reference_label` is
+  nullable. It identifies the canonical unit, such as `Iliad 1.6`.
+- Chaining prompt JSON now includes `chain_reference_labels`. `range_label` and
+  `instruction` prefer those labels when every chain segment has one; otherwise
+  they explicitly say `line N in this passage` or `lines N-M in this passage`.
+- These fields are display-only. Do not use them for ordering, joins, juncture
+  generation, scheduling, or grading; `ordinal` and segment ids remain the
+  behavioral contract.
+
 ## Frontend Handoff Prompt
 
 ```text

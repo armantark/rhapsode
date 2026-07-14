@@ -47,6 +47,7 @@ class SegmentInput(BaseModel):
     kind: str
     ordinal: int
     text: str
+    reference_label: str | None = None
     cue: str | None = None
     metadata_json: dict[str, Any] = Field(default_factory=dict)
     annotations: list[AnnotationInput] = Field(default_factory=list)
@@ -59,6 +60,7 @@ class SegmentRead(ORMModel):
     kind: str
     ordinal: int
     text: str
+    reference_label: str | None
     cue: str | None
     metadata_json: dict[str, Any]
     annotations: list[AnnotationRead] = Field(default_factory=list)
@@ -90,12 +92,14 @@ class PassageInput(BaseModel):
     language_profile_id: str
     description: str | None = None
     source_text: str
+    reference_label: str | None = None
     hierarchy: dict[str, Any] = Field(default_factory=dict)
     segments: list[SegmentInput] = Field(default_factory=list)
 
 
 class RevisionInput(BaseModel):
     source_text: str
+    reference_label: str | None = None
     hierarchy: dict[str, Any] = Field(default_factory=dict)
     segments: list[SegmentInput] = Field(default_factory=list)
 
@@ -105,6 +109,7 @@ class RevisionRead(ORMModel):
     passage_id: str
     revision_number: int
     source_text: str
+    reference_label: str | None
     hierarchy: dict[str, Any]
     practiced: bool
     segments: list[SegmentRead] = Field(default_factory=list)

@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rhapsode initial acquisition proposal</title>
+<style>
+:root {
+    --bg: #0c0e12;
+    --surface: #161a21;
+    --surface-2: #1e232c;
+    --border: #2a3040;
+    --text: #e8ecf4;
+    --text-dim: #8b95a8;
+    --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.15);
+    --red: #ff5c5c;
+    --green: #4ade80;
+    --amber: #fbbf24;
+    --purple: #a78bfa;
+    --radius: 12px;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    background:
+        radial-gradient(circle at 8% 0%, rgba(167,139,250,.12), transparent 28rem),
+        radial-gradient(circle at 92% 12%, rgba(79,140,255,.12), transparent 30rem),
+        var(--bg);
+    color: var(--text);
+    font-family: Outfit, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.55;
+}
+a { color: #8bb6ff; }
+.wrap { width: min(1160px, calc(100% - 32px)); margin: 0 auto; padding: 54px 0 72px; }
+.badge, .eyebrow, .mini-label, .file, .stage, .source-num {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.badge {
+    display: inline-flex; padding: 6px 10px; border: 1px solid rgba(79,140,255,.45);
+    border-radius: 999px; background: var(--accent-glow); color: #9ec1ff;
+    font-size: .7rem; letter-spacing: .11em; text-transform: uppercase;
+}
+h1 { max-width: 880px; margin: 18px 0 10px; font-size: clamp(2rem, 5vw, 4rem); line-height: 1.04; letter-spacing: -.045em; }
+.lede { max-width: 840px; color: var(--text-dim); font-size: 1.05rem; }
+.verdict {
+    margin: 28px 0 22px; padding: 20px 22px; border: 1px solid rgba(74,222,128,.5);
+    border-radius: var(--radius); background: rgba(74,222,128,.075); font-size: 1.05rem;
+}
+.verdict strong { color: var(--green); }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; margin-top: 16px; }
+.card {
+    background: rgba(22,26,33,.94); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 22px; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.card:hover { transform: translateY(-2px); border-color: #3a4660; box-shadow: 0 14px 38px rgba(0,0,0,.22); }
+.card.wide { grid-column: 1 / -1; }
+.eyebrow { color: var(--amber); font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; }
+h2 { margin: 6px 0 10px; font-size: 1.3rem; letter-spacing: -.02em; }
+h3 { margin: 0 0 6px; font-size: 1rem; }
+p { margin: 0; }
+.dim { color: var(--text-dim); }
+.logic { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 16px; }
+.logic-step { padding: 12px; border-radius: 9px; background: var(--surface-2); border: 1px solid var(--border); }
+.logic-step strong { display: block; margin-bottom: 4px; }
+.logic-step small { color: var(--text-dim); }
+.logic-step.bad { border-color: rgba(255,92,92,.45); background: rgba(255,92,92,.06); }
+.callout { margin-top: 14px; padding: 12px 14px; border-left: 3px solid var(--red); background: rgba(255,92,92,.06); color: #f3b2b2; }
+.flow { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-top: 18px; }
+.phase { position: relative; min-height: 210px; padding: 18px; border: 1px solid var(--border); border-radius: 11px; background: #11151b; }
+.phase::after { content: "→"; position: absolute; right: -20px; top: 46%; color: var(--accent); font-size: 1.4rem; z-index: 2; }
+.phase:last-child::after { display: none; }
+.phase-num { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; background: var(--accent); font-weight: 800; }
+.mockline { margin: 14px 0; padding: 12px; border-radius: 8px; background: var(--surface-2); font-family: Georgia, serif; font-size: 1.02rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0; }
+.chip { padding: 5px 8px; border: 1px solid #4a5873; border-radius: 7px; background: #202734; font-family: Georgia, serif; }
+.cue { color: var(--amber); }
+.action { display: inline-block; padding: 7px 10px; border: 1px solid var(--accent); border-radius: 7px; color: #b6ceff; font-size: .78rem; }
+.criterion { margin-top: 18px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.grade { padding: 7px 10px; border-radius: 7px; border: 1px solid var(--border); font-size: .78rem; }
+.grade.pass { color: var(--green); border-color: rgba(74,222,128,.5); }
+.grade.fail { color: var(--red); border-color: rgba(255,92,92,.5); }
+.policy { display: grid; gap: 8px; margin-top: 14px; }
+.policy-row { display: grid; grid-template-columns: 124px 1fr; gap: 12px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-2); }
+.policy-row .stage { color: #a9b7ce; font-size: .7rem; text-transform: uppercase; }
+.policy-row strong { color: var(--text); }
+.research { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 14px; }
+.finding { padding: 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; }
+.source-num { color: var(--purple); font-size: .72rem; }
+.finding p { margin: 6px 0 10px; color: var(--text-dim); font-size: .86rem; }
+.finding a { font-size: .75rem; }
+.alternatives { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-top: 14px; }
+.option { padding: 15px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
+.option.selected { border-color: var(--green); box-shadow: inset 0 0 0 1px rgba(74,222,128,.24); }
+.option .tag { display: inline-block; margin-bottom: 8px; font-size: .7rem; color: var(--text-dim); }
+.option.selected .tag { color: var(--green); }
+.option p { color: var(--text-dim); font-size: .85rem; }
+.steps { display: grid; gap: 9px; margin-top: 14px; }
+.step { display: grid; grid-template-columns: 30px 1fr; gap: 12px; padding: 12px; border-bottom: 1px solid var(--border); }
+.step-num { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 7px; background: var(--accent); font-weight: 800; }
+.files { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.file { padding: 3px 7px; border-radius: 6px; background: var(--surface-2); color: #aebbd0; font-size: .65rem; }
+.metric { margin-top: 14px; padding: 16px; border: 1px solid rgba(167,139,250,.45); border-radius: 10px; background: rgba(167,139,250,.07); }
+.metric strong { color: #c4b5fd; }
+.opus { border-color: rgba(167,139,250,.5); }
+.opus-note { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+.opus-note > div { padding: 13px; border-radius: 9px; background: var(--surface-2); }
+.check { color: var(--green); }
+.adjust { color: var(--amber); }
+footer { margin-top: 26px; color: var(--text-dim); font-size: .78rem; }
+@media (max-width: 900px) {
+    .grid, .flow, .research, .alternatives, .opus-note { grid-template-columns: 1fr; }
+    .card.wide { grid-column: auto; }
+    .phase { min-height: auto; }
+    .phase::after { content: "↓"; right: 50%; top: auto; bottom: -25px; }
+}
+@media (max-width: 560px) {
+    .wrap { width: min(100% - 20px, 1160px); padding-top: 28px; }
+    .logic { grid-template-columns: 1fr; }
+    .policy-row { grid-template-columns: 1fr; gap: 4px; }
+    .card { padding: 17px; }
+}
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+    <span class="badge">Research + Opus review · pre-implementation proposal</span>
+    <h1>Teach a new line before asking it to survive a drill.</h1>
+    <p class="lede">The current coach assigns exactly one exercise to a brand-new line: progressive fading. That decision was coherent as a difficulty ladder, but too coarse as an acquisition model. The best surface is one short, coach-only acquisition card that deliberately moves through study, supported reconstruction, and unaided recall.</p>
+
+    <div class="verdict"><strong>Recommendation:</strong> replace <code>new → progressive_fading</code> with a composite <code>acquisition</code> card. Do not merely add word bank to a random rotation. A new line should leave acquisition only after a checked, self-rated successful recall; failed first attempts remain acquiring and return with support.</div>
+
+    <section class="grid">
+        <article class="card">
+            <span class="eyebrow">What the old logic was</span>
+            <h2>A mode-difficulty ladder masquerading as learning</h2>
+            <div class="logic">
+                <div class="logic-step"><strong>new</strong><small>progressive fading<br>“maximum support”</small></div>
+                <div class="logic-step"><strong>learning</strong><small>word bank first<br>“order only”</small></div>
+                <div class="logic-step"><strong>review+</strong><small>free / typed / random-start recall</small></div>
+            </div>
+            <p class="callout">The hidden assumption: one fading card is a sufficient first lesson. In code, any first attempt—clean or failed—also moves the line from <code>new</code> to <code>learning</code>, so “new” currently means “never attempted,” not “successfully acquired.”</p>
+        </article>
+
+        <article class="card">
+            <span class="eyebrow">What was defensible</span>
+            <h2>Support first was right; the unit of design was wrong</h2>
+            <p class="dim">The full-text first stage of fading does provide exposure, and word bank was intentionally placed early because all units are supplied. The mistake was treating those as competing session modes. Initial learning needs an ordered study→retrieval sequence with feedback and a success criterion, not one random technique label.</p>
+            <div class="criterion">
+                <span class="grade fail">difficulty without success</span>
+                <span>→</span>
+                <span class="grade pass">supported success</span>
+                <span>→</span>
+                <span class="grade pass">unaided success</span>
+            </div>
+        </article>
+
+        <article class="card wide">
+            <span class="eyebrow">Proposed learner surface</span>
+            <h2>One card, three fast phases, one honest terminal grade</h2>
+            <div class="flow" aria-label="Acquisition card phases">
+                <div class="phase">
+                    <div class="phase-num">1</div>
+                    <h3>Encounter</h3>
+                    <p class="dim">See the whole line. Read or hear it once. Ruby, gloss, translation, and reference audio remain available.</p>
+                    <div class="mockline">Μῆνιν ἄειδε, θεά, Πηληϊάδεω Ἀχιλῆος</div>
+                    <span class="action">I’ve read it · rebuild</span>
+                </div>
+                <div class="phase">
+                    <div class="phase-num">2</div>
+                    <h3>Reconstruct</h3>
+                    <p class="dim">Arrange the supplied units. Check immediately against the true line. This creates a high-success retrieval attempt without pretending recognition is mastery.</p>
+                    <div class="chips"><span class="chip">θεά</span><span class="chip">Μῆνιν</span><span class="chip">Ἀχιλῆος</span><span class="chip">ἄειδε</span></div>
+                    <span class="action">Check order</span>
+                </div>
+                <div class="phase">
+                    <div class="phase-num">3</div>
+                    <h3>Produce</h3>
+                    <p class="dim">Hide the bank. Show only the line’s opening cue. Recite to the end, reveal the answer, then self-grade.</p>
+                    <div class="mockline cue">Μῆνιν ἄειδε…</div>
+                    <span class="action">Show answer to check</span>
+                </div>
+            </div>
+            <div class="criterion">
+                <strong>Exit criterion:</strong>
+                <span class="grade pass">Good · correct with hesitation</span>
+                <span class="grade pass">Easy · clean</span>
+                <span class="grade fail">Again / Hard · remain acquiring, requeue once later</span>
+            </div>
+        </article>
+
+        <article class="card wide">
+            <span class="eyebrow">Research spine</span>
+            <h2>The evidence supports sequencing and criterion, not mode variety for its own sake</h2>
+            <div class="research">
+                <div class="finding"><span class="source-num">01</span><p>Alternating study and test produced strong initial and delayed retention; repeated retrieval after success mattered more than repeated restudy.</p><a href="https://doi.org/10.1016/j.jml.2006.09.004">Karpicke &amp; Roediger, 2007</a></div>
+                <div class="finding"><span class="source-num">02</span><p>Harder retrieval helps when it succeeds. “Difficult” is not pedagogically useful when the learner has not encoded enough to retrieve.</p><a href="https://doi.org/10.1016/j.jml.2009.01.004">Pyc &amp; Rawson, 2009</a></div>
+                <div class="finding"><span class="source-num">03</span><p>Retrieval format must balance effort with success; direct correct-answer feedback is part of making supported retrieval useful.</p><a href="https://learninglab.psych.purdue.edu/downloads/2014/2014_Smith_Karpicke_Memory.pdf">Smith &amp; Karpicke, 2014</a></div>
+                <div class="finding"><span class="source-num">04</span><p>Successive relearning practices to a correct-retrieval criterion, then repeats to criterion in later spaced sessions; distributed successes beat massed overlearning.</p><a href="https://doi.org/10.1177/09637214221100484">Rawson &amp; Dunlosky, 2022</a></div>
+            </div>
+            <p class="dim" style="margin-top:12px">Boundary: these studies do not directly test memorizing Japanese lyrics or epic verse with chip reconstruction. The application is an inference from retrieval-success, feedback, and successive-relearning results. Evidence for interleaving categories does not justify cycling UI modes arbitrarily for the same line.</p>
+        </article>
+
+        <article class="card">
+            <span class="eyebrow">After acquisition</span>
+            <h2>Make early practice outcome-aware</h2>
+            <div class="policy">
+                <div class="policy-row"><span class="stage">Again / Hard</span><span><strong>Restore support now:</strong> acquisition again, word bank, or fading—not weak-link cold recall.</span></div>
+                <div class="policy-row"><span class="stage">Good</span><span><strong>Cue recall next:</strong> the learner succeeded but still needs a clean retrieval.</span></div>
+                <div class="policy-row"><span class="stage">Easy</span><span><strong>Build flow:</strong> chaining once adjacent lines exist; otherwise cue recall after spacing.</span></div>
+                <div class="policy-row"><span class="stage">Review+</span><span><strong>Keep the current variety:</strong> random start, typed recall, chaining, meaning recall, cue recall.</span></div>
+            </div>
+            <p class="dim" style="margin-top:12px">The existing mode inventory is already broad. The missing capability is response-contingent sequencing, not another pile of exercise names.</p>
+        </article>
+
+        <article class="card opus">
+            <span class="eyebrow">Independent Opus review</span>
+            <h2>Strong convergence, two Codex corrections</h2>
+            <div class="opus-note">
+                <div><span class="check">✓ Agreed</span><p class="dim">Composite coach-only acquisition card; study → word bank → lead-in recall; one item surface; keep the manual launcher uncluttered.</p></div>
+                <div><span class="adjust">△ Refined</span><p class="dim">Do not hide an early failure behind one eventual grade, and do not invent an unsupported 8–9-token cutoff. Failed recall should remain visible to FSRS and mastery; long lines should use authored chunk grain rather than a magic threshold.</p></div>
+            </div>
+        </article>
+
+        <article class="card wide">
+            <span class="eyebrow">Alternatives considered</span>
+            <h2>Why the composite card wins</h2>
+            <div class="alternatives">
+                <div class="option"><span class="tag">REJECT</span><h3>Keep fading-only</h3><p>It conflates “show the line once” with acquisition and makes the first experience slow without proving a successful retrieval.</p></div>
+                <div class="option"><span class="tag">INSUFFICIENT</span><h3>Add word bank to <code>new</code></h3><p>It removes the artificial gate, but the planner still picks one unsequenced mode and moves on. Study, feedback, and exit criterion remain accidental.</p></div>
+                <div class="option selected"><span class="tag">SELECTED</span><h3>Composite acquisition</h3><p>Deterministically provides encoding, a high-success reconstruction, and transfer to unaided recall while preserving one coherent card surface.</p></div>
+            </div>
+        </article>
+
+        <article class="card">
+            <span class="eyebrow">Implementation shape</span>
+            <h2>Small surface, explicit state</h2>
+            <div class="steps">
+                <div class="step"><span class="step-num">1</span><div>Add coach-only <code>acquisition</code> prompt payload: target, units, lead-in, annotations, optional audio.<div class="files"><span class="file">schemas.py</span><span class="file">planning.py</span></div></div></div>
+                <div class="step"><span class="step-num">2</span><div>Render the three internal phases; only the terminal answer check unlocks grading.<div class="files"><span class="file">PromptCard.svelte</span><span class="file">practice/[id]/+page.svelte</span></div></div></div>
+                <div class="step"><span class="step-num">3</span><div>Track acquisition success explicitly. A first failed attempt must not advance merely because <code>attempt_count &gt; 0</code>.<div class="files"><span class="file">models.py</span><span class="file">scheduling.py</span><span class="file">migration</span></div></div></div>
+                <div class="step"><span class="step-num">4</span><div>Make the early-learning selector react to the last outcome before falling back to least-used variety.<div class="files"><span class="file">planning.py</span><span class="file">tests</span></div></div></div>
+            </div>
+        </article>
+
+        <article class="card">
+            <span class="eyebrow">Falsifiable validation</span>
+            <h2>Judge the next spaced recall, not first-card comfort</h2>
+            <p class="dim">The primary product metric is the rating on a line’s second session—its first spaced, unaided return—plus time spent acquiring the line. The proposal fails if it does not increase Good/Easy first-return rates or reduce early lapses without materially increasing abandonment or acquisition time.</p>
+            <div class="metric"><strong>Manual proof:</strong> one never-seen Ancient Greek line and one Japanese line through all phases; verify ruby/gloss/audio, chip behavior, bank-hidden production, check-before-grade, failed-acquisition requeue, and one honest scheduling event per graded attempt.</div>
+        </article>
+    </section>
+
+    <footer>Prepared 2026-07-14 from current Rhapsode planner/scheduler behavior, four research threads, and an independent Claude Opus repository review. No implementation changes are included in this proposal.</footer>
+</main>
+</body>
+</html>

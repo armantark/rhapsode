@@ -203,6 +203,7 @@ class MediaRead(ORMModel):
 
 class PracticeMode(StrEnum):
     shadowing = "shadowing"
+    acquisition = "acquisition"
     progressive_fading = "progressive_fading"
     word_bank = "word_bank"
     forward_chaining = "forward_chaining"

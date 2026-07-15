@@ -64,8 +64,152 @@ def test_smart_session_scaffolds_new_segments(
     assert created.status_code == 201, created.text
     session = created.json()
     assert session["plan"]["smart"] is True
-    # Never-practiced segments all get maximum support.
-    assert {item["mode"] for item in session["items"]} == {"progressive_fading"}
+    # Never-acquired lines get the composite first lesson.
+    assert {item["mode"] for item in session["items"]} == {"acquisition"}
+
+
+def test_acquisition_failure_retries_once_at_session_tail(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    revision = passage["active_revision"]
+    session = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    ).json()
+    first, intervening = session["items"]
+
+    failed = client.post(
+        f"/api/v1/sessions/{session['id']}/attempts",
+        json={"item_id": first["id"], "rating": "incorrect", "revealed": True},
+        headers=mutation(),
+    )
+    assert failed.status_code == 201, failed.text
+    after_failure = failed.json()["session"]
+    assert after_failure["current_index"] == intervening["position"]
+    assert len(after_failure["items"]) == 3
+    retry = after_failure["items"][-1]
+    assert retry["position"] > intervening["position"]
+    assert retry["segment_id"] == first["segment_id"]
+    assert retry["mode"] == "acquisition"
+    assert "retry_source_item_id" not in retry
+    assert failed.json()["mastery_stage"] == "new"
+
+    # The intervening line is completed before the generated tail retry.
+    advanced = client.post(
+        f"/api/v1/sessions/{session['id']}/attempts",
+        json={"item_id": intervening["id"], "rating": "hesitant", "revealed": True},
+        headers=mutation(),
+    ).json()["session"]
+    assert advanced["current_index"] == retry["position"]
+
+    # A retry is terminal even when it fails; it never recursively appends.
+    retried = client.post(
+        f"/api/v1/sessions/{session['id']}/attempts",
+        json={"item_id": retry["id"], "rating": "revealed", "revealed": True},
+        headers=mutation(),
+    )
+    assert retried.status_code == 201, retried.text
+    assert len(retried.json()["session"]["items"]) == 3
+    assert retried.json()["session"]["status"] == "completed"
+
+
+def test_acquisition_retry_and_source_undo_restore_exact_state(
+    client: TestClient,
+    session_factory: object,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    from sqlalchemy import select
+
+    from rhapsode import models
+
+    revision = passage["active_revision"]
+    session = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    ).json()
+    first, source = session["items"]
+
+    # Good is a successful acquisition: it enters learning and adds no retry.
+    first_result = client.post(
+        f"/api/v1/sessions/{session['id']}/attempts",
+        json={"item_id": first["id"], "rating": "hesitant", "revealed": True},
+        headers=mutation(),
+    ).json()
+    assert first_result["mastery_stage"] == "learning"
+    assert len(first_result["session"]["items"]) == 2
+
+    source_result = client.post(
+        f"/api/v1/sessions/{session['id']}/attempts",
+        json={"item_id": source["id"], "rating": "incorrect", "revealed": True},
+        headers=mutation(),
+    ).json()
+    retry = source_result["session"]["items"][-1]
+    assert retry["segment_id"] == source["segment_id"]
+
+    client.post(
+        f"/api/v1/sessions/{session['id']}/attempts",
+        json={"item_id": retry["id"], "rating": "clean", "revealed": True},
+        headers=mutation(),
+    )
+
+    # First undo reopens the retry and restores the source failure snapshot,
+    # including acquisition_succeeded=False.
+    retry_undone = client.post(
+        f"/api/v1/sessions/{session['id']}/undo", headers=mutation()
+    ).json()
+    assert len(retry_undone["items"]) == 3
+    assert retry_undone["items"][-1]["completed"] is False
+    assert retry_undone["current_index"] == retry["position"]
+    with session_factory() as db:  # type: ignore[operator]
+        state = db.scalar(
+            select(models.ReviewState).where(
+                models.ReviewState.segment_id == source["segment_id"]
+            )
+        )
+        assert state is not None
+        assert state.acquisition_succeeded is False
+        assert state.mastery_stage == "new"
+
+    # The next undo targets the source failure. Its unattempted generated retry
+    # disappears and the original two-item plan/state return exactly.
+    source_undone = client.post(
+        f"/api/v1/sessions/{session['id']}/undo", headers=mutation()
+    ).json()
+    assert len(source_undone["items"]) == 2
+    assert source_undone["current_index"] == source["position"]
+    assert source_undone["items"][0]["completed"] is True
+    assert source_undone["items"][1]["completed"] is False
+    with session_factory() as db:  # type: ignore[operator]
+        state = db.scalar(
+            select(models.ReviewState).where(
+                models.ReviewState.segment_id == source["segment_id"]
+            )
+        )
+        assert state is None
+
+
+def test_manual_acquisition_is_rejected_as_coach_only(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    revision = passage["active_revision"]
+    response = client.post(
+        "/api/v1/sessions",
+        json={
+            "revision_id": revision["id"],
+            "modes": ["acquisition"],
+            "segment_kinds": ["line"],
+        },
+        headers=mutation(),
+    )
+    assert response.status_code == 422
+    assert "coach-only" in response.json()["detail"]
 
 
 def test_smart_session_random_start_targets_are_shuffled(

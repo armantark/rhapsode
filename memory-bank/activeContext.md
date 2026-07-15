@@ -9,6 +9,23 @@ push, install smoke) remains the other open thread.
 
 ## Active Decisions
 
+- Initial acquisition (2026-07-14): a never-successfully-acquired line gets
+  one coach-only `acquisition` item, not a fading-only first card or a manual
+  mode. The card sequences a rich full-line encounter, complete word-bank
+  reconstruction plus true-line check, and bankless lead-in oral production
+  plus answer reveal before its one terminal grade. New junctures keep their
+  progressive tail→head fading card because ordering a short head is trivial.
+- `ReviewState.acquisition_succeeded` is the persisted exit criterion. Legacy
+  review rows migrate `true`; a new target stays `new` after Again/Hard and
+  enters `learning` after Good/Easy. Snapshots include the flag. A failed
+  source acquisition appends exactly one provenance-linked retry at the active
+  session tail; retries cannot recurse, and undoing the reopened retry then its
+  source removes the generated item and restores the original plan. Recent
+  post-acquisition failures restore word-bank/fading support before normal
+  least-used rotation and cold weak-link practice. The first return after a
+  successful acquisition is also outcome-aware: Good deals cue recall; Easy
+  deals forward chaining when a learned predecessor supplies real passage
+  context, otherwise cue recall. Later turns resume the varied rotation.
 - Source-reference labels (2026-07-13) are first-class, optional display
   metadata on `PassageRevision` and `Segment`. They are user/import supplied,
   never parsed from titles or inferred from meter. Practice keeps local line

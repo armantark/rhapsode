@@ -33,6 +33,21 @@ async function startManualSession(page: Page): Promise<void> {
 	await page.getByRole('button', { name: '▶ Start manual session' }).click();
 }
 
+async function completeAcquisition(page: Page): Promise<void> {
+	await expect(page.getByText('1 · encounter')).toBeVisible();
+	await page.getByRole('button', { name: /I’ve read it/ }).click();
+	await expect(page.getByText('2 · reconstruct')).toBeVisible();
+	while ((await page.locator('.bank-pool .chip').count()) > 0) {
+		await page.locator('.bank-pool .chip').first().click();
+	}
+	await page.getByRole('button', { name: 'Check reconstruction' }).click();
+	await expect(page.getByText('true line')).toBeVisible();
+	await page.getByRole('button', { name: /Hide the bank/ }).click();
+	await expect(page.getByText('3 · produce')).toBeVisible();
+	await expect(page.locator('.bank-pool')).toHaveCount(0);
+	await page.getByRole('button', { name: 'Show answer to check' }).click();
+}
+
 test('full loop: create, render Unicode, practice, grade, review', async ({ page }) => {
 	const title = `Iliad e2e ${Date.now()}`;
 	await createGreekPassage(page, title);
@@ -193,7 +208,7 @@ test('desktop two-column layout stacks on a phone viewport', async ({ page }) =>
 	expect(phoneCols).toBe(1);
 });
 
-test('smart session scaffolds a fresh passage with progressive fading', async ({ page }) => {
+test('smart session teaches fresh lines through acquisition while junctures keep fading', async ({ page }) => {
 	const title = `Smart e2e ${Date.now()}`;
 	await createGreekPassage(page, title);
 
@@ -203,18 +218,24 @@ test('smart session scaffolds a fresh passage with progressive fading', async ({
 	// Auto grain deals both lines plus the juncture between them.
 	await expect(page.getByText('0/3 items')).toBeVisible();
 
-	// Never-practiced segments get maximum support: the fading prompt with
-	// its stage controls, not a bare cue.
-	await expect(page.getByText('progressive fading')).toBeVisible();
-	await expect(page.getByRole('button', { name: 'Fade further' })).toBeVisible();
-
-	// Grade all items clean ("Easy" = 4) to seed review state for later
-	// drills, waiting for each submission to land before the next keypress.
+	// A fresh line gets the ordered encounter → reconstruction → oral transfer
+	// surface. The answer check is terminal and only then unlocks grading.
+	await expect(page.getByText('acquisition', { exact: true })).toBeVisible();
+	await completeAcquisition(page);
 	await page.keyboard.press('4');
 	await expect(page.getByText('1/3 items')).toBeVisible();
+
+	// The generated juncture remains on its established progressive-fading
+	// lesson; a three-word transition head never gets a trivial word bank.
+	await expect(page.getByText('progressive fading', { exact: true })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Fade further' })).toBeVisible();
 	await page.keyboard.press('4');
 	await expect(page.getByText('2/3 items')).toBeVisible();
+
+	await expect(page.getByText('acquisition', { exact: true })).toBeVisible();
+	await completeAcquisition(page);
 	await page.keyboard.press('4');
+
 	await expect(page.getByText('Session complete')).toBeVisible();
 });
 
@@ -224,18 +245,19 @@ test('smart sessions rotate a learning line through distinct exercises', async (
 	const passageUrl = page.url();
 
 	for (const expectedMode of [
-		'progressive fading',
-		'word bank',
+		'acquisition',
 		'cue recall',
+		'word bank',
 		'forward chaining'
 	]) {
 		await page.getByRole('button', { name: '✦ Smart session' }).first().click();
 		await expect(page).toHaveURL(/\/practice\/[\w-]+/);
 		await expect(page.getByText(expectedMode, { exact: true })).toBeVisible();
-		// Recall modes require the check before grading; fading does not.
-		const reveal = page.getByRole('button', { name: /Show answer/ });
-		if (await reveal.isVisible()) {
-			await reveal.click();
+		if (expectedMode === 'acquisition') {
+			await completeAcquisition(page);
+		} else {
+			const reveal = page.getByRole('button', { name: /Show answer/ });
+			if (await reveal.isVisible()) await reveal.click();
 		}
 		await page.keyboard.press('3'); // Good keeps the line in learning.
 		await expect(page.getByText('Session complete')).toBeVisible();

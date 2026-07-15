@@ -1020,7 +1020,7 @@ export interface components {
          * PracticeMode
          * @enum {string}
          */
-        PracticeMode: "shadowing" | "progressive_fading" | "word_bank" | "forward_chaining" | "backward_chaining" | "cue_recall" | "typed_recall" | "meaning_recall" | "random_start" | "weak_link" | "full_passage" | "recital";
+        PracticeMode: "shadowing" | "acquisition" | "progressive_fading" | "word_bank" | "forward_chaining" | "backward_chaining" | "cue_recall" | "typed_recall" | "meaning_recall" | "random_start" | "weak_link" | "full_passage" | "recital";
         /** PrepSuggestInput */
         PrepSuggestInput: {
             /** Layers */

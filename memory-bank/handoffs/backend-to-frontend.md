@@ -55,6 +55,25 @@ is available at `http://127.0.0.1:8000/docs`.
 
 ## Contract Additions Implemented
 
+- `PracticeMode` now includes coach-only `acquisition`; manual session requests
+  containing it return 422. Smart planning assigns it only to targets that have
+  never satisfied acquisition, while new junctures keep `progressive_fading`.
+- An acquisition prompt carries `target_text`, shuffled `word_bank`, verbatim
+  `lead_in`, and optional `hint`. Rich annotations and reference audio continue
+  to come from the item's revision/segment context as they do for existing
+  cards. The internal retry provenance field is not exposed in
+  `PracticeItemRead`.
+- Good/Easy (`hesitant`/`clean`) marks acquisition successful; Again/Hard
+  (`revealed`/`incorrect`) keeps it new and appends at most one same-target
+  acquisition retry at the session tail. A retry never appends another retry.
+  Session responses may therefore gain one item after a failed source card;
+  clients must continue rendering the returned item list rather than assuming
+  its initial length is fixed.
+- The next smart session responds to the acquisition result: Good produces
+  `cue_recall`; Easy produces `forward_chaining` only when the line has a
+  learned predecessor, and otherwise also uses `cue_recall`. This branch is
+  limited to a preceding `acquisition` attempt, so later successful reviews
+  return to the existing least-used mode rotation.
 - Collections are available through `GET/POST /api/v1/collections` and
   `GET/PUT/DELETE /api/v1/collections/{collection_id}`.
 - Add a passage with `POST /api/v1/collections/{collection_id}/members`

@@ -1133,6 +1133,7 @@
       "PracticeMode": {
         "enum": [
           "shadowing",
+          "acquisition",
           "progressive_fading",
           "word_bank",
           "forward_chaining",

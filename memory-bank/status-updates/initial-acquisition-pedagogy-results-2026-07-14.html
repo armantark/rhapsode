@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rhapsode · Initial acquisition results</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #080b10;
+      --panel: #10151e;
+      --panel-2: #151c27;
+      --border: #273244;
+      --text: #eef3fa;
+      --muted: #91a0b5;
+      --gold: #f4a61f;
+      --cyan: #5ee7e7;
+      --green: #45d889;
+      --red: #ff6b72;
+      --violet: #b99cff;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 7% 0%, rgba(244,166,31,.12), transparent 31rem),
+        radial-gradient(circle at 93% 12%, rgba(94,231,231,.08), transparent 28rem),
+        var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.55;
+    }
+    main { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 56px 0 88px; }
+    .eyebrow { color: var(--gold); font: 700 .72rem/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; }
+    h1 { max-width: 900px; margin: 14px 0 16px; font-size: clamp(2.2rem, 6vw, 4.8rem); line-height: .98; letter-spacing: -.055em; }
+    h2 { margin: 8px 0 12px; font-size: 1.34rem; letter-spacing: -.02em; }
+    h3 { margin: 0 0 5px; font-size: 1rem; }
+    p { margin: 0; }
+    .lede { max-width: 860px; color: var(--muted); font-size: 1.08rem; }
+    .verdict {
+      margin: 28px 0 22px;
+      padding: 18px 20px;
+      border: 1px solid rgba(69,216,137,.55);
+      border-radius: 14px;
+      background: rgba(69,216,137,.08);
+      color: #dfffee;
+    }
+    .status-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    .pill { padding: 7px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font: 650 .72rem/1 var(--mono); }
+    .pill.pass { color: var(--green); border-color: rgba(69,216,137,.5); }
+    .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+    .card { grid-column: span 6; padding: 21px; border: 1px solid var(--border); border-radius: 16px; background: linear-gradient(155deg, rgba(21,28,39,.96), rgba(12,16,23,.96)); }
+    .card.wide { grid-column: 1 / -1; }
+    .card.third { grid-column: span 4; }
+    .muted { color: var(--muted); }
+    .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+    .phase { min-height: 154px; padding: 15px; border: 1px solid var(--border); border-radius: 12px; background: rgba(8,11,16,.64); }
+    .phase-num { color: var(--gold); font: 700 .72rem/1 var(--mono); }
+    .phase p { margin-top: 10px; color: var(--muted); font-size: .92rem; }
+    .mock { margin-top: 12px; padding: 10px; border: 1px dashed #38465d; border-radius: 9px; color: var(--cyan); font-family: var(--mono); font-size: .8rem; }
+    .policy { display: grid; gap: 8px; margin-top: 14px; }
+    .policy-row { display: grid; grid-template-columns: 104px 1fr; gap: 12px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; }
+    .policy-row .key { color: var(--violet); font: 700 .76rem/1.4 var(--mono); }
+    .metric { display: flex; align-items: baseline; gap: 10px; margin: 12px 0 2px; }
+    .metric strong { color: var(--green); font-size: 2.35rem; line-height: 1; letter-spacing: -.05em; }
+    .metric span { color: var(--muted); font: 650 .72rem/1 var(--mono); text-transform: uppercase; letter-spacing: .1em; }
+    .checklist { display: grid; gap: 8px; margin-top: 14px; }
+    .check { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid rgba(39,50,68,.65); }
+    .check:last-child { border-bottom: 0; }
+    .tick { color: var(--green); font-weight: 800; }
+    .opus { border-color: rgba(185,156,255,.5); background: linear-gradient(155deg, rgba(35,27,54,.82), rgba(14,15,23,.98)); }
+    .quote { margin-top: 14px; padding-left: 15px; border-left: 3px solid var(--violet); color: #ddd2ff; }
+    .warning { border-color: rgba(255,107,114,.46); background: linear-gradient(155deg, rgba(50,23,29,.83), rgba(14,15,23,.98)); }
+    .failure-list { display: grid; gap: 10px; margin-top: 14px; counter-reset: fail; }
+    .failure { position: relative; padding: 12px 12px 12px 48px; border: 1px solid rgba(255,107,114,.28); border-radius: 10px; color: var(--muted); }
+    .failure::before { counter-increment: fail; content: counter(fail); position: absolute; left: 13px; top: 12px; color: var(--red); font: 800 .78rem/1 var(--mono); }
+    pre { margin: 14px 0 0; padding: 16px; overflow: auto; border: 1px solid #303b4e; border-radius: 11px; background: #080b10; color: #c8d3e3; font: .76rem/1.55 var(--mono); white-space: pre-wrap; }
+    button { margin-top: 10px; padding: 9px 12px; border: 1px solid rgba(244,166,31,.6); border-radius: 9px; background: rgba(244,166,31,.1); color: var(--gold); font: 700 .75rem/1 var(--mono); cursor: pointer; }
+    button:hover { background: rgba(244,166,31,.18); }
+    code { color: var(--cyan); font-family: var(--mono); }
+    footer { margin-top: 24px; color: var(--muted); font: .73rem/1.5 var(--mono); }
+    @media (max-width: 820px) {
+      main { width: min(100% - 22px, 1180px); padding-top: 34px; }
+      .card, .card.third { grid-column: 1 / -1; }
+      .flow { grid-template-columns: 1fr; }
+      .policy-row { grid-template-columns: 1fr; gap: 4px; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="eyebrow">Rhapsode · verified result · 2026-07-14</span>
+    <h1>First exposure is now a lesson, not a fading gamble.</h1>
+    <p class="lede">Fresh whole lines in every language now receive one criterion-based acquisition card: encounter the annotated line, reconstruct it with supplied units, then hide the bank and retrieve from a short lead-in before grading. Junctures keep their more useful progressive-fading drill.</p>
+    <div class="verdict"><strong>Shipped locally:</strong> the feature is implemented across persistence, scheduling, OpenAPI, generated TypeScript, the Svelte practice card, and recovery-safe session behavior. Opus approved the implementation with no required correctness fixes; Codex then closed its one proposal mismatch by making the first successful return response-contingent.</div>
+    <div class="status-row">
+      <span class="pill pass">104 backend tests</span>
+      <span class="pill pass">94 frontend tests</span>
+      <span class="pill pass">12 Playwright flows</span>
+      <span class="pill pass">PinchTab manual pass</span>
+      <span class="pill pass">OpenAPI fresh</span>
+      <span class="pill pass">0 type errors</span>
+    </div>
+  </header>
+
+  <section class="grid">
+    <article class="card wide">
+      <span class="eyebrow">The learner surface</span>
+      <h2>One card, three deliberate phases, one honest grade</h2>
+      <div class="flow">
+        <div class="phase"><span class="phase-num">01 · ENCOUNTER</span><h3>Study the complete line</h3><p>The rich segment renderer preserves readings, glosses, annotations, Unicode, and optional reference audio.</p><div class="mock">Μῆνιν ἄειδε, θεά…</div></div>
+        <div class="phase"><span class="phase-num">02 · RECONSTRUCT</span><h3>Rebuild every supplied unit</h3><p>All chips must be placed before the learner can compare the reconstruction with the true line.</p><div class="mock">[Μῆνιν] [ἄειδε,] [θεά,] …</div></div>
+        <div class="phase"><span class="phase-num">03 · PRODUCE</span><h3>Retrieve without the bank</h3><p>The chips and true line disappear. Only the deterministic opening remains until answer reveal.</p><div class="mock">Μῆνιν ἄειδε… → recite</div></div>
+      </div>
+    </article>
+
+    <article class="card">
+      <span class="eyebrow">Criterion + recovery</span>
+      <h2>“New” now means not yet successfully acquired</h2>
+      <div class="policy">
+        <div class="policy-row"><span class="key">Again / Hard</span><span>Remain acquiring; preserve the failure as a real Attempt and FSRS review; append one provenance-linked retry at the session tail.</span></div>
+        <div class="policy-row"><span class="key">Good</span><span>Enter learning; the first return is cue recall so hesitation must become a clean retrieval.</span></div>
+        <div class="policy-row"><span class="key">Easy</span><span>Enter learning; begin forward chaining when a learned predecessor creates real flow, otherwise use cue recall.</span></div>
+        <div class="policy-row"><span class="key">Later lapse</span><span>Restore word-bank or fading support before cold weak-link practice.</span></div>
+      </div>
+    </article>
+
+    <article class="card">
+      <span class="eyebrow">Persistence invariants</span>
+      <h2>Retry and Undo remain exact</h2>
+      <div class="checklist">
+        <div class="check"><span class="tick">✓</span><span>Legacy review rows migrate as already acquired.</span></div>
+        <div class="check"><span class="tick">✓</span><span>Snapshots include <code>acquisition_succeeded</code>.</span></div>
+        <div class="check"><span class="tick">✓</span><span>A source card can own at most one generated retry.</span></div>
+        <div class="check"><span class="tick">✓</span><span>A retry can never recursively append another retry.</span></div>
+        <div class="check"><span class="tick">✓</span><span>Undoing a source failure removes its unattempted retry and restores the original plan length.</span></div>
+        <div class="check"><span class="tick">✓</span><span>Retry provenance remains internal and never leaks into the API schema.</span></div>
+      </div>
+    </article>
+
+    <article class="card third">
+      <span class="eyebrow">Backend proof</span>
+      <div class="metric"><strong>104</strong><span>pytest passing</span></div>
+      <p class="muted">Migration, planner policy, retry creation, non-recursion, session completion, exact Undo, manual-mode rejection, Unicode units, and contract behavior.</p>
+    </article>
+    <article class="card third">
+      <span class="eyebrow">Frontend proof</span>
+      <div class="metric"><strong>94</strong><span>Vitest passing</span></div>
+      <p class="muted">Rich encounter, Japanese ruby chips, phase reset, bank hiding, terminal reveal, generated types, and manual inventory exclusion.</p>
+    </article>
+    <article class="card third">
+      <span class="eyebrow">Browser proof</span>
+      <div class="metric"><strong>12</strong><span>Playwright passing</span></div>
+      <p class="muted">The complete real-backend suite passed, including fresh-line acquisition, juncture fading, and response-aware learning rotation.</p>
+    </article>
+
+    <article class="card wide">
+      <span class="eyebrow">Manual PinchTab evidence</span>
+      <h2>Fresh Ancient Greek line, isolated database, real browser</h2>
+      <div class="checklist">
+        <div class="check"><span class="tick">✓</span><span>A fresh Iliad line opened in <code>acquisition</code>, proving the exercise is not Japanese-only.</span></div>
+        <div class="check"><span class="tick">✓</span><span>Grade controls remained disabled through encounter and reconstruction.</span></div>
+        <div class="check"><span class="tick">✓</span><span>Production showed only <code>Μῆνιν ἄειδε…</code>; the chip bank and true line were gone.</span></div>
+        <div class="check"><span class="tick">✓</span><span>After answer reveal, <em>Again</em> changed the session from 9 to 10 items and advanced to a juncture <code>progressive_fading</code> card.</span></div>
+        <div class="check"><span class="tick">✓</span><span>Undo returned the session from 10 to 9 items and restored the original acquisition encounter.</span></div>
+      </div>
+    </article>
+
+    <article class="card wide opus">
+      <span class="eyebrow">Independent Opus implementation review</span>
+      <h2>Approved with no required correctness fixes</h2>
+      <p class="quote">“The diff faithfully implements the approved composite acquisition proposal and is correct on every risky branch I inspected.”</p>
+      <p class="muted" style="margin-top:14px">Opus specifically validated phase gating, honest FSRS/mastery state, DB-backed one-retry provenance, exact two-step Undo, coach-only exposure, cross-language ruby/token behavior, juncture exclusion, and dynamic session completion. Its browser-execution gap was closed by the root Playwright and PinchTab runs. Its optional success-policy observation led to the final Good/Easy response-contingent refinement and targeted browser proof.</p>
+    </article>
+
+    <article class="card wide warning">
+      <span class="eyebrow">Codex Workflows feedback · copy/paste ready</span>
+      <h2>Two completed workers failed to checkpoint as terminal</h2>
+      <div class="failure-list">
+        <div class="failure"><strong>Codex write worker deadlocked after completion.</strong> The session log contained the valid structured final answer and <code>task_complete</code>, but the process remained alive. A process sample showed <code>EventProcessorWithJsonOutput::process_server_notification</code> blocked in <code>write()</code>; stdout was a full 65,536-byte pipe whose reader belonged to the workflow runner.</div>
+        <div class="failure"><strong>The valid result was not checkpointed.</strong> <code>implement/attempt-1/output.json</code> never appeared, and workflow status stayed <code>running</code> with stale tool/token counters even though the leaf had finished all work and tests.</div>
+        <div class="failure"><strong>Child termination did not reconcile state.</strong> Sending SIGTERM to the blocked worker removed the child, but the runner and job remained <code>running</code>. Recovery required terminating the runner and calling <code>codex-workflows resume</code>.</div>
+        <div class="failure"><strong>Resume repeated completed write work.</strong> Because the final result had not been checkpointed, resume launched implementation attempt 2 and repeated repository reads and verification instead of salvaging the valid structured final from the session log.</div>
+        <div class="failure"><strong>The Claude review hit a second post-result hang.</strong> Opus successfully called <code>StructuredOutput</code> and exited. The runner still held the review as <code>running</code>, emitted no <code>output.json</code>, and reported stale last-progress data for several minutes; sampling showed the runner spending time in Pydantic validation. The structured review was recoverable only from Claude's session JSONL, after which the stuck workflow was canceled.</div>
+        <div class="failure"><strong>Status checks mutated the tool environment.</strong> Several <code>codex-workflows status</code> calls printed package uninstall/reinstall activity, including missing-<code>RECORD</code> warnings. A read-only status command should not repair or churn the workflow venv.</div>
+      </div>
+      <pre id="workflow-report">Codex Workflows failure report
+
+Run: dc4ba2bd-e35e-4dc2-a934-c6fd123f1422
+Pattern: provider completed successfully, runner failed to checkpoint/transition.
+
+1. Drain provider stdout and stderr continuously while the child is running; do not wait for process exit before reading a bounded pipe.
+2. Atomically persist a valid structured final as soon as it is observed, before any post-process or child-wait step.
+3. On resume, salvage a valid final/task_complete from the provider session log or captured stream instead of rerunning a completed write job.
+4. Reconcile orphaned running jobs when the recorded child PID no longer exists.
+5. Bound or time out post-provider schema validation and record the raw provider result before validation starts.
+6. Persist actionable diagnostics: provider exit code, stdout/stderr paths, parser/validation error, last captured event, and whether a valid final was seen.
+7. Keep `status` read-only; move dependency repair/install into explicit setup or upgrade commands.
+
+Observed twice:
+- Codex leaf: valid final + task_complete, then blocked write to full 64 KiB stdout pipe; no output.json.
+- Opus leaf: StructuredOutput succeeded and child exited; runner remained running in post-result validation; no output.json.</pre>
+      <button id="copy-report" type="button">Copy workflow report</button>
+    </article>
+
+    <article class="card wide">
+      <span class="eyebrow">Known policy boundaries</span>
+      <h2>Intentional, bounded behavior</h2>
+      <p class="muted">A failed source can add one retry beyond the initial smart-session cap, so a session with many failed fresh lines can grow; each source is still DB-limited to one retry and retries never recurse. In a one-line session, “retry at the tail” is necessarily immediate because no intervening card exists. Both behaviors are visible rather than silently hidden in mastery state.</p>
+    </article>
+  </section>
+
+  <footer>Plan artifact preserved byte-for-byte · result artifact is self-contained · local implementation only, no push performed</footer>
+</main>
+<script>
+  const button = document.getElementById('copy-report');
+  button.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(document.getElementById('workflow-report').innerText);
+    button.textContent = 'Copied';
+    setTimeout(() => { button.textContent = 'Copy workflow report'; }, 1400);
+  });
+</script>
+</body>
+</html>

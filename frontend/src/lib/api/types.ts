@@ -47,6 +47,8 @@ export type PrepSuggestResult = components['schemas']['PrepSuggestResult'];
 
 export type MediaCategory = 'reference' | 'saved_best';
 
+// Manual launcher inventory. The contract also contains coach-only
+// `acquisition`, which smart planning deals to never-acquired lines.
 export const PRACTICE_MODES: PracticeMode[] = [
 	'shadowing',
 	'progressive_fading',

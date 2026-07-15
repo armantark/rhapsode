@@ -122,8 +122,9 @@ def test_manual_random_start_uses_shuffled_target_order(
 
 
 def test_smart_mode_ladder_fades_support_with_mastery() -> None:
-    assert smart_mode_for(None, difficult=False) == "progressive_fading"
-    assert smart_mode_for("new", difficult=False) == "progressive_fading"
+    assert smart_mode_for(None, difficult=False) == "acquisition"
+    assert smart_mode_for("new", difficult=False) == "acquisition"
+    assert smart_mode_for(None, difficult=False, kind="juncture") == "progressive_fading"
     # Learning lines rebuild order first (word bank), then produce (cue recall).
     assert smart_mode_for("learning", difficult=False) == "word_bank"
     assert smart_mode_for("review", difficult=False) == "random_start"
@@ -136,7 +137,62 @@ def test_smart_mode_ladder_fades_support_with_mastery() -> None:
     # Difficulty pulls a segment into weak-link drilling, but a brand-new
     # segment still needs scaffolding before being drilled cold.
     assert smart_mode_for("review", difficult=True) == "weak_link"
-    assert smart_mode_for(None, difficult=True) == "progressive_fading"
+    assert smart_mode_for(None, difficult=True) == "acquisition"
+    # A recent lapse on already-acquired material restores support instead of
+    # sending it straight into cold weak-link recall.
+    assert (
+        smart_mode_for(
+            "learning",
+            difficult=True,
+            acquisition_succeeded=True,
+            last_rating="incorrect",
+        )
+        == "word_bank"
+    )
+    assert (
+        smart_mode_for(
+            "learning",
+            difficult=True,
+            kind="juncture",
+            acquisition_succeeded=True,
+            last_rating="revealed",
+        )
+        == "progressive_fading"
+    )
+    # The first return after a successful acquisition follows the outcome:
+    # Good asks for a clean cue-only retrieval, while Easy begins real passage
+    # flow only when a learned predecessor exists.
+    assert (
+        smart_mode_for(
+            "learning",
+            difficult=False,
+            acquisition_succeeded=True,
+            last_mode="acquisition",
+            last_rating="hesitant",
+        )
+        == "cue_recall"
+    )
+    assert (
+        smart_mode_for(
+            "learning",
+            difficult=False,
+            acquisition_succeeded=True,
+            last_mode="acquisition",
+            last_rating="clean",
+        )
+        == "cue_recall"
+    )
+    assert (
+        smart_mode_for(
+            "learning",
+            difficult=False,
+            acquisition_succeeded=True,
+            last_mode="acquisition",
+            last_rating="clean",
+            has_chain_context=True,
+        )
+        == "forward_chaining"
+    )
     # Once a technique has been used, the coach deliberately introduces the
     # least-practiced useful exercise instead of repeating the same label.
     assert (
@@ -251,6 +307,61 @@ def test_smart_plan_rotates_line_exercises_and_builds_forward_context(
         ]
 
 
+def test_smart_plan_restores_support_after_recent_acquired_lapse(
+    session_factory: object,
+) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="latin-lapse-support", name="Latin")
+        passage = models.Passage(title="Aeneid", language_profile=language)
+        revision = models.PassageRevision(
+            passage=passage, revision_number=1, source_text="arma virumque cano"
+        )
+        line = models.Segment(kind="line", ordinal=0, text="arma virumque cano")
+        revision.segments = [line]
+        db.add(passage)
+        db.flush()
+        history = models.PracticeSession(revision_id=revision.id, plan={})
+        db.add(history)
+        db.flush()
+        item = models.PracticeItem(
+            session_id=history.id,
+            revision_id=revision.id,
+            segment_id=line.id,
+            position=0,
+            mode="cue_recall",
+            prompt={},
+            completed=True,
+        )
+        db.add(item)
+        db.flush()
+        db.add_all(
+            [
+                models.ReviewState(
+                    segment_id=line.id,
+                    fsrs_card_json="{}",
+                    due_at=datetime.now(UTC),
+                    mastery_stage="learning",
+                    clean_count=0,
+                    attempt_count=3,
+                    acquisition_succeeded=True,
+                ),
+                models.Attempt(
+                    session_id=history.id,
+                    item_id=item.id,
+                    segment_id=line.id,
+                    mode="cue_recall",
+                    rating="incorrect",
+                    review_snapshot=[],
+                ),
+            ]
+        )
+        db.commit()
+
+        plan = build_smart_plan(db, revision, ["line"])
+
+        assert [planned["mode"] for planned in plan] == ["word_bank"]
+
+
 def test_smart_plan_backward_chaining_uses_current_learned_prefix(
     session_factory: object,
 ) -> None:
@@ -333,9 +444,9 @@ def test_smart_plan_appends_full_passage_once_all_segments_graduate(
         db.add(passage)
         db.commit()
 
-        # Fresh segments: every item scaffolds, no holistic finisher yet.
+        # Fresh lines receive the composite first lesson, no finisher yet.
         plan = build_smart_plan(db, revision, ["line"])
-        assert [item["mode"] for item in plan] == ["progressive_fading", "progressive_fading"]
+        assert [item["mode"] for item in plan] == ["acquisition", "acquisition"]
 
         for segment in revision.segments:
             db.add(
@@ -597,8 +708,13 @@ def test_junctures_generated_between_lines(session_factory: object) -> None:
         planned = [kinds[item["segment_id"]] for item in plan]
         assert planned == ["line", "juncture", "line"]
 
+        # The invariant also holds when the learner manually chooses word
+        # bank with automatic grain: only whole recall lines receive chips.
+        manual_bank = build_plan(db, revision, ["word_bank"], None)
+        assert [kinds[item["segment_id"]] for item in manual_bank] == ["line", "line"]
 
-def test_new_segments_shadow_first_when_reference_audio_exists(
+
+def test_new_lines_use_one_acquisition_item_even_with_reference_audio(
     session_factory: object,
 ) -> None:
     with session_factory() as db:  # type: ignore[operator]
@@ -618,12 +734,12 @@ def test_new_segments_shadow_first_when_reference_audio_exists(
             ),
         )
 
-        # Without audio, brand-new lines go straight to fading.
+        # Lines use the composite lesson; junctures keep progressive fading.
         plan = build_smart_plan(db, revision, None)
         assert [item["mode"] for item in plan] == [
+            "acquisition",
             "progressive_fading",
-            "progressive_fading",
-            "progressive_fading",
+            "acquisition",
         ]
 
         db.add(
@@ -638,16 +754,14 @@ def test_new_segments_shadow_first_when_reference_audio_exists(
         )
         db.flush()
 
-        # With audio, each new LINE shadows first, then fades; the juncture
-        # is a fragment and skips the shadowing pass.
+        # Reference audio remains available inside the encounter surface; it
+        # must not split first exposure into a second graded shadowing item.
         plan = build_smart_plan(db, revision, None)
         kinds = {s.id: s.kind for s in revision.segments}
         assert [(kinds[item["segment_id"]], item["mode"]) for item in plan] == [
-            ("line", "shadowing"),
-            ("line", "progressive_fading"),
+            ("line", "acquisition"),
             ("juncture", "progressive_fading"),
-            ("line", "shadowing"),
-            ("line", "progressive_fading"),
+            ("line", "acquisition"),
         ]
 
 
@@ -1196,10 +1310,10 @@ def test_minutes_budget_sizes_session_and_prioritizes_finisher(
         db.add(passage)
         db.commit()
 
-        # Fresh passage, 5-minute budget, no latency history: defaults say
-        # progressive_fading ≈ 75s, so 300s buys 4 items.
+        # Fresh passage, 5-minute budget: composite acquisition defaults to
+        # 90s, so 300s buys 3 items.
         plan = build_smart_plan(db, revision, ["line"], minutes=5)
-        assert len(plan) == 4
+        assert len(plan) == 3
 
         for segment in revision.segments:
             db.add(
@@ -1243,28 +1357,26 @@ def test_minutes_budget_fills_short_passage_with_varied_repeats(
 
         # No budget: one quick pass, each new line exactly once.
         standard = build_smart_plan(db, revision, ["line"])
-        assert [item["mode"] for item in standard] == ["progressive_fading"] * 3
+        assert [item["mode"] for item in standard] == ["acquisition"] * 3
 
-        # 10 minutes (600s): the 3-line pass spends 3×75s = 225s, then the
+        # 10 minutes (600s): the 3-line pass spends 3×90s = 270s, then the
         # broader rotation fills the rest in successive passage-order
         # run-throughs, tapering as the budget runs down.
         plan = build_smart_plan(db, revision, ["line"], minutes=10)
         assert [item["mode"] for item in plan] == (
-            ["progressive_fading"] * 3
-            + ["word_bank"] * 3
-            + ["forward_chaining"] * 3
-            + ["backward_chaining"] * 2
-            + ["cue_recall"]
+            ["acquisition"] * 3
+            + ["progressive_fading"] * 3
+            + ["word_bank"] * 2
         )
         per_segment = {segment.id: [] for segment in revision.segments}
         for item in plan:
             per_segment[item["segment_id"]].append(item["mode"])
-        assert sorted(len(modes) for modes in per_segment.values()) == [3, 4, 5]
+        assert sorted(len(modes) for modes in per_segment.values()) == [2, 3, 3]
 
         # A huge budget cannot exceed the per-segment repetition cap: still the
-        # primary turn plus the five-mode rotation, never more.
+        # primary turn plus the six-mode rotation, never more.
         capped = build_smart_plan(db, revision, ["line"], minutes=120)
-        assert len(capped) == 18
+        assert len(capped) == 21
 
 
 def test_minutes_fill_never_assigns_chaining_to_junctures(session_factory: object) -> None:
@@ -1553,12 +1665,40 @@ def test_mastery_stages() -> None:
         due_at=datetime.now(UTC),
         attempt_count=1,
         clean_count=0,
+        acquisition_succeeded=True,
     )
     assert mastery_stage(state) == "learning"
     state.clean_count = 2
     assert mastery_stage(state) == "review"
     state.clean_count = 5
     assert mastery_stage(state) == "durable"
+    state.acquisition_succeeded = False
+    assert mastery_stage(state) == "new"
+
+
+def test_acquisition_prompt_carries_exact_target_units_and_lead_in(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def reverse(items: list[str]) -> None:
+        items.reverse()
+
+    monkeypatch.setattr(planning.random, "shuffle", reverse)
+    line = models.Segment(
+        kind="line",
+        ordinal=0,
+        text="arma virumque cano",
+        cue="arms and the man",
+    )
+
+    prompt = prompt_for("acquisition", line, [line], hint="my memory hook")
+
+    assert prompt == {
+        "instruction": "Learn this line, rebuild it, then produce it from its opening.",
+        "target_text": "arma virumque cano",
+        "word_bank": ["cano", "virumque", "arma"],
+        "lead_in": "arma virumque",
+        "hint": "my memory hook",
+    }
 
 
 def test_recall_prompt_uses_verbatim_lead_in() -> None:

@@ -15,6 +15,7 @@
 		layers = [],
 		note = null,
 		onReveal,
+		onAcquisitionReady,
 		onSaveNote,
 		onRecitalConfirm
 	}: {
@@ -41,6 +42,9 @@
 		 *  mnemonic is the strongest nudge), and stays editable. */
 		note?: string | null;
 		onReveal: () => void;
+		/** Acquisition owns two supported phases before its terminal recall.
+		 *  Tell the page when Space may reveal the final answer. */
+		onAcquisitionReady?: (ready: boolean) => void;
 		/** Persists the note for the current segment; parent owns the request. */
 		onSaveNote?: (text: string) => void | Promise<void>;
 		/** Recital only: submits the confirmed stumble map; parent owns the
@@ -146,6 +150,8 @@
 	// typed_recall: the draft survives the reveal so the learner can eyeball
 	// their attempt against the true line — the check is visual, never parsed.
 	let typedDraft = $state('');
+	let acquisitionPhase: 'encounter' | 'reconstruct' | 'produce' = $state('encounter');
+	let reconstructionChecked = $state(false);
 	// recital: the stumble map, flagged live by line number while performing,
 	// adjusted with the texts visible, then confirmed. Self-reported taps —
 	// the app never infers a stumble.
@@ -163,10 +169,18 @@
 		editingNote = false;
 		placedChips = [];
 		typedDraft = '';
+		acquisitionPhase = 'encounter';
+		reconstructionChecked = false;
+		onAcquisitionReady?.(false);
 		recitalPhase = 'performing';
 		stumbledIds = [];
 		stopCueAudio();
 	});
+
+	function setAcquisitionPhase(phase: 'encounter' | 'reconstruct' | 'produce') {
+		acquisitionPhase = phase;
+		onAcquisitionReady?.(phase === 'produce');
+	}
 
 	function toggleStumble(segmentId: string) {
 		stumbledIds = stumbledIds.includes(segmentId)
@@ -241,7 +255,7 @@
 	);
 
 	const wordBank = $derived(
-		item.mode === 'word_bank' && Array.isArray(prompt.word_bank)
+		(item.mode === 'word_bank' || item.mode === 'acquisition') && Array.isArray(prompt.word_bank)
 			? (prompt.word_bank as string[])
 			: []
 	);
@@ -299,7 +313,7 @@
 		}
 	}
 	const knownMode = $derived(
-		['shadowing', 'progressive_fading', 'word_bank', 'forward_chaining', 'backward_chaining', 'cue_recall', 'typed_recall', 'meaning_recall', 'random_start', 'weak_link', 'full_passage', 'recital'].includes(item.mode)
+		['shadowing', 'acquisition', 'progressive_fading', 'word_bank', 'forward_chaining', 'backward_chaining', 'cue_recall', 'typed_recall', 'meaning_recall', 'random_start', 'weak_link', 'full_passage', 'recital'].includes(item.mode)
 	);
 
 	let stageIndex = $state(0);
@@ -416,6 +430,87 @@
 			<p class="passage-text" {lang} style:font-family={fonts}>
 				{String(prompt.target_text ?? prompt.start ?? '')}
 			</p>
+		{/if}
+	{:else if item.mode === 'acquisition'}
+		<div class="acquisition-progress" aria-label="Acquisition progress">
+			<span class:active={acquisitionPhase === 'encounter'}>1 · encounter</span>
+			<span class:active={acquisitionPhase === 'reconstruct'}>2 · reconstruct</span>
+			<span class:active={acquisitionPhase === 'produce'}>3 · produce</span>
+		</div>
+		{#if acquisitionPhase === 'encounter'}
+			<p class="muted small-note">Read the whole line once. Its annotations and reference audio are available before you retrieve it.</p>
+			{#if node}
+				<div class="passage-text rich-prompt acquisition-target">
+					<SegmentText {node} {profile} {layers} showRuby={readingEnabled} />
+				</div>
+			{:else}
+				<p class="passage-text acquisition-target" {lang} style:font-family={fonts}>{String(prompt.target_text ?? '')}</p>
+			{/if}
+			<button class="reveal" onclick={() => setAcquisitionPhase('reconstruct')}>I’ve read it · rebuild →</button>
+		{:else if acquisitionPhase === 'reconstruct'}
+			<div class="bank-arrangement" {lang} style:font-family={fonts}>
+				{#if placedChips.length === 0}
+					<span class="muted small-note">Tap the words below in recitation order — drag placed words to reorder, tap one to take it back.</span>
+				{:else}
+					{#each placedChips as chipIndex, position (chipIndex)}
+						{@const chipNode = wordBankNodes[chipIndex]}
+						<button
+							class="chip placed"
+							class:dragging={dragFrom === position}
+							draggable="true"
+							ondragstart={() => (dragFrom = position)}
+							ondragover={(event) => event.preventDefault()}
+							ondrop={(event) => {
+								event.preventDefault();
+								reorderPlaced(position);
+							}}
+							ondragend={() => (dragFrom = null)}
+							onclick={() => (placedChips = placedChips.filter((index) => index !== chipIndex))}
+						>
+							{#if chipNode}<SegmentText node={chipNode} {profile} layers={[]} showRuby={readingEnabled} />{:else}{wordBank[chipIndex]}{/if}
+						</button>
+					{/each}
+				{/if}
+			</div>
+			{#if poolChips.length}
+				<div class="bank-pool" {lang} style:font-family={fonts}>
+					{#each poolChips as chip (chip.index)}
+						{@const chipNode = wordBankNodes[chip.index]}
+						<button class="chip" onclick={() => (placedChips = [...placedChips, chip.index])}>
+							{#if chipNode}<SegmentText node={chipNode} {profile} layers={[]} showRuby={readingEnabled} />{:else}{chip.text}{/if}
+						</button>
+					{/each}
+				</div>
+			{/if}
+			{#if reconstructionChecked}
+				<div class="acquisition-check">
+					<span class="note-tag">true line</span>
+					{#if node}
+						<div class="passage-text rich-prompt"><SegmentText {node} {profile} {layers} showRuby={readingEnabled} /></div>
+					{:else}
+						<p class="passage-text" {lang} style:font-family={fonts}>{String(prompt.target_text ?? '')}</p>
+					{/if}
+				</div>
+				<button class="reveal" onclick={() => setAcquisitionPhase('produce')}>Hide the bank · recall aloud →</button>
+			{:else}
+				<button
+					class="reveal"
+					disabled={poolChips.length > 0}
+					onclick={() => (reconstructionChecked = true)}
+				>Check reconstruction</button>
+			{/if}
+		{:else}
+			<div class="cue-line">
+				{#if leadInNode}
+					<div class="cue rich-cue"><SegmentText node={leadInNode} {profile} layers={[]} showRuby={readingEnabled} /></div>
+				{:else}
+					<span class="cue passage-text" {lang} style:font-family={fonts}>{leadIn}</span>
+				{/if}
+				<span class="muted">… recite the whole line to the end</span>
+			</div>
+			{#if !revealed}
+				<button class="reveal" onclick={onReveal}>Show answer to check</button>
+			{/if}
 		{/if}
 	{:else if item.mode === 'progressive_fading' && stages.length}
 		{#if fadeLeadIn}
@@ -713,6 +808,42 @@
 		display: flex;
 		align-items: center;
 		gap: 12px;
+	}
+
+	.acquisition-progress {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 6px;
+	}
+
+	.acquisition-progress span {
+		padding: 6px 8px;
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		color: var(--text-dim);
+		font-family: var(--font-mono);
+		font-size: 0.68rem;
+		text-align: center;
+	}
+
+	.acquisition-progress span.active {
+		border-color: var(--gold);
+		color: var(--gold);
+		background: color-mix(in srgb, var(--gold) 8%, transparent);
+	}
+
+	.acquisition-target {
+		padding: 14px;
+		border: 1px solid var(--border);
+		border-radius: 12px;
+	}
+
+	.acquisition-check {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		padding: 12px;
+		border-inline-start: 3px solid var(--gold);
 	}
 
 	.rich-prompt {

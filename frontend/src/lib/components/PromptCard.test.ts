@@ -165,6 +165,57 @@ describe('built-in mode rendering', () => {
 		expect(screen.getByText('stage 5/5')).toBeInTheDocument();
 	});
 
+	it('acquisition sequences annotated encounter, reconstruction check, and lead-in production', async () => {
+		const onReveal = vi.fn();
+		const onAcquisitionReady = vi.fn();
+		const acquisitionItem = item('acquisition', {
+			instruction: 'Learn this line, rebuild it, then produce it from its opening.',
+			target_text: '空こぼれ落ちたふたつの星が',
+			word_bank: ['星', '空', 'が'],
+			lead_in: '空こぼれ落ちた'
+		});
+		const { container, rerender } = render(PromptCard, {
+			item: acquisitionItem,
+			node: japaneseRubyNode(),
+			profile: japaneseProfile,
+			layers: ['reading'],
+			revealText: '空こぼれ落ちたふたつの星が',
+			onReveal,
+			onAcquisitionReady
+		});
+
+		// Encounter is the full rich line, including ruby support.
+		expect(screen.getByText('1 · encounter')).toHaveClass('active');
+		expect(container.querySelectorAll('.acquisition-target rt').length).toBeGreaterThan(0);
+		await fireEvent.click(screen.getByRole('button', { name: /I’ve read it/ }));
+
+		// Reconstruction reuses the chip bank and checks against the true line
+		// without unlocking the terminal grade/reveal yet.
+		expect(screen.getByText('2 · reconstruct')).toHaveClass('active');
+		expect(container.querySelector('.bank-pool')).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Show answer to check' })).toBeNull();
+		while (container.querySelector('.bank-pool .chip')) {
+			await fireEvent.click(container.querySelector('.bank-pool .chip') as HTMLElement);
+		}
+		await fireEvent.click(screen.getByRole('button', { name: 'Check reconstruction' }));
+		expect(screen.getByText('true line')).toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: /Hide the bank/ }));
+
+		// Production hides the bank and exposes only the deterministic lead-in
+		// until the learner explicitly reveals the terminal answer.
+		expect(screen.getByText('3 · produce')).toHaveClass('active');
+		expect(container.querySelector('.bank-pool')).toBeNull();
+		expect(screen.getByText(/recite the whole line to the end/)).toBeInTheDocument();
+		expect(onAcquisitionReady).toHaveBeenLastCalledWith(true);
+		await fireEvent.click(screen.getByRole('button', { name: 'Show answer to check' }));
+		expect(onReveal).toHaveBeenCalledOnce();
+
+		// A new persisted item id always restarts the internal lesson safely.
+		await rerender({ item: { ...acquisitionItem, id: 'item-acquisition-retry' } });
+		expect(screen.getByText('1 · encounter')).toHaveClass('active');
+		expect(onAcquisitionReady).toHaveBeenLastCalledWith(false);
+	});
+
 	it('word bank deals chips that move between pool and arrangement', async () => {
 		render(PromptCard, {
 			item: item('word_bank', {

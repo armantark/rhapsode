@@ -2,6 +2,16 @@
 
 ## Completed
 
+- Initial acquisition flow implemented (2026-07-14): coach-only composite
+  line acquisition, explicit persisted success criterion with legacy backfill,
+  one delayed non-recursive retry with exact two-step undo, outcome-aware
+  support restoration after lapses, regenerated OpenAPI/TypeScript contracts,
+  response-contingent Good/Easy first returns, and updated PromptCard/Playwright
+  smart progression. Backend tests, Ruff, strict mypy, OpenAPI freshness,
+  frontend tests, svelte-check, production build, and all 12 Playwright flows
+  pass. A separate PinchTab pass on a fresh Ancient Greek passage verified the
+  three phases, locked grading, bank-hidden production, dynamic tail retry,
+  juncture fading, and exact Undo removal of an unattempted retry.
 - Product and backend implementation plan agreed.
 - Repository initialized on `feat/rhapsode-backend`.
 - Persistence models, Alembic baseline, services, and `/api/v1` routes implemented.

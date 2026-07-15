@@ -10,6 +10,7 @@ from rhapsode.resources import build_alembic_config
 INITIAL_REVISION = "9306b49e8942"
 PRE_COLLECTION_REVISION = "a1f2c3d4e5f6"
 PRE_PERSONAL_NOTE_REVISION = "b7c8d9e0f1a2"
+PRE_ACQUISITION_REVISION = "e0f1a2b3c4d5"
 
 
 def migration_config(database_path: Path) -> Config:
@@ -169,3 +170,72 @@ def test_source_reference_migration_adds_nullable_display_labels(tmp_path: Path)
 
     assert revision_columns["reference_label"][3] == 0
     assert segment_columns["reference_label"][3] == 0
+
+
+def test_acquisition_migration_preserves_existing_reviews_as_acquired(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "rhapsode.db"
+    config = migration_config(database_path)
+    command.upgrade(config, PRE_ACQUISITION_REVISION)
+
+    now = datetime.now(UTC).isoformat()
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO language_profiles (
+                id, slug, name, direction, fonts, annotation_schemas,
+                segmentation_defaults, display_options, created_at, updated_at
+            ) VALUES ('language', 'latin', 'Latin', 'ltr', '[]', '[]', '{}', '{}', ?, ?)
+            """,
+            (now, now),
+        )
+        connection.execute(
+            """
+            INSERT INTO passages (
+                id, title, language_profile_id, description, active_revision_id,
+                created_at, updated_at
+            ) VALUES ('passage', 'Aeneid', 'language', NULL, 'revision', ?, ?)
+            """,
+            (now, now),
+        )
+        connection.execute(
+            """
+            INSERT INTO passage_revisions (
+                id, passage_id, revision_number, source_text, hierarchy, practiced,
+                reference_label, created_at, updated_at
+            ) VALUES ('revision', 'passage', 1, 'arma', '{}', 1, NULL, ?, ?)
+            """,
+            (now, now),
+        )
+        connection.execute(
+            """
+            INSERT INTO segments (
+                id, revision_id, parent_id, kind, ordinal, text, cue, metadata_json,
+                reference_label, created_at, updated_at
+            ) VALUES ('segment', 'revision', NULL, 'line', 0, 'arma', NULL, '{}', NULL, ?, ?)
+            """,
+            (now, now),
+        )
+        connection.execute(
+            """
+            INSERT INTO review_states (
+                id, segment_id, fsrs_card_json, due_at, mastery_stage,
+                clean_count, attempt_count, created_at, updated_at
+            ) VALUES ('review', 'segment', '{}', ?, 'learning', 0, 1, ?, ?)
+            """,
+            (now, now, now),
+        )
+
+    command.upgrade(config, "head")
+
+    with sqlite3.connect(database_path) as connection:
+        acquired = connection.execute(
+            "SELECT acquisition_succeeded FROM review_states WHERE id = 'review'"
+        ).fetchone()
+        item_columns = {
+            row[1]: row for row in connection.execute("PRAGMA table_info(practice_items)")
+        }
+
+    assert acquired == (1,)
+    assert item_columns["retry_source_item_id"][3] == 0

@@ -49,6 +49,7 @@
 	let loading = $state(true);
 
 	let revealed = $state(false);
+	let acquisitionReady = $state(false);
 	let segmentNote: string | null = $state(null);
 	let submitting = $state(false);
 	let undoing = $state(false);
@@ -210,6 +211,7 @@
 		// restart the latency clock and reveal state per item
 		void currentItem?.id;
 		revealed = false;
+		acquisitionReady = false;
 		focusedMs = 0;
 		runningSince = clockActive() ? performance.now() : null;
 		pendingMediaId = null;
@@ -431,7 +433,9 @@
 	const canReveal = $derived(
 		!!currentItem &&
 			!revealed &&
-			[
+			(currentItem.mode === 'acquisition'
+				? acquisitionReady
+				: [
 				'cue_recall',
 				'weak_link',
 				'random_start',
@@ -441,7 +445,10 @@
 				'full_passage',
 				'forward_chaining',
 				'backward_chaining'
-			].includes(currentItem.mode)
+			].includes(currentItem.mode))
+	);
+	const requiresCheck = $derived(
+		!!currentItem && !revealed && (currentItem.mode === 'acquisition' || canReveal)
 	);
 
 	function onWindowKeydown(event: KeyboardEvent) {
@@ -591,6 +598,7 @@
 					layers={enabledLayers}
 					note={segmentNote}
 					onReveal={() => (revealed = true)}
+					onAcquisitionReady={(ready) => (acquisitionReady = ready)}
 					onSaveNote={saveNote}
 					onRecitalConfirm={confirmRecital}
 				/>
@@ -656,15 +664,17 @@
 			     the reciter doesn't hear, so grading blind would inflate the schedule.
 			     The peek itself stays neutral — it never forces a grade. A recital has
 			     no grade bar at all: its stumble map IS the grade. -->
-			<GradeBar onGrade={grade} disabled={submitting || canReveal} />
+			<GradeBar onGrade={grade} disabled={submitting || requiresCheck} />
 			{#if revealed}
 				<p class="muted small">
 					Answer shown — grade yourself honestly. Pick <strong>Again</strong> only if you
 					couldn't recall it.
 				</p>
-			{:else if canReveal}
+			{:else if requiresCheck}
 				<p class="muted small">
-					{#if currentItem.mode === 'typed_recall'}
+					{#if currentItem.mode === 'acquisition' && !acquisitionReady}
+						Complete the encounter and reconstruction before the final oral check.
+					{:else if currentItem.mode === 'typed_recall'}
 						<!-- Space types into the textarea, so pointing at it would lie. -->
 						Type from memory, then click “Show answer to check” — grading unlocks after
 						the check.

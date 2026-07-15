@@ -6,6 +6,20 @@ The SvelteKit frontend is complete and verified against the generated OpenAPI
 contract. All routes, components, and utilities are implemented, tested, and
 type-checked with zero errors.
 
+## Initial Acquisition UI (2026-07-14)
+
+- `PromptCard` renders `acquisition` as one internal encounter → reconstruct →
+  produce sequence. The encounter uses the existing rich segment tree; the
+  reconstruction must place every supplied chip before showing the true line;
+  production hides the bank and shows only the deterministic lead-in.
+- The practice page locks keyboard reveal and grading until production, then
+  requires the ordinary answer reveal before a grade. All internal phase,
+  chips, and check state reset on the persisted practice-item id, including
+  when an undone generated retry reopens.
+- `PRACTICE_MODES` remains the manual-launcher inventory and intentionally
+  excludes contract mode `acquisition`. The Playwright smart-progression spec
+  now exercises the composite flow and confirms junctures still fade.
+
 Run it from `frontend/`:
 
 ```bash

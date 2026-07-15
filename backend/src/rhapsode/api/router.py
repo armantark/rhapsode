@@ -589,6 +589,11 @@ def create_session(payload: schemas.SessionCreate, db: Db) -> models.PracticeSes
         )
     else:
         requested_modes = [mode.value for mode in payload.modes]
+        if schemas.PracticeMode.acquisition.value in requested_modes:
+            raise HTTPException(
+                status_code=422,
+                detail="Acquisition is coach-only; start a smart session for new lines.",
+            )
         plan = [
             item
             for revision in revisions
@@ -772,6 +777,39 @@ def submit_attempt(
             db, segment_id, rating, attempt_id=attempt.id, review_duration_ms=log_duration
         )
         state = state or reviewed
+    if (
+        item.mode == schemas.PracticeMode.acquisition.value
+        and item.retry_source_item_id is None
+        and payload.rating in {
+            schemas.AttemptRating.revealed,
+            schemas.AttemptRating.incorrect,
+        }
+    ):
+        # Preserve the failure as the real FSRS review, then deal one supported
+        # retry at the session tail. Provenance prevents retries from spawning
+        # retries and lets undo remove the generated item exactly.
+        retry_exists = db.scalar(
+            select(models.PracticeItem.id).where(
+                models.PracticeItem.retry_source_item_id == item.id
+            )
+        )
+        if retry_exists is None:
+            last_position = db.scalar(
+                select(func.max(models.PracticeItem.position)).where(
+                    models.PracticeItem.session_id == session_id
+                )
+            )
+            db.add(
+                models.PracticeItem(
+                    session_id=session_id,
+                    revision_id=item.revision_id,
+                    segment_id=item.segment_id,
+                    position=(last_position if last_position is not None else -1) + 1,
+                    mode=item.mode,
+                    prompt=dict(item.prompt),
+                    retry_source_item_id=item.id,
+                )
+            )
     # The completion check below is SQL; without a flush a session factory
     # configured with autoflush=False would never see this item complete.
     db.flush()
@@ -814,6 +852,17 @@ def undo_attempt(session_id: str, db: Db) -> schemas.SessionRead:
         scheduling.restore_review_state(db, snapshot)
     item = db.get(models.PracticeItem, attempt.item_id)
     if item is not None:
+        if item.retry_source_item_id is None:
+            retry = db.scalar(
+                select(models.PracticeItem).where(
+                    models.PracticeItem.retry_source_item_id == item.id
+                )
+            )
+            if retry is not None and not retry.completed:
+                # The retry is append-only and unattempted here (a completed
+                # retry's later attempt would have been the undo target first),
+                # so removing it restores the original session plan exactly.
+                db.delete(retry)
         item.completed = False
         session.current_index = item.position
     # Undo can resurrect a session that the final grade had completed.

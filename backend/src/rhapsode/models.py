@@ -186,6 +186,12 @@ class ReviewState(Base, TimestampMixin):
     mastery_stage: Mapped[str] = mapped_column(String, default="new")
     clean_count: Mapped[int] = mapped_column(Integer, default=0)
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    # Existing review rows predate the acquisition lesson and are migrated as
+    # acquired. The scheduler explicitly starts newly reviewed targets false
+    # until a Good/Easy acquisition grade proves successful retrieval.
+    acquisition_succeeded: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="1"
+    )
 
 
 class PracticeSession(Base, TimestampMixin):
@@ -209,7 +215,10 @@ class PracticeSession(Base, TimestampMixin):
 
 class PracticeItem(Base, TimestampMixin):
     __tablename__ = "practice_items"
-    __table_args__ = (UniqueConstraint("session_id", "position"),)
+    __table_args__ = (
+        UniqueConstraint("session_id", "position"),
+        UniqueConstraint("retry_source_item_id"),
+    )
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
     session_id: Mapped[str] = mapped_column(ForeignKey("practice_sessions.id", ondelete="CASCADE"))
@@ -221,6 +230,11 @@ class PracticeItem(Base, TimestampMixin):
     mode: Mapped[str] = mapped_column(String)
     prompt: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Internal provenance for the one delayed acquisition retry. It is omitted
+    # from PracticeItemRead, so retry mechanics do not leak into the contract.
+    retry_source_item_id: Mapped[str | None] = mapped_column(
+        ForeignKey("practice_items.id", ondelete="CASCADE"), nullable=True
+    )
     session: Mapped[PracticeSession] = relationship(back_populates="items")
 
 

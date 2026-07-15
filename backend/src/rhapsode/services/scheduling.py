@@ -37,6 +37,7 @@ def snapshot_review_state(db: Session, segment_id: str) -> dict[str, Any]:
         "mastery_stage": state.mastery_stage,
         "clean_count": state.clean_count,
         "attempt_count": state.attempt_count,
+        "acquisition_succeeded": state.acquisition_succeeded,
     }
 
 
@@ -59,6 +60,9 @@ def restore_review_state(db: Session, snapshot: dict[str, Any]) -> None:
     state.mastery_stage = snapshot["mastery_stage"]
     state.clean_count = snapshot["clean_count"]
     state.attempt_count = snapshot["attempt_count"]
+    # Snapshots written before this field existed belong to review rows that
+    # the migration marks acquired.
+    state.acquisition_succeeded = snapshot.get("acquisition_succeeded", True)
 
 
 # Setting key holding personally fitted FSRS weights, written by
@@ -122,12 +126,15 @@ def review_segment(
             mastery_stage="new",
             clean_count=0,
             attempt_count=0,
+            acquisition_succeeded=False,
         )
         db.add(state)
     state.fsrs_card_json = card.to_json()
     state.due_at = card.due
     state.attempt_count += 1
     state.clean_count = _next_clean_streak(state.clean_count, rating)
+    if rating in {"hesitant", "clean"}:
+        state.acquisition_succeeded = True
     state.mastery_stage = mastery_stage(state)
     return state
 
@@ -153,6 +160,8 @@ def _next_clean_streak(streak: int, rating: str) -> int:
 
 
 def mastery_stage(state: models.ReviewState) -> str:
+    if not state.acquisition_succeeded:
+        return "new"
     if state.clean_count >= DURABLE_STREAK:
         return "durable"
     if state.clean_count >= REVIEW_STREAK:

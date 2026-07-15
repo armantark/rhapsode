@@ -150,6 +150,21 @@ def _word_bank_prompt(target: models.Segment) -> dict[str, Any]:
     }
 
 
+def _acquisition_prompt(target: models.Segment, hint: str | None) -> dict[str, Any]:
+    """One criterion-based first lesson for a line: encounter the exact text,
+    reconstruct supplied recall units, then transfer to lead-in-only oral
+    production. Segment annotations and reference audio remain available via
+    the practice card's existing revision context rather than being copied into
+    persisted prompt JSON."""
+    return {
+        "instruction": "Learn this line, rebuild it, then produce it from its opening.",
+        "target_text": target.text,
+        "word_bank": _shuffled_units(_recall_units(target)),
+        "lead_in": _lead_in(target),
+        "hint": hint,
+    }
+
+
 def _typed_recall_prompt(target: models.Segment, hint: str | None) -> dict[str, Any]:
     """Typed recall: the forward-recall shape of cue_recall, but production is
     written, so every character (accents, breathings, okurigana) demands a
@@ -291,6 +306,8 @@ def prompt_for(
                 "instruction": "Listen, then shadow the whole line aloud.",
                 "target_text": target.text,
             }
+        case "acquisition":
+            return _acquisition_prompt(target, effective_hint)
         case "progressive_fading":
             # A juncture is the next line's head, not a whole line, so its fading
             # drill stops at the head rather than running to a line end. The
@@ -484,6 +501,10 @@ def smart_mode_for(
     mode_counts: dict[str, int] | None = None,
     has_reference_audio: bool = False,
     has_translation: bool = False,
+    acquisition_succeeded: bool | None = None,
+    last_rating: str | None = None,
+    last_mode: str | None = None,
+    has_chain_context: bool = False,
 ) -> str:
     """Choose the least-used useful exercise for this mastery stage.
 
@@ -492,8 +513,41 @@ def smart_mode_for(
     difficult material is ever practiced. Junctures keep a narrower repertoire
     because chaining a transition fragment is not a coherent exercise.
     """
-    if stage is None or stage == "new":
-        return PracticeMode.progressive_fading.value
+    acquired = (
+        stage not in (None, "new")
+        if acquisition_succeeded is None
+        else acquisition_succeeded
+    )
+    if not acquired:
+        # A three-word juncture head does not benefit from chip ordering; keep
+        # its established progressive tail→head lesson. Whole lines receive
+        # the composite criterion-based acquisition card.
+        return (
+            PracticeMode.progressive_fading.value
+            if kind == "juncture"
+            else PracticeMode.acquisition.value
+        )
+    if last_rating in {"revealed", "incorrect"}:
+        # A recent lapse restores support before any cold weak-link drill. Once
+        # this supported turn is graded, normal least-used rotation resumes.
+        return (
+            PracticeMode.progressive_fading.value
+            if kind == "juncture"
+            else PracticeMode.word_bank.value
+        )
+    if kind != "juncture" and last_mode == PracticeMode.acquisition.value:
+        # The first return after acquisition is response-contingent rather than
+        # another arbitrary turn through the rotation. A hesitant success needs
+        # a clean cue-only retrieval; a clean success can begin passage flow as
+        # soon as a learned predecessor makes chaining a real exercise.
+        if last_rating == "hesitant":
+            return PracticeMode.cue_recall.value
+        if last_rating == "clean":
+            return (
+                PracticeMode.forward_chaining.value
+                if has_chain_context
+                else PracticeMode.cue_recall.value
+            )
     if kind == "juncture":
         # Junctures skip word_bank (a 3-word head makes ordering trivial) but
         # graduate to a typed bridge: writing the landing words pins them.
@@ -567,6 +621,7 @@ FILL_MODE_CYCLE = [
 # mode has enough samples.
 DEFAULT_MODE_SECONDS: dict[str, float] = {
     "shadowing": 30,
+    "acquisition": 90,
     "progressive_fading": 75,
     "word_bank": 40,
     "forward_chaining": 45,
@@ -698,13 +753,16 @@ def build_smart_plan_for_revisions(
     if not all_segments:
         return []
     personal_notes = _personal_note_texts(db, [segment.id for segment in all_segments])
-    stages = {
-        state.segment_id: state.mastery_stage
-        for state in db.scalars(
+    review_states = list(
+        db.scalars(
             select(models.ReviewState).where(
                 models.ReviewState.segment_id.in_([segment.id for segment in all_segments])
             )
         )
+    )
+    stages = {state.segment_id: state.mastery_stage for state in review_states}
+    acquisition_succeeded = {
+        state.segment_id: state.acquisition_succeeded for state in review_states
     }
     line_numbers_by_revision = {
         revision.id: _line_number_map(_ordered_segments(revision, None))
@@ -725,6 +783,21 @@ def build_smart_plan_for_revisions(
     ):
         if segment_id is not None:
             mode_counts[segment_id][mode] = count
+    last_ratings: dict[str, str] = {}
+    last_modes: dict[str, str] = {}
+    for segment_id, rating, mode in db.execute(
+        select(models.Attempt.segment_id, models.Attempt.rating, models.Attempt.mode)
+        .where(models.Attempt.segment_id.in_([segment.id for segment in all_segments]))
+        .order_by(models.Attempt.created_at, models.Attempt.id)
+    ):
+        if segment_id is not None:
+            last_ratings[segment_id] = rating
+            last_modes[segment_id] = mode
+    has_chain_context: dict[str, bool] = {}
+    for revision, _segments in revision_segments:
+        learned_prefix = _learned_prefix(_line_segments(revision.segments), stages)
+        for index, line in enumerate(learned_prefix):
+            has_chain_context[line.id] = index > 0
     modes = {
         segment.id: smart_mode_for(
             stages.get(segment.id),
@@ -733,6 +806,10 @@ def build_smart_plan_for_revisions(
             mode_counts=mode_counts[segment.id],
             has_reference_audio=segment.revision_id in revisions_with_reference,
             has_translation=_translation_text(segment) is not None,
+            acquisition_succeeded=acquisition_succeeded.get(segment.id, False),
+            last_rating=last_ratings.get(segment.id),
+            last_mode=last_modes.get(segment.id),
+            has_chain_context=has_chain_context.get(segment.id, False),
         )
         for segment in all_segments
     }
@@ -749,17 +826,10 @@ def build_smart_plan_for_revisions(
         }
         for revision, _segments in revision_segments
     }
-    # First exposure rides the recording when one exists (grill D2): hear a
-    # fluent rendition and speak along BEFORE fading it from memory. Junctures
-    # are fragments and don't map onto the audio, so they skip the pass.
+    # Acquisition's encounter phase is now the single first-exposure surface;
+    # reference audio remains available on that card, so a separate shadowing
+    # item would split one deliberate lesson into two graded attempts.
     shadow_first: set[str] = set()
-    for revision, segments in revision_segments:
-        if revision.id in revisions_with_reference:
-            shadow_first.update(
-                segment.id
-                for segment in segments
-                if stages.get(segment.id) in (None, "new") and segment.kind != "juncture"
-            )
     # The finisher is appended once every targeted segment graduates —
     # per-segment drilling alone never exercises flow.
     all_graduated = {
@@ -1015,7 +1085,12 @@ def build_plan(
     items: list[dict[str, Any]] = []
     for mode in modes:
         targets = segments
-        if mode == PracticeMode.random_start.value:
+        if mode == PracticeMode.word_bank.value:
+            # Ordering a short transition head is trivial rather than useful
+            # retrieval practice. Keep junctures out of the bank in manual
+            # plans as well as the smart and minutes-fill paths.
+            targets = [segment for segment in segments if segment.kind != "juncture"]
+        elif mode == PracticeMode.random_start.value:
             targets = _random_start_order(segments)
         elif mode == PracticeMode.weak_link.value:
             targets = [segment for segment in segments if segment.id in difficult_ids] or segments[

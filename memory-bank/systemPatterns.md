@@ -9,6 +9,14 @@
 - All mutation endpoints accept `Idempotency-Key` and replay stored responses.
 - Service functions own domain behavior; API routers translate HTTP concerns.
 - Session plans and prompt items are persisted for restart-safe practice.
+- Acquisition is criterion-based rather than attempt-based:
+  `ReviewState.acquisition_succeeded` decides whether a target is still new.
+  Generated same-session acquisition retries are append-only practice items
+  with internal source provenance; the field is intentionally absent from the
+  API schema so exact undo remains a persistence concern. The first smart turn
+  after successful acquisition keys off both the preceding mode and rating:
+  Good requests cue recall, while Easy may build forward flow when learned
+  predecessor context exists; subsequent turns use the normal varied cycle.
 - Source references are optional display metadata on revisions and segments.
   They never replace local ordinals, which remain the stable keys for chaining,
   junctures, appends, and review history. Chaining copy prefers complete source

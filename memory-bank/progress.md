@@ -246,3 +246,13 @@
   strict mypy, OpenAPI check, 92 frontend tests, svelte-check 0/0, production
   build, 16/16 isolated Playwright, read-only API/SQLite probes, and an isolated
   PinchTab visual check of the open card.
+- Iliad 1.11–20 provisioned (2026-07-18): added an idempotent curated-corpus
+  importer, linked the ten-line passage as member four of `Iliad thus far`,
+  and kept all new line review state genuinely empty. The stored shape matches
+  the preceding excerpt: source references, line translations, whitespace
+  token children, and automatically derived junctures. Targeted unit,
+  integration, API workflow, and Playwright coverage prove repeat imports do
+  not duplicate data and smart practice assigns acquisition to fresh lines
+  while keeping junctures on progressive fading. PinchTab verified encounter,
+  ordered reconstruction, and bankless production against the live database;
+  its diagnostic sessions were deleted afterward.

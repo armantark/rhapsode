@@ -278,6 +278,17 @@ push, install smoke) remains the other open thread.
   $state-backed nullables to `never` inside $derived — cast via a local
   (documented in practice page and home page).
 
+- Iliad corpus extension (2026-07-18): the live `Iliad thus far` collection now
+  ends with `Iliad 11-20` / `Iliad 1.11–20`. It has ten source-referenced line
+  segments, 68 whitespace-token children, ten line translations, and nine
+  derived junctures. The new revision has no review states: smart line practice
+  begins with criterion-based acquisition, while its junctures retain
+  progressive fading. `rhapsode.corpora.iliad` owns the curated payload and
+  `scripts/provision_iliad_11_20.py` validates/reuses the exact passage and
+  collection link on repeat runs. Live PinchTab testing exposed that the dev
+  backend had been running since July 14; after restarting it on the current
+  checkout, the real UI matched the acquisition behavior covered by tests.
+
 - Real-app UX pass (2026-07-06, Arman's steer: actual UX, not Tauri
   packaging): (1) launcher burrs fixed — the manual-modes <details> now binds
   its open state (the async passage load was re-rendering it shut, which was

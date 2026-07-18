@@ -46,3 +46,8 @@
 - Collection rollup queues are mutually exclusive: never-reviewed/default-grain
   segments are new, acquisition-stage segments are learning, and graduated
   segments whose review state is due now are due.
+- Curated corpus additions live under `rhapsode.corpora`; a thin provisioning
+  script sends the normal API payload with retries and idempotency, validates an
+  exact existing passage on repeat runs, and links it through the collection
+  API. The ignored live database is the installed result, never the only copy
+  of authored source text or annotations.

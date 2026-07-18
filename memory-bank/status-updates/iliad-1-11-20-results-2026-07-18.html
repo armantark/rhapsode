@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iliad 1.11–20 · completed</title>
+  <style>
+    :root {
+      --bg: #0c0e12;
+      --surface: #161a21;
+      --surface-2: #1e232c;
+      --border: #2a3040;
+      --text: #e8ecf4;
+      --text-dim: #8b95a8;
+      --accent: #4f8cff;
+      --accent-glow: rgba(79, 140, 255, 0.15);
+      --red: #ff5c5c;
+      --green: #4ade80;
+      --amber: #fbbf24;
+      --purple: #a78bfa;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 10%, rgba(251, 191, 36, .10), transparent 32rem),
+        radial-gradient(circle at 85% 20%, var(--accent-glow), transparent 28rem),
+        var(--bg);
+      font-family: Outfit, Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+    }
+    main { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 64px 0 84px; }
+    .badge, .label, code, .ref {
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .badge {
+      display: inline-flex;
+      padding: 7px 11px;
+      border: 1px solid rgba(74, 222, 128, .35);
+      border-radius: 999px;
+      color: var(--green);
+      background: rgba(74, 222, 128, .08);
+      font-size: .72rem;
+      letter-spacing: .12em;
+    }
+    h1 { margin: 20px 0 10px; font-size: clamp(2.25rem, 7vw, 4.9rem); line-height: .94; letter-spacing: -.055em; }
+    .lede { max-width: 720px; margin: 0; color: var(--text-dim); font-size: 1.05rem; line-height: 1.65; }
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 36px 0; }
+    .metric, .card {
+      background: linear-gradient(145deg, rgba(30, 35, 44, .92), rgba(22, 26, 33, .92));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 18px 50px rgba(0,0,0,.18);
+    }
+    .metric { padding: 20px; }
+    .metric strong { display: block; font-size: 2rem; letter-spacing: -.04em; }
+    .metric span { color: var(--text-dim); font-size: .78rem; }
+    .grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 16px; }
+    .card { padding: 24px; }
+    .label { color: var(--amber); font-size: .67rem; letter-spacing: .12em; text-transform: uppercase; }
+    h2 { margin: 9px 0 18px; font-size: 1.25rem; }
+    .verse {
+      padding: 15px 0;
+      display: grid;
+      grid-template-columns: 84px 1fr;
+      border-top: 1px solid var(--border);
+      gap: 14px;
+      align-items: baseline;
+    }
+    .verse:first-of-type { border-top: 0; }
+    .ref { color: var(--amber); font-size: .74rem; }
+    .greek { font-family: "Times New Roman", "Noto Serif", serif; font-size: 1.08rem; line-height: 1.5; }
+    .flow { display: grid; gap: 10px; }
+    .stage {
+      display: grid;
+      grid-template-columns: 38px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface-2);
+    }
+    .stage .num {
+      width: 32px; height: 32px; border-radius: 9px;
+      display: grid; place-items: center;
+      color: var(--bg); background: var(--amber); font-weight: 800;
+    }
+    .stage small { color: var(--text-dim); }
+    .stage b { color: var(--green); font-size: .78rem; }
+    .juncture {
+      margin-top: 14px;
+      padding: 16px;
+      border: 1px solid rgba(167, 139, 250, .35);
+      border-radius: 10px;
+      background: rgba(167, 139, 250, .08);
+    }
+    .juncture b { color: var(--purple); }
+    .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 11px; }
+    .checks li { display: flex; gap: 11px; color: var(--text-dim); line-height: 1.45; }
+    .checks li::before { content: "✓"; color: var(--green); font-weight: 800; }
+    .catch {
+      margin-top: 16px;
+      padding: 16px;
+      border-left: 3px solid var(--amber);
+      background: rgba(251, 191, 36, .06);
+      color: var(--text-dim);
+      line-height: 1.55;
+    }
+    .catch strong { color: var(--amber); }
+    .source { margin-top: 16px; color: var(--text-dim); font-size: .78rem; }
+    .source a { color: #8cb4ff; }
+    @media (max-width: 800px) {
+      main { padding-top: 36px; }
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <span class="badge">COMPLETED · LIVE DATA VERIFIED</span>
+  <h1>Iliad 1.11–20<br>is ready to learn.</h1>
+  <p class="lede">The next ten verses now sit after 1.1–10 in “Iliad thus far,” using the same passage structure and the settled first-exposure pedagogy. Existing recall history was not touched.</p>
+
+  <section class="metrics" aria-label="Import totals">
+    <div class="metric"><strong>10</strong><span>source-referenced lines</span></div>
+    <div class="metric"><strong>68</strong><span>reconstruction tokens</span></div>
+    <div class="metric"><strong>9</strong><span>derived junctures</span></div>
+    <div class="metric"><strong>0</strong><span>pre-seeded review states</span></div>
+  </section>
+
+  <section class="grid">
+    <article class="card">
+      <span class="label">Stored excerpt</span>
+      <h2>The handoff from plague to Chryses’ appeal</h2>
+      <div class="verse"><span class="ref">ILIAD 1.11</span><span class="greek">οὕνεκα τὸν Χρύσην ἠτίμασεν ἀρητῆρα</span></div>
+      <div class="verse"><span class="ref">ILIAD 1.14</span><span class="greek">στέμματ᾽ ἔχων ἐν χερσὶν ἑκηβόλου Ἀπόλλωνος</span></div>
+      <div class="verse"><span class="ref">ILIAD 1.17</span><span class="greek">Ἀτρεΐδαι τε καὶ ἄλλοι ἐϋκνήμιδες Ἀχαιοί,</span></div>
+      <div class="verse"><span class="ref">ILIAD 1.20</span><span class="greek">παῖδα δ᾽ ἐμοὶ λύσαιτε φίλην, τὰ δ᾽ ἄποινα δέχεσθαι,</span></div>
+      <p class="source">Greek checked against the <a href="https://www.perseus.tufts.edu/hopper/text?doc=Perseus%3Atext%3A1999.01.0133%3Abook%3D1%3Acard%3D1">Perseus Iliad Book 1 text</a>; every stored line also has an authored line translation.</p>
+    </article>
+
+    <article class="card">
+      <span class="label">Learning sequence</span>
+      <h2>Fresh lines teach before they test</h2>
+      <div class="flow">
+        <div class="stage"><span class="num">1</span><span>Encounter<small><br>read with translation available</small></span><b>SUPPORTED</b></div>
+        <div class="stage"><span class="num">2</span><span>Reconstruct<small><br>arrange every word in order</small></span><b>ACTIVE</b></div>
+        <div class="stage"><span class="num">3</span><span>Produce<small><br>hide the bank and recite aloud</small></span><b>RETRIEVAL</b></div>
+      </div>
+      <div class="juncture"><b>Between lines:</b> progressive fading still trains the landing across each verse boundary.</div>
+    </article>
+
+    <article class="card">
+      <span class="label">Durability</span>
+      <h2>Repeatable, not a one-off database edit</h2>
+      <ul class="checks">
+        <li>Curated Greek, translations, references, and tokens live in a versioned corpus module.</li>
+        <li>The provisioning command retries network calls and uses idempotency keys.</li>
+        <li>A repeat run validates and reuses the exact passage and collection membership.</li>
+        <li>The ignored local database contains the installed result, not the sole source of truth.</li>
+      </ul>
+    </article>
+
+    <article class="card">
+      <span class="label">Proof</span>
+      <h2>Checked from payload to pixels</h2>
+      <ul class="checks">
+        <li>Full backend test suite and targeted corpus workflow tests passed.</li>
+        <li>Frontend unit suite, Svelte diagnostics, and production build passed.</li>
+        <li>Playwright provisioned the excerpt and opened a real acquisition card.</li>
+        <li>Pinchtab completed encounter → correct reconstruction → bankless production on live line 11.</li>
+      </ul>
+      <div class="catch"><strong>Manual QA earned its keep.</strong> It found that the live backend was still the July 14 process and therefore served old planner behavior. Restarting on the current checkout restored acquisition in the real app; the diagnostic sessions were removed afterward.</div>
+    </article>
+  </section>
+</main>
+</body>
+</html>

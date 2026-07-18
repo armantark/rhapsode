@@ -48,3 +48,10 @@ npx playwright test
 
 The Vite dev server proxies `/api` to the backend via `server.proxy`. Override
 with `RHAPSODE_API_TARGET` env var.
+
+Long-lived development processes do not reload backend Python changes. Before
+manual browser verification of newly shipped planner behavior, restart
+`uv run rhapsode` and confirm the new process is listening on port 8000. On
+Homebrew Node 26, Vitest's jsdom localStorage tests need
+`NODE_OPTIONS=--no-experimental-webstorage` so Node's experimental global does
+not shadow jsdom's implementation.

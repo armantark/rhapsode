@@ -15,6 +15,16 @@ async function createSingleLinePassage(page: Page, title: string, line: string):
 	await expect(page).toHaveURL(/\/passages\/[\w-]+/);
 }
 
+async function completeAcquisition(page: Page): Promise<void> {
+	await page.getByRole('button', { name: /I’ve read it/ }).click();
+	while ((await page.locator('.bank-pool .chip').count()) > 0) {
+		await page.locator('.bank-pool .chip').first().click();
+	}
+	await page.getByRole('button', { name: 'Check reconstruction' }).click();
+	await page.getByRole('button', { name: /Hide the bank/ }).click();
+	await page.getByRole('button', { name: 'Show answer to check' }).click();
+}
+
 test('group two passages into a collection, reorder, and practice the whole arc', async ({
 	page
 }) => {
@@ -63,9 +73,11 @@ test('group two passages into a collection, reorder, and practice the whole arc'
 
 	// Each card carries its own passage context (subtitle switches per item).
 	await expect(page.locator('.head-sub')).toContainText(titleA);
+	await completeAcquisition(page);
 	await page.keyboard.press('4');
 	await expect(page.getByText('1/2 items')).toBeVisible();
 	await expect(page.locator('.head-sub')).toContainText(titleB);
+	await completeAcquisition(page);
 	await page.keyboard.press('4');
 	await expect(page.getByText('Session complete')).toBeVisible();
 

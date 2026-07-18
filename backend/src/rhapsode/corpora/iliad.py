@@ -14,17 +14,17 @@ class Verse:
 BOOK_ONE_11_20 = (
     Verse(
         11,
-        "οὕνεκα τὸν Χρύσην ἠτίμασεν ἀρητῆρα",
+        "οὕνεκα τὸν Χρύ̄σην ἠτί̄μασεν ἀ̄ρητῆρα",
         "because he dishonored Chryses, the priest,",
     ),
     Verse(
         12,
-        "Ἀτρεΐδης: ὃ γὰρ ἦλθε θοὰς ἐπὶ νῆας Ἀχαιῶν",
+        "Ἀτρεΐδης: ὃ γὰρ ἦλθε θοὰ̄ς ἐπὶ νῆας Ἀχαιῶν",
         "the son of Atreus; for he came to the swift ships of the Achaeans,",
     ),
     Verse(
         13,
-        "λυσόμενός τε θύγατρα φέρων τ᾽ ἀπερείσι᾽ ἄποινα,",
+        "λῡσόμενός τε θύγατρα φέρων τ᾽ ἀπερείσι᾽ ἄποινα,",
         "to free his daughter, bringing a boundless ransom,",
     ),
     Verse(
@@ -34,22 +34,22 @@ BOOK_ONE_11_20 = (
     ),
     Verse(
         15,
-        "χρυσέῳ ἀνὰ σκήπτρῳ, καὶ λίσσετο πάντας Ἀχαιούς,",
+        "χρῡσέῳ ἀνὰ σκήπτρῳ, καὶ λίσσετο πάντας Ἀχαιούς,",
         "on a golden staff, and he begged all the Achaeans,",
     ),
     Verse(
         16,
-        "Ἀτρεΐδα δὲ μάλιστα δύω, κοσμήτορε λαῶν:",
+        "Ἀτρεΐδᾱ δὲ μάλιστα δύω, κοσμήτορε λᾱῶν:",
         "but especially the two sons of Atreus, marshals of the people:",
     ),
     Verse(
         17,
-        "Ἀτρεΐδαι τε καὶ ἄλλοι ἐϋκνήμιδες Ἀχαιοί,",
+        "Ἀτρεΐδαι τε καὶ ἄλλοι ἐϋκνήμῑδες Ἀχαιοί,",
         "Sons of Atreus and you other well-greaved Achaeans,",
     ),
     Verse(
         18,
-        "ὑμῖν μὲν θεοὶ δοῖεν Ὀλύμπια δώματ᾽ ἔχοντες",
+        "ὑ̄μῖν μὲν θεοὶ δοῖεν Ὀλύμπια δώματ᾽ ἔχοντες",
         "may the gods who dwell in Olympian homes grant you",
     ),
     Verse(
@@ -59,7 +59,7 @@ BOOK_ONE_11_20 = (
     ),
     Verse(
         20,
-        "παῖδα δ᾽ ἐμοὶ λύσαιτε φίλην, τὰ δ᾽ ἄποινα δέχεσθαι,",
+        "παῖδα δ᾽ ἐμοὶ λύ̄σαιτε φίλην, τὰ δ᾽ ἄποινα δέχεσθαι,",
         "but release my dear child to me, and accept the ransom,",
     ),
 )

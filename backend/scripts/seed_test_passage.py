@@ -22,13 +22,12 @@ from rhapsode.services import passages
 
 TEST_PASSAGE_TITLE = "Sandbox: Iliad 1.1-1.5 (test)"
 
-# Iliad 1.1-1.5. Fixed text so junctures (line N tail -> line N+1 head) are
-# deterministic across reseeds; the exact accentuation is irrelevant for a
-# throwaway sandbox.
+# Iliad 1.1-1.5. Fixed text keeps junctures deterministic across reseeds and
+# preserves the vowel quantities used by the real learning passage.
 SOURCE_LINES: list[str] = [
-    "Μῆνιν ἄειδε, θεά, Πηληϊάδεω Ἀχιλῆος",
-    "οὐλομένην, ἣ μυρί᾽ Ἀχαιοῖς ἄλγε᾽ ἔθηκε,",
-    "πολλὰς δ᾽ ἰφθίμους ψυχὰς Ἄϊδι προΐαψεν",
+    "Μῆνιν ἄειδε, θεὰ̄, Πηληϊάδεω Ἀχιλῆος",
+    "οὐλομένην, ἣ μῡρί᾽ Ἀχαιοῖς ἄλγε᾽ ἔθηκε,",
+    "πολλὰ̄ς δ᾽ ἰφθί̄μους ψῡχὰ̄ς Ἄϊδι προΐαψεν",
     "ἡρώων, αὐτοὺς δὲ ἑλώρια τεῦχε κύνεσσιν",
     "οἰωνοῖσί τε πᾶσι, Διὸς δ᾽ ἐτελείετο βουλή,",
 ]

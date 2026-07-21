@@ -51,3 +51,7 @@
   exact existing passage on repeat runs, and links it through the collection
   API. The ignored live database is the installed result, never the only copy
   of authored source text or annotations.
+- Quantity-marked Ancient Greek source uses upper macrons only for intrinsically
+  long alpha, iota, and upsilon. Do not add redundant macrons to eta, omega, or
+  diphthongs, and do not promote metrical lengthening by position into vowel
+  quantity marks.

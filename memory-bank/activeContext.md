@@ -288,6 +288,11 @@ push, install smoke) remains the other open thread.
   collection link on repeat runs. Live PinchTab testing exposed that the dev
   backend had been running since July 14; after restarting it on the current
   checkout, the real UI matched the acquisition behavior covered by tests.
+- Iliad quantity convention (2026-07-20): memorization text marks intrinsically
+  long alpha, iota, and upsilon with upper macrons; eta, omega, and diphthongs
+  already encode length and receive no added macron. Audit against the marked
+  Iliad reference corrected live 1.10 `λᾱοί` and confirmed 1.1–9 and 1.11–20;
+  the first-run and sandbox 1.1–5 sources now carry the same quantities.
 
 - Real-app UX pass (2026-07-06, Arman's steer: actual UX, not Tauri
   packaging): (1) launcher burrs fixed — the manual-modes <details> now binds

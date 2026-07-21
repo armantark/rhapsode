@@ -49,6 +49,11 @@ def test_concurrent_same_key_mutations_never_5xx(
     assert all(status < 500 for status in statuses), statuses
     # Every request either created it or replayed the record — all agree.
     assert set(statuses) == {201}
+    # And the mutation executed exactly ONCE: the reservation claimed before
+    # the endpoint runs is what stops racers from double-creating.
+    passages = client.get("/api/v1/passages").json()
+    title = greek_passage_payload["title"]
+    assert len([p for p in passages if p["title"] == title]) == 1
 
 
 def test_practiced_revision_is_immutable(

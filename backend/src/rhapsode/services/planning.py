@@ -151,16 +151,18 @@ def _word_bank_prompt(target: models.Segment) -> dict[str, Any]:
 
 
 def _acquisition_prompt(target: models.Segment, hint: str | None) -> dict[str, Any]:
-    """One criterion-based first lesson for a line: encounter the exact text,
-    reconstruct supplied recall units, then transfer to lead-in-only oral
-    production. Segment annotations and reference audio remain available via
-    the practice card's existing revision context rather than being copied into
-    persisted prompt JSON."""
+    """One first lesson for a line: encounter the exact text, then reconstruct
+    it from its own supplied units. Bare-cue oral production is deliberately
+    NOT part of first contact — a whole hexameter read once exceeds what a
+    learner can hold, so demanding it here taught too much at once. Production
+    arrives on the next, spaced visit (smart_mode_for's response-contingent
+    follow-up), where it is a step instead of a cliff. Segment annotations and
+    reference audio remain available via the practice card's revision context
+    rather than being copied into persisted prompt JSON."""
     return {
-        "instruction": "Learn this line, rebuild it, then produce it from its opening.",
+        "instruction": "Learn this line, then rebuild it from its own words.",
         "target_text": target.text,
         "word_bank": _shuffled_units(_recall_units(target)),
-        "lead_in": _lead_in(target),
         "hint": hint,
     }
 
@@ -599,6 +601,12 @@ def smart_mode_for(
 # a capped session is one the user actually completes and comes back from.
 SMART_SESSION_CAP = 12
 
+# At most this many never-practiced units enter a session. First lessons are
+# the heaviest cards there are; a freshly provisioned batch of lines (Iliad
+# 1.11-20 arrived as ten at once) must trickle in, Anki-new-cards style, or
+# every session becomes a wall of unfamiliar material.
+NEW_UNITS_PER_SESSION = 2
+
 # When a minutes budget is chosen it is a TARGET, not just a ceiling: once every
 # targeted segment has had its primary turn and time remains (a short passage
 # can't otherwise fill 15 minutes), the leftover budget buys extra repetitions
@@ -621,7 +629,7 @@ FILL_MODE_CYCLE = [
 # mode has enough samples.
 DEFAULT_MODE_SECONDS: dict[str, float] = {
     "shadowing": 30,
-    "acquisition": 90,
+    "acquisition": 60,
     "progressive_fading": 75,
     "word_bank": 40,
     "forward_chaining": 45,
@@ -764,6 +772,41 @@ def build_smart_plan_for_revisions(
     acquisition_succeeded = {
         state.segment_id: state.acquisition_succeeded for state in review_states
     }
+
+    # A juncture is the seam between two KNOWN lines; dealing one before both
+    # flanking lines have been started teaches a transition into nothing and
+    # inflates a fresh passage's first sessions. Unstarted junctures wait for
+    # their flanks; junctures with review history always stay schedulable.
+    def _juncture_ready(revision: models.PassageRevision, segment: models.Segment) -> bool:
+        if segment.kind != "juncture" or segment.id in stages:
+            return True
+        lines_by_ordinal = {
+            candidate.ordinal: candidate
+            for candidate in revision.segments
+            if candidate.kind == "line"
+        }
+        previous_ordinal = (segment.metadata_json or {}).get("juncture_after")
+        previous = (
+            lines_by_ordinal.get(previous_ordinal)
+            if isinstance(previous_ordinal, int)
+            else None
+        )
+        landing = lines_by_ordinal.get(segment.ordinal)
+        return (
+            previous is not None
+            and landing is not None
+            and previous.id in stages
+            and landing.id in stages
+        )
+
+    revision_segments = [
+        (revision, kept)
+        for revision, segments in revision_segments
+        if (kept := [s for s in segments if _juncture_ready(revision, s)])
+    ]
+    all_segments = [segment for _, segments in revision_segments for segment in segments]
+    if not all_segments:
+        return []
     line_numbers_by_revision = {
         revision.id: _line_number_map(_ordered_segments(revision, None))
         for revision, _segments in revision_segments
@@ -855,6 +898,21 @@ def build_smart_plan_for_revisions(
         ),
     )
     chosen: list[tuple[int, models.PassageRevision, models.Segment]] = []
+    # First lessons are the heaviest cards in the app; a provisioned batch of
+    # fresh lines must trickle in a couple per session, not arrive as a wall.
+    # Skipped new material simply waits for the next session — everything else
+    # (due reviews, learning, maintenance) still fills the plan.
+    introduced = 0
+
+    def _within_intro_cap(segment: models.Segment) -> bool:
+        nonlocal introduced
+        if stages.get(segment.id) is not None:
+            return True
+        if introduced >= NEW_UNITS_PER_SESSION:
+            return False
+        introduced += 1
+        return True
+
     # Extra repetitions keyed by segment id, populated only by the minutes path
     # when one full pass leaves budget on the clock. fill_rotations[id][round]
     # is the mode to use for that segment's (round+1)-th extra turn.
@@ -874,6 +932,8 @@ def build_smart_plan_for_revisions(
             )
         for entry in triaged:
             segment = entry[2]
+            if not _within_intro_cap(segment):
+                continue
             cost = seconds.get(modes[segment.id], FALLBACK_MODE_SECONDS)
             if segment.id in shadow_first:
                 cost += seconds.get(
@@ -931,6 +991,8 @@ def build_smart_plan_for_revisions(
         used = 0
         for entry in triaged:
             segment = entry[2]
+            if not _within_intro_cap(segment):
+                continue
             weight = 2 if segment.id in shadow_first else 1
             if cap is not None and chosen and used + weight > cap:
                 break

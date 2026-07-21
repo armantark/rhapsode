@@ -150,7 +150,11 @@
 	// typed_recall: the draft survives the reveal so the learner can eyeball
 	// their attempt against the true line — the check is visual, never parsed.
 	let typedDraft = $state('');
-	let acquisitionPhase: 'encounter' | 'reconstruct' | 'produce' = $state('encounter');
+	// Acquisition is deliberately TWO phases: encounter, then supported
+	// reconstruction. Bare-cue production on first contact exceeded what a
+	// once-read hexameter can be held as; it now arrives on the next, spaced
+	// visit instead. Grading unlocks at the reconstruction check.
+	let acquisitionPhase: 'encounter' | 'reconstruct' = $state('encounter');
 	let reconstructionChecked = $state(false);
 	// recital: the stumble map, flagged live by line number while performing,
 	// adjusted with the texts visible, then confirmed. Self-reported taps —
@@ -177,9 +181,10 @@
 		stopCueAudio();
 	});
 
-	function setAcquisitionPhase(phase: 'encounter' | 'reconstruct' | 'produce') {
-		acquisitionPhase = phase;
-		onAcquisitionReady?.(phase === 'produce');
+	function checkReconstruction() {
+		reconstructionChecked = true;
+		// The visible true-line comparison IS the self-check; grading unlocks.
+		onAcquisitionReady?.(true);
 	}
 
 	function toggleStumble(segmentId: string) {
@@ -434,8 +439,7 @@
 	{:else if item.mode === 'acquisition'}
 		<div class="acquisition-progress" aria-label="Acquisition progress">
 			<span class:active={acquisitionPhase === 'encounter'}>1 · encounter</span>
-			<span class:active={acquisitionPhase === 'reconstruct'}>2 · reconstruct</span>
-			<span class:active={acquisitionPhase === 'produce'}>3 · produce</span>
+			<span class:active={acquisitionPhase === 'reconstruct'}>2 · rebuild</span>
 		</div>
 		{#if acquisitionPhase === 'encounter'}
 			<p class="muted small-note">Read the whole line once. Its annotations and reference audio are available before you retrieve it.</p>
@@ -446,8 +450,8 @@
 			{:else}
 				<p class="passage-text acquisition-target" {lang} style:font-family={fonts}>{String(prompt.target_text ?? '')}</p>
 			{/if}
-			<button class="reveal" onclick={() => setAcquisitionPhase('reconstruct')}>I’ve read it · rebuild →</button>
-		{:else if acquisitionPhase === 'reconstruct'}
+			<button class="reveal" onclick={() => (acquisitionPhase = 'reconstruct')}>I’ve read it · rebuild →</button>
+		{:else}
 			<div class="bank-arrangement" {lang} style:font-family={fonts}>
 				{#if placedChips.length === 0}
 					<span class="muted small-note">Tap the words below in recitation order — drag placed words to reorder, tap one to take it back.</span>
@@ -491,25 +495,16 @@
 						<p class="passage-text" {lang} style:font-family={fonts}>{String(prompt.target_text ?? '')}</p>
 					{/if}
 				</div>
-				<button class="reveal" onclick={() => setAcquisitionPhase('produce')}>Hide the bank · recall aloud →</button>
+				<p class="muted small-note">
+					Compare and grade the rebuild honestly — reciting it from a bare cue comes on
+					this line's next visit, once it has had time to settle.
+				</p>
 			{:else}
 				<button
 					class="reveal"
 					disabled={poolChips.length > 0}
-					onclick={() => (reconstructionChecked = true)}
+					onclick={checkReconstruction}
 				>Check reconstruction</button>
-			{/if}
-		{:else}
-			<div class="cue-line">
-				{#if leadInNode}
-					<div class="cue rich-cue"><SegmentText node={leadInNode} {profile} layers={[]} showRuby={readingEnabled} /></div>
-				{:else}
-					<span class="cue passage-text" {lang} style:font-family={fonts}>{leadIn}</span>
-				{/if}
-				<span class="muted">… recite the whole line to the end</span>
-			</div>
-			{#if !revealed}
-				<button class="reveal" onclick={onReveal}>Show answer to check</button>
 			{/if}
 		{/if}
 	{:else if item.mode === 'progressive_fading' && stages.length}

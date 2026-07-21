@@ -165,14 +165,13 @@ describe('built-in mode rendering', () => {
 		expect(screen.getByText('stage 5/5')).toBeInTheDocument();
 	});
 
-	it('acquisition sequences annotated encounter, reconstruction check, and lead-in production', async () => {
+	it('acquisition sequences annotated encounter and a checked reconstruction', async () => {
 		const onReveal = vi.fn();
 		const onAcquisitionReady = vi.fn();
 		const acquisitionItem = item('acquisition', {
-			instruction: 'Learn this line, rebuild it, then produce it from its opening.',
+			instruction: 'Learn this line, then rebuild it from its own words.',
 			target_text: '空こぼれ落ちたふたつの星が',
-			word_bank: ['星', '空', 'が'],
-			lead_in: '空こぼれ落ちた'
+			word_bank: ['星', '空', 'が']
 		});
 		const { container, rerender } = render(PromptCard, {
 			item: acquisitionItem,
@@ -189,26 +188,21 @@ describe('built-in mode rendering', () => {
 		expect(container.querySelectorAll('.acquisition-target rt').length).toBeGreaterThan(0);
 		await fireEvent.click(screen.getByRole('button', { name: /I’ve read it/ }));
 
-		// Reconstruction reuses the chip bank and checks against the true line
-		// without unlocking the terminal grade/reveal yet.
-		expect(screen.getByText('2 · reconstruct')).toHaveClass('active');
+		// Reconstruction reuses the chip bank; grading stays locked until the
+		// visible true-line check, which is the lesson's terminal step — no
+		// bare-cue production on first contact.
+		expect(screen.getByText('2 · rebuild')).toHaveClass('active');
 		expect(container.querySelector('.bank-pool')).toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: 'Show answer to check' })).toBeNull();
 		while (container.querySelector('.bank-pool .chip')) {
 			await fireEvent.click(container.querySelector('.bank-pool .chip') as HTMLElement);
 		}
+		expect(onAcquisitionReady).not.toHaveBeenCalledWith(true);
 		await fireEvent.click(screen.getByRole('button', { name: 'Check reconstruction' }));
 		expect(screen.getByText('true line')).toBeInTheDocument();
-		await fireEvent.click(screen.getByRole('button', { name: /Hide the bank/ }));
-
-		// Production hides the bank and exposes only the deterministic lead-in
-		// until the learner explicitly reveals the terminal answer.
-		expect(screen.getByText('3 · produce')).toHaveClass('active');
-		expect(container.querySelector('.bank-pool')).toBeNull();
-		expect(screen.getByText(/recite the whole line to the end/)).toBeInTheDocument();
+		expect(screen.getByText(/next visit/)).toBeInTheDocument();
 		expect(onAcquisitionReady).toHaveBeenLastCalledWith(true);
-		await fireEvent.click(screen.getByRole('button', { name: 'Show answer to check' }));
-		expect(onReveal).toHaveBeenCalledOnce();
+		expect(onReveal).not.toHaveBeenCalled();
 
 		// A new persisted item id always restarts the internal lesson safely.
 		await rerender({ item: { ...acquisitionItem, id: 'item-acquisition-retry' } });

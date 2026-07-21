@@ -90,7 +90,9 @@ def test_iliad_11_20_enters_the_settled_acquisition_learning_sequence(
     assert line_session_response.status_code == 201, line_session_response.text
     line_session = line_session_response.json()
     kinds = {segment["id"]: segment["kind"] for segment in revision["segments"]}
-    assert [item["mode"] for item in line_session["items"]] == ["acquisition"] * 10
+    # Ten provisioned lines must NOT arrive as a wall of first lessons: the
+    # intro cap trickles them in two per session while the rest wait.
+    assert [item["mode"] for item in line_session["items"]] == ["acquisition"] * 2
 
     auto_session = client.post(
         "/api/v1/sessions",
@@ -99,10 +101,10 @@ def test_iliad_11_20_enters_the_settled_acquisition_learning_sequence(
     ).json()
     auto_plan = [(kinds[item["segment_id"]], item["mode"]) for item in auto_session["items"]]
     assert auto_plan
-    assert all(
-        mode == ("acquisition" if kind == "line" else "progressive_fading")
-        for kind, mode in auto_plan
-    )
+    # With no line yet started, junctures are gated entirely — a transition
+    # between two unknown lines teaches nothing.
+    assert all(kind == "line" and mode == "acquisition" for kind, mode in auto_plan)
+    assert len(auto_plan) == 2
 
     first_line = line_session["items"][0]
     learned = client.post(

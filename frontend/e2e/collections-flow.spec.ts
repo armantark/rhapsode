@@ -16,13 +16,14 @@ async function createSingleLinePassage(page: Page, title: string, line: string):
 }
 
 async function completeAcquisition(page: Page): Promise<void> {
+	// Two phases: encounter → supported reconstruction; the visible check
+	// unlocks grading (production waits for the line's next, spaced visit).
 	await page.getByRole('button', { name: /I’ve read it/ }).click();
 	while ((await page.locator('.bank-pool .chip').count()) > 0) {
 		await page.locator('.bank-pool .chip').first().click();
 	}
 	await page.getByRole('button', { name: 'Check reconstruction' }).click();
-	await page.getByRole('button', { name: /Hide the bank/ }).click();
-	await page.getByRole('button', { name: 'Show answer to check' }).click();
+	await page.getByText('true line').waitFor();
 }
 
 test('group two passages into a collection, reorder, and practice the whole arc', async ({

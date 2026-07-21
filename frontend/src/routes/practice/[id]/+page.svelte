@@ -374,7 +374,7 @@
 			const result = await api.submitAttempt(session.id, {
 				item_id: currentItem.id,
 				rating,
-				revealed,
+				revealed: revealed || (currentItem.mode === 'acquisition' && acquisitionReady),
 				latency_ms: Math.max(0, Math.round(elapsedFocusedMs())),
 				media_asset_id: pendingMediaId,
 				stumbled_segment_ids: recital?.stumbledSegmentIds ?? null
@@ -434,7 +434,7 @@
 		!!currentItem &&
 			!revealed &&
 			(currentItem.mode === 'acquisition'
-				? acquisitionReady
+				? false
 				: [
 				'cue_recall',
 				'weak_link',
@@ -448,7 +448,9 @@
 			].includes(currentItem.mode))
 	);
 	const requiresCheck = $derived(
-		!!currentItem && !revealed && (currentItem.mode === 'acquisition' || canReveal)
+		!!currentItem &&
+			!revealed &&
+			((currentItem.mode === 'acquisition' && !acquisitionReady) || canReveal)
 	);
 
 	function onWindowKeydown(event: KeyboardEvent) {
@@ -673,7 +675,7 @@
 			{:else if requiresCheck}
 				<p class="muted small">
 					{#if currentItem.mode === 'acquisition' && !acquisitionReady}
-						Complete the encounter and reconstruction before the final oral check.
+						Read the line, rebuild it, and check the rebuild — grading unlocks at the check.
 					{:else if currentItem.mode === 'typed_recall'}
 						<!-- Space types into the textarea, so pointing at it would lie. -->
 						Type from memory, then click “Show answer to check” — grading unlocks after

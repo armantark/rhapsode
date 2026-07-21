@@ -34,18 +34,17 @@ async function startManualSession(page: Page): Promise<void> {
 }
 
 async function completeAcquisition(page: Page): Promise<void> {
+	// Two phases only: encounter, then supported reconstruction. Bare-cue
+	// production is deferred to the line's next, spaced visit; the visible
+	// true-line comparison is the self-check that unlocks grading.
 	await expect(page.getByText('1 · encounter')).toBeVisible();
 	await page.getByRole('button', { name: /I’ve read it/ }).click();
-	await expect(page.getByText('2 · reconstruct')).toBeVisible();
+	await expect(page.getByText('2 · rebuild')).toBeVisible();
 	while ((await page.locator('.bank-pool .chip').count()) > 0) {
 		await page.locator('.bank-pool .chip').first().click();
 	}
 	await page.getByRole('button', { name: 'Check reconstruction' }).click();
 	await expect(page.getByText('true line')).toBeVisible();
-	await page.getByRole('button', { name: /Hide the bank/ }).click();
-	await expect(page.getByText('3 · produce')).toBeVisible();
-	await expect(page.locator('.bank-pool')).toHaveCount(0);
-	await page.getByRole('button', { name: 'Show answer to check' }).click();
 }
 
 test('full loop: create, render Unicode, practice, grade, review', async ({ page }) => {
@@ -215,28 +214,29 @@ test('smart session teaches fresh lines through acquisition while junctures keep
 	await page.getByRole('button', { name: '✦ Smart session' }).first().click();
 	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
 
-	// Auto grain deals both lines plus the juncture between them.
-	await expect(page.getByText('0/3 items')).toBeVisible();
+	// A fresh passage deals ONLY its lines: the juncture between two not-yet-
+	// started lines is gated until both flanks are known.
+	await expect(page.getByText('0/2 items')).toBeVisible();
 
-	// A fresh line gets the ordered encounter → reconstruction → oral transfer
-	// surface. The answer check is terminal and only then unlocks grading.
+	// A fresh line gets encounter → supported reconstruction; the visible
+	// check unlocks grading, and bare-cue production waits for a later visit.
 	await expect(page.getByText('acquisition', { exact: true })).toBeVisible();
 	await completeAcquisition(page);
 	await page.keyboard.press('4');
-	await expect(page.getByText('1/3 items')).toBeVisible();
-
-	// The generated juncture remains on its established progressive-fading
-	// lesson; a three-word transition head never gets a trivial word bank.
-	await expect(page.getByText('progressive fading', { exact: true })).toBeVisible();
-	await expect(page.getByRole('button', { name: 'Fade further' })).toBeVisible();
-	await page.keyboard.press('4');
-	await expect(page.getByText('2/3 items')).toBeVisible();
+	await expect(page.getByText('1/2 items')).toBeVisible();
 
 	await expect(page.getByText('acquisition', { exact: true })).toBeVisible();
 	await completeAcquisition(page);
 	await page.keyboard.press('4');
-
 	await expect(page.getByText('Session complete')).toBeVisible();
+
+	// With both flanking lines started, the next session admits the juncture
+	// on its established progressive-fading lesson.
+	await page.goto('/');
+	await page.getByRole('link', { name: title }).click();
+	await page.getByRole('button', { name: '✦ Smart session' }).first().click();
+	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
+	await expect(page.getByText('0/3 items')).toBeVisible();
 });
 
 test('smart sessions rotate a learning line through distinct exercises', async ({ page }) => {

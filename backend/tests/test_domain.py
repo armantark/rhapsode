@@ -540,13 +540,16 @@ def test_smart_plan_caps_session_size_and_triages(session_factory: object) -> No
         db.commit()
 
         plan = build_smart_plan(db, revision, ["line"])
-        assert len(plan) == 12
+        # Five learning lines plus at most NEW_UNITS_PER_SESSION first
+        # lessons: a wall of fifteen unfamiliar lines must trickle in.
+        assert len(plan) == 7
         ordinals = {
             segment.id: segment.ordinal for segment in revision.segments
         }
         planned_ordinals = [ordinals[item["segment_id"]] for item in plan]
         # All five learning lines made the cut ahead of new material...
         assert set(planned_ordinals) >= {15, 16, 17, 18, 19}
+        assert sum(1 for o in planned_ordinals if o < 15) == 2
         # ...and the session still flows in passage order.
         assert planned_ordinals == sorted(planned_ordinals)
 
@@ -583,8 +586,10 @@ def test_smart_plan_serves_due_reviews_before_new_material(session_factory: obje
         plan = build_smart_plan(db, revision, ["line"])
         ordinals = {segment.id: segment.ordinal for segment in revision.segments}
         planned = {ordinals[item["segment_id"]] for item in plan}
-        # Overdue reviews outrank new material; not-yet-due maintenance loses.
-        assert planned == set(range(2, 14))
+        # Overdue reviews outrank new material, new material trickles in at
+        # the intro cap, and not-yet-due maintenance backfills the room the
+        # skipped first lessons left behind.
+        assert planned == {0, 1, 2, 3, 4, 5}
 
 
 def test_collection_smart_plan_shares_one_cap_across_revisions(session_factory: object) -> None:
@@ -604,6 +609,22 @@ def test_collection_smart_plan_shares_one_cap_across_revisions(session_factory: 
                 for index in range(8)
             ]
         db.add_all(passages)
+        db.commit()
+        # Started material everywhere so the ITEM cap is what binds here (the
+        # intro cap for fresh lines is exercised by its own tests).
+        for revision in revisions:
+            for segment in revision.segments:
+                db.add(
+                    models.ReviewState(
+                        segment_id=segment.id,
+                        fsrs_card_json="{}",
+                        due_at=datetime.now(UTC),
+                        mastery_stage="learning",
+                        clean_count=0,
+                        attempt_count=1,
+                        acquisition_succeeded=True,
+                    )
+                )
         db.commit()
 
         plan = build_smart_plan_for_revisions(db, revisions, ["line"])
@@ -702,9 +723,31 @@ def test_junctures_generated_between_lines(session_factory: object) -> None:
         assert junctures[0].cue == "… θεὰ Πηληϊάδεω Ἀχιλῆος"
         assert junctures[0].text == "οὐλομένην ἣ μυρί …"
 
-        # Auto grain deals lines + junctures, transition before landing line.
+        # A fresh passage deals ONLY its lines: the juncture is the seam
+        # between two known lines, so it waits until both flanks are started
+        # instead of teaching a transition into nothing.
         plan = build_smart_plan(db, revision, None)
         kinds = {s.id: s.kind for s in revision.segments}
+        planned = [kinds[item["segment_id"]] for item in plan]
+        assert planned == ["line", "line"]
+
+        # Once both flanking lines are started, the juncture joins the plan,
+        # dealt before its landing line.
+        for segment in revision.segments:
+            if segment.kind == "line":
+                db.add(
+                    models.ReviewState(
+                        segment_id=segment.id,
+                        fsrs_card_json="{}",
+                        due_at=datetime.now(UTC),
+                        mastery_stage="learning",
+                        clean_count=0,
+                        attempt_count=1,
+                        acquisition_succeeded=True,
+                    )
+                )
+        db.commit()
+        plan = build_smart_plan(db, revision, None)
         planned = [kinds[item["segment_id"]] for item in plan]
         assert planned == ["line", "juncture", "line"]
 
@@ -734,11 +777,11 @@ def test_new_lines_use_one_acquisition_item_even_with_reference_audio(
             ),
         )
 
-        # Lines use the composite lesson; junctures keep progressive fading.
+        # Lines use the composite lesson; the unstarted juncture waits for
+        # both flanking lines to be started before it is dealt at all.
         plan = build_smart_plan(db, revision, None)
         assert [item["mode"] for item in plan] == [
             "acquisition",
-            "progressive_fading",
             "acquisition",
         ]
 
@@ -760,7 +803,6 @@ def test_new_lines_use_one_acquisition_item_even_with_reference_audio(
         kinds = {s.id: s.kind for s in revision.segments}
         assert [(kinds[item["segment_id"]], item["mode"]) for item in plan] == [
             ("line", "acquisition"),
-            ("juncture", "progressive_fading"),
             ("line", "acquisition"),
         ]
 
@@ -1310,10 +1352,11 @@ def test_minutes_budget_sizes_session_and_prioritizes_finisher(
         db.add(passage)
         db.commit()
 
-        # Fresh passage, 5-minute budget: composite acquisition defaults to
-        # 90s, so 300s buys 3 items.
+        # Fresh passage, 5-minute budget: the intro cap binds before the
+        # budget does — first lessons trickle in two per session no matter
+        # how much time was offered.
         plan = build_smart_plan(db, revision, ["line"], minutes=5)
-        assert len(plan) == 3
+        assert len(plan) == 2
 
         for segment in revision.segments:
             db.add(
@@ -1354,29 +1397,46 @@ def test_minutes_budget_fills_short_passage_with_varied_repeats(
         ]
         db.add(passage)
         db.commit()
+        # Started (learning) lines: fresh lines would hit the intro cap before
+        # the budget could ever trigger fill repetitions.
+        for segment in revision.segments:
+            db.add(
+                models.ReviewState(
+                    segment_id=segment.id,
+                    fsrs_card_json="{}",
+                    due_at=datetime.now(UTC),
+                    mastery_stage="learning",
+                    clean_count=0,
+                    attempt_count=1,
+                    acquisition_succeeded=True,
+                )
+            )
+        db.commit()
 
-        # No budget: one quick pass, each new line exactly once.
+        # No budget: one quick pass, each learning line exactly once.
         standard = build_smart_plan(db, revision, ["line"])
-        assert [item["mode"] for item in standard] == ["acquisition"] * 3
+        assert [item["mode"] for item in standard] == ["word_bank"] * 3
 
-        # 10 minutes (600s): the 3-line pass spends 3×90s = 270s, then the
+        # 10 minutes (600s): the 3-line pass spends 3×40s = 120s, then the
         # broader rotation fills the rest in successive passage-order
         # run-throughs, tapering as the budget runs down.
         plan = build_smart_plan(db, revision, ["line"], minutes=10)
         assert [item["mode"] for item in plan] == (
-            ["acquisition"] * 3
+            ["word_bank"] * 3
             + ["progressive_fading"] * 3
-            + ["word_bank"] * 2
+            + ["forward_chaining"] * 3
+            + ["backward_chaining"] * 2
+            + ["cue_recall"]
         )
         per_segment = {segment.id: [] for segment in revision.segments}
         for item in plan:
             per_segment[item["segment_id"]].append(item["mode"])
-        assert sorted(len(modes) for modes in per_segment.values()) == [2, 3, 3]
+        assert sorted(len(modes) for modes in per_segment.values()) == [3, 4, 5]
 
         # A huge budget cannot exceed the per-segment repetition cap: still the
-        # primary turn plus the six-mode rotation, never more.
+        # primary turn plus the five-mode rotation, never more.
         capped = build_smart_plan(db, revision, ["line"], minutes=120)
-        assert len(capped) == 21
+        assert len(capped) == 18
 
 
 def test_minutes_fill_never_assigns_chaining_to_junctures(session_factory: object) -> None:
@@ -1676,7 +1736,7 @@ def test_mastery_stages() -> None:
     assert mastery_stage(state) == "new"
 
 
-def test_acquisition_prompt_carries_exact_target_units_and_lead_in(
+def test_acquisition_prompt_carries_exact_target_units(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def reverse(items: list[str]) -> None:
@@ -1693,10 +1753,9 @@ def test_acquisition_prompt_carries_exact_target_units_and_lead_in(
     prompt = prompt_for("acquisition", line, [line], hint="my memory hook")
 
     assert prompt == {
-        "instruction": "Learn this line, rebuild it, then produce it from its opening.",
+        "instruction": "Learn this line, then rebuild it from its own words.",
         "target_text": "arma virumque cano",
         "word_bank": ["cano", "virumque", "arma"],
-        "lead_in": "arma virumque",
         "hint": "my memory hook",
     }
 

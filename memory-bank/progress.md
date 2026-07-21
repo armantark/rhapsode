@@ -226,6 +226,24 @@
   Playwright, plus live Playwright checks of the mobile widths, titles, and
   the completion flow.
 
+- Acquisition pedagogy fix (2026-07-21, Arman: "teaching way too much at
+  once"): (1) NEW_UNITS_PER_SESSION = 2 — first lessons trickle in instead of
+  ten provisioned lines arriving as a wall; skipped new material waits while
+  due/learning/maintenance fill the plan. (2) Unstarted junctures are gated
+  until BOTH flanking lines are started. (3) The acquisition card is now two
+  phases (encounter → checked reconstruction); bare-cue whole-line production
+  moved to the line's next, spaced visit via the existing response-contingent
+  follow-up (hesitant → cue_recall, clean → chaining; lapse → word_bank
+  support). Latency default 90s → 60s. (4) Live-DB reset: review states
+  cleared on Iliad 6-7, 8-10, 11-20 (13 states; 1-5 untouched; backup at
+  data/backups/manual/rhapsode-before-younger-line-reset-*.db). Also fixed:
+  the idempotency middleware now RESERVES the key before running the endpoint
+  — concurrent same-key requests were both executing the mutation and
+  double-creating passages (e2e-observed); losers now await and replay the
+  winner's response. jsdom 29 removed localStorage; the vitest setup file
+  polyfills it. 107 backend pytest, ruff, mypy, 94 vitest, svelte-check,
+  build, 17/17 Playwright.
+
 ## Remaining
 
 - Push to GitHub and trigger first tagged draft release.

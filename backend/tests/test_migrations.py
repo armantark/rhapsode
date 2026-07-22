@@ -233,9 +233,13 @@ def test_acquisition_migration_preserves_existing_reviews_as_acquired(
         acquired = connection.execute(
             "SELECT acquisition_succeeded FROM review_states WHERE id = 'review'"
         ).fetchone()
+        learning = connection.execute(
+            "SELECT learning_step, learning_success_count FROM review_states WHERE id = 'review'"
+        ).fetchone()
         item_columns = {
             row[1]: row for row in connection.execute("PRAGMA table_info(practice_items)")
         }
 
     assert acquired == (1,)
+    assert learning == (0, 0)
     assert item_columns["retry_source_item_id"][3] == 0

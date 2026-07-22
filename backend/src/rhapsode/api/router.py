@@ -774,7 +774,12 @@ def submit_attempt(
     log_duration = payload.latency_ms if len(affected) == 1 else None
     for segment_id, rating in affected:
         reviewed = scheduling.review_segment(
-            db, segment_id, rating, attempt_id=attempt.id, review_duration_ms=log_duration
+            db,
+            segment_id,
+            rating,
+            attempt_id=attempt.id,
+            review_duration_ms=log_duration,
+            mode=item.mode,
         )
         state = state or reviewed
     if (
@@ -1062,7 +1067,12 @@ def mastery(
             .offset(offset)
         )
     )
-    return schemas.MasteryPage(items=items, total=total, limit=limit, offset=offset)
+    return schemas.MasteryPage(
+        items=[schemas.ReviewStateRead.model_validate(item) for item in items],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/analytics/weak-links", response_model=list[schemas.WeakLinkRead], tags=["analytics"])

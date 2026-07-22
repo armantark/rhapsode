@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+import unicodedata
 from collections import defaultdict
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
@@ -43,6 +44,23 @@ def progressive_masks(text: str) -> list[str]:
     for hidden in _progressive_hidden_counts(len(maskable)):
         stages.append(_mask_units(units, set(maskable[len(maskable) - hidden :]), joiner))
     return stages
+
+
+def _reverse_progressive_masks(text: str) -> list[str]:
+    """Fixed support levels that fade from the opening toward the line end."""
+    words = text.split()
+    if len(words) > 1:
+        units = words
+        joiner = " "
+    else:
+        units = [char for char in text if not char.isspace()]
+        joiner = ""
+    maskable = [index for index, unit in enumerate(units) if unit != "…"]
+    return [
+        _mask_units(units, set(maskable[:hidden]), joiner)
+        for hidden in _progressive_hidden_counts(len(maskable))
+        if hidden < len(maskable)
+    ]
 
 
 def _mask_units(units: list[str], hidden: set[int], joiner: str) -> str:
@@ -93,6 +111,139 @@ def _recall_units(target: models.Segment) -> list[str]:
     if tokens:
         return [token.text for token in tokens]
     return [word for word in target.text.split() if word != "…"]
+
+
+def _join_recall_units(target: models.Segment, units: list[str]) -> str:
+    return (" " if any(char.isspace() for char in target.text) else "").join(units)
+
+
+def _graphemes(unit: str) -> list[str]:
+    graphemes: list[str] = []
+    for char in unit:
+        if graphemes and unicodedata.combining(char):
+            graphemes[-1] += char
+        else:
+            graphemes.append(char)
+    return graphemes
+
+
+def _first_half_cue(unit: str) -> str:
+    graphemes = _graphemes(unit)
+    visible = max(1, (len(graphemes) + 1) // 2)
+    return f"{''.join(graphemes[:visible])}…"
+
+
+def _first_letter_cue(unit: str) -> str:
+    return f"{_graphemes(unit)[0]}."
+
+
+def learning_scaffold_steps(target: models.Segment) -> list[dict[str, Any]]:
+    """The gated post-acquisition ladder for an unfamiliar line.
+
+    Every returned entry is one persistent phase. Its cue levels advance after
+    successful cards; the next phase remains hidden until the phase criterion
+    is met, so fading is spaced retrieval rather than controls clicked through
+    inside one card.
+    """
+    units = _recall_units(target)
+    if not units:
+        return []
+    total = len(units)
+    chunk_widths = list(dict.fromkeys([*range(3, total, 3), total]))
+    tail_masks = progressive_masks(target.text)
+    tail_cues = tail_masks[1:-1] or tail_masks[-1:]
+    front_cues = _reverse_progressive_masks(target.text) or tail_masks[-1:]
+    return [
+        {
+            "kind": "chunk",
+            "label": "Cumulative chunks",
+            "cue_levels": [units[0]] * len(chunk_widths),
+            "target_levels": [
+                _join_recall_units(target, units[:width]) for width in chunk_widths
+            ],
+            "target_widths": chunk_widths,
+            "required_successes": max(3, len(chunk_widths)),
+        },
+        {
+            "kind": "fade_tail",
+            "label": "Fade the ending",
+            "instruction": (
+                "Use the visible opening to recall the hidden ending, "
+                "then recite the whole line."
+            ),
+            "cue_levels": tail_cues,
+            "target_levels": [target.text],
+            "required_successes": 3,
+        },
+        {
+            "kind": "fade_front",
+            "label": "Fade the opening",
+            "instruction": "Recall the hidden opening, then continue through the visible ending.",
+            "cue_levels": front_cues,
+            "target_levels": [target.text],
+            "required_successes": 3,
+        },
+        {
+            "kind": "half_words",
+            "label": "Half-word cues",
+            "instruction": "Use the first half of each word to recall the whole line.",
+            "cue_levels": [
+                _join_recall_units(target, [_first_half_cue(unit) for unit in units])
+            ],
+            "target_levels": [target.text],
+            "required_successes": 3,
+        },
+        {
+            "kind": "initials",
+            "label": "First-letter cues",
+            "instruction": "Use each word's first letter to recall the whole line.",
+            "cue_levels": [
+                _join_recall_units(target, [_first_letter_cue(unit) for unit in units])
+            ],
+            "target_levels": [target.text],
+            "required_successes": 3,
+        },
+    ]
+
+
+def learning_step_successes_required(target: models.Segment, step_index: int) -> int:
+    steps = learning_scaffold_steps(target)
+    if not steps:
+        return 0
+    step = steps[min(max(step_index, 0), len(steps) - 1)]
+    return int(step["required_successes"])
+
+
+def _guided_recall_prompt(
+    target: models.Segment,
+    step_index: int,
+    success_count: int,
+) -> dict[str, Any]:
+    steps = learning_scaffold_steps(target)
+    if not steps:
+        return _recall_prompt(target, "Recite this line to the end.", target.cue)
+    bounded_index = min(max(step_index, 0), len(steps) - 1)
+    step = steps[bounded_index]
+    cue_levels = step["cue_levels"]
+    target_levels = step["target_levels"]
+    level = min(success_count, len(cue_levels) - 1)
+    target_level = min(success_count, len(target_levels) - 1)
+    instruction = step.get("instruction")
+    if step["kind"] == "chunk":
+        width = step["target_widths"][target_level]
+        instruction = f"From the first word, recall words 1–{width}, then stop."
+    return {
+        "kind": step["kind"],
+        "label": step["label"],
+        "instruction": instruction,
+        "cue_text": cue_levels[level],
+        "target_text": target_levels[target_level],
+        "learning_step": bounded_index,
+        "learning_step_count": len(steps),
+        "learning_success_count": success_count,
+        "required_successes": step["required_successes"],
+        "response_format": random.choice(["oral", "typed"]),
+    }
 
 
 def _recall_prompt(
@@ -300,6 +451,8 @@ def prompt_for(
     context: list[models.Segment],
     hint: str | None = None,
     line_numbers: list[int] | None = None,
+    learning_step: int = 0,
+    learning_success_count: int = 0,
 ) -> dict[str, Any]:
     effective_hint = target.cue if hint is None else hint
     match mode:
@@ -310,6 +463,8 @@ def prompt_for(
             }
         case "acquisition":
             return _acquisition_prompt(target, effective_hint)
+        case "guided_recall":
+            return _guided_recall_prompt(target, learning_step, learning_success_count)
         case "progressive_fading":
             # A juncture is the next line's head, not a whole line, so its fading
             # drill stops at the head rather than running to a line end. The
@@ -357,8 +512,12 @@ def prompt_for(
                 effective_hint,
             )
         case "full_passage":
+            start = line_numbers[0] if line_numbers else 1
+            end = line_numbers[-1] if line_numbers else len(context)
+            scope = _range_label(start, end, context)
             return {
-                "instruction": "Recite the whole passage from memory, start to finish.",
+                "instruction": f"Recite {scope} from memory, start to finish, in order.",
+                "range_label": scope,
                 "blank": True,
             }
         case "recital":
@@ -772,6 +931,10 @@ def build_smart_plan_for_revisions(
     acquisition_succeeded = {
         state.segment_id: state.acquisition_succeeded for state in review_states
     }
+    learning_steps = {state.segment_id: state.learning_step for state in review_states}
+    learning_successes = {
+        state.segment_id: state.learning_success_count for state in review_states
+    }
 
     # A juncture is the seam between two KNOWN lines; dealing one before both
     # flanking lines have been started teaches a transition into nothing and
@@ -841,21 +1004,27 @@ def build_smart_plan_for_revisions(
         learned_prefix = _learned_prefix(_line_segments(revision.segments), stages)
         for index, line in enumerate(learned_prefix):
             has_chain_context[line.id] = index > 0
-    modes = {
-        segment.id: smart_mode_for(
-            stages.get(segment.id),
-            segment.id in difficult_ids,
-            kind=segment.kind,
-            mode_counts=mode_counts[segment.id],
-            has_reference_audio=segment.revision_id in revisions_with_reference,
-            has_translation=_translation_text(segment) is not None,
-            acquisition_succeeded=acquisition_succeeded.get(segment.id, False),
-            last_rating=last_ratings.get(segment.id),
-            last_mode=last_modes.get(segment.id),
-            has_chain_context=has_chain_context.get(segment.id, False),
-        )
-        for segment in all_segments
-    }
+    modes = {}
+    for segment in all_segments:
+        if (
+            segment.kind != "juncture"
+            and acquisition_succeeded.get(segment.id, False)
+            and learning_steps.get(segment.id) is not None
+        ):
+            modes[segment.id] = PracticeMode.guided_recall.value
+        else:
+            modes[segment.id] = smart_mode_for(
+                stages.get(segment.id),
+                segment.id in difficult_ids,
+                kind=segment.kind,
+                mode_counts=mode_counts[segment.id],
+                has_reference_audio=segment.revision_id in revisions_with_reference,
+                has_translation=_translation_text(segment) is not None,
+                acquisition_succeeded=acquisition_succeeded.get(segment.id, False),
+                last_rating=last_ratings.get(segment.id),
+                last_mode=last_modes.get(segment.id),
+                has_chain_context=has_chain_context.get(segment.id, False),
+            )
     cue_spans_by_revision = {
         revision.id: _reference_cue_spans(db, revision.id)
         for revision, _segments in revision_segments
@@ -877,7 +1046,11 @@ def build_smart_plan_for_revisions(
     # per-segment drilling alone never exercises flow.
     all_graduated = {
         revision.id: len(segments) > 1
-        and all(stages.get(segment.id) in {"review", "durable"} for segment in segments)
+        and all(
+            stages.get(segment.id) in {"review", "durable"}
+            and learning_steps.get(segment.id) is None
+            for segment in segments
+        )
         for revision, segments in revision_segments
     }
 
@@ -955,6 +1128,7 @@ def build_smart_plan_for_revisions(
                     mode
                     for mode in FILL_MODE_CYCLE
                     if mode != modes[segment.id]
+                    and modes[segment.id] != PracticeMode.guided_recall.value
                     and not (
                         segment.kind == "juncture"
                         and mode
@@ -1010,6 +1184,7 @@ def build_smart_plan_for_revisions(
             in {
                 PracticeMode.forward_chaining.value,
                 PracticeMode.backward_chaining.value,
+                PracticeMode.full_passage.value,
             }
             else None
         )
@@ -1019,6 +1194,8 @@ def build_smart_plan_for_revisions(
             context,
             personal_notes.get(target.id, target.cue),
             line_numbers,
+            learning_step=learning_steps.get(target.id) or 0,
+            learning_success_count=learning_successes.get(target.id, 0),
         )
         _attach_juncture_audio_cue(
             prompt,
@@ -1042,6 +1219,8 @@ def build_smart_plan_for_revisions(
         target: models.Segment,
         mode: str,
     ) -> list[models.Segment]:
+        if mode == PracticeMode.full_passage.value:
+            return _line_segments(available)
         if mode in {
             PracticeMode.forward_chaining.value,
             PracticeMode.backward_chaining.value,
@@ -1181,6 +1360,7 @@ def build_plan(
                 in {
                     PracticeMode.forward_chaining.value,
                     PracticeMode.backward_chaining.value,
+                    PracticeMode.full_passage.value,
                 }
                 else None
             )

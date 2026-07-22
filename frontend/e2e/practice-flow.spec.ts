@@ -33,6 +33,15 @@ async function startManualSession(page: Page): Promise<void> {
 	await page.getByRole('button', { name: '▶ Start manual session' }).click();
 }
 
+async function gradeWithKey(page: Page, key: '1' | '2' | '3' | '4'): Promise<void> {
+	await Promise.all([
+		page.waitForResponse(
+			(response) => response.url().includes('/attempts') && response.request().method() === 'POST'
+		),
+		page.keyboard.press(key)
+	]);
+}
+
 async function completeAcquisition(page: Page): Promise<void> {
 	// Two phases only: encounter, then supported reconstruction. Bare-cue
 	// production is deferred to the line's next, spaced visit; the visible
@@ -45,6 +54,7 @@ async function completeAcquisition(page: Page): Promise<void> {
 	}
 	await page.getByRole('button', { name: 'Check reconstruction' }).click();
 	await expect(page.getByText('true line')).toBeVisible();
+	await expect(page.getByRole('button', { name: '3 Good' })).toBeEnabled();
 }
 
 test('full loop: create, render Unicode, practice, grade, review', async ({ page }) => {
@@ -64,7 +74,8 @@ test('full loop: create, render Unicode, practice, grade, review', async ({ page
 	// grading, so Space flips the card first; then grade via "Easy" (4).
 	await expect(page.getByText('Recite this line to the end.')).toBeVisible();
 	await page.keyboard.press(' ');
-	await page.keyboard.press('4');
+	await expect(page.getByRole('button', { name: '4 Easy' })).toBeEnabled();
+	await gradeWithKey(page, '4');
 	await expect(page.getByText(/Easy · mastery/)).toBeVisible();
 
 	// Item 2: showing the answer is a neutral self-check (Anki model); the grade
@@ -72,7 +83,7 @@ test('full loop: create, render Unicode, practice, grade, review', async ({ page
 	await page.getByRole('button', { name: /Show answer/ }).click();
 	await expect(page.getByText(GREEK_LINE_2).first()).toBeVisible();
 	await expect(page.getByText(/grade yourself honestly/)).toBeVisible();
-	await page.keyboard.press('1');
+	await gradeWithKey(page, '1');
 
 	// Both items done → completion summary with the local tally (Anki labels).
 	await expect(page.getByText('Session complete')).toBeVisible();
@@ -126,6 +137,33 @@ test('source references identify chaining lines without passage-local ambiguity'
 	await expect(page.locator('.chain-reference')).toHaveText('Iliad 1.6');
 });
 
+test('full passage names the exact range and reveals every line', async ({ page }) => {
+	const title = `Full passage scope e2e ${Date.now()}`;
+	await page.goto('/passages/new');
+	await page.getByLabel('Title').fill(title);
+	await page.getByLabel('Language').selectOption({ label: 'Ancient Greek' });
+	await page.getByLabel('Source reference for this passage').fill('Iliad 1.1–2');
+	await page.getByLabel(/Source text/).fill(`${GREEK_LINE_1}\n${GREEK_LINE_2}`);
+	await page.getByRole('button', { name: 'Generate line segments' }).click();
+	await page.getByLabel('Source reference', { exact: true }).nth(0).fill('Iliad 1.1');
+	await page.getByLabel('Source reference', { exact: true }).nth(1).fill('Iliad 1.2');
+	await page.getByRole('button', { name: 'Create passage' }).click();
+
+	await page.getByText('Choose modes manually').click();
+	await page.getByRole('button', { name: 'cue recall' }).click();
+	await page.getByRole('button', { name: 'full passage' }).click();
+	await page.getByRole('button', { name: '▶ Start manual session' }).click();
+
+	await expect(page.getByLabel('Current passage')).toHaveText('Iliad 1.1–2');
+	await expect(
+		page.getByText('Recite Iliad 1.1 through Iliad 1.2', { exact: true })
+	).toBeVisible();
+	await page.getByRole('button', { name: /Show answer/ }).click();
+	await expect(page.locator('.answer-line-reference')).toHaveText(['Iliad 1.1', 'Iliad 1.2']);
+	await expect(page.getByText(GREEK_LINE_1).first()).toBeVisible();
+	await expect(page.getByText(GREEK_LINE_2).first()).toBeVisible();
+});
+
 test('an interrupted session resumes at the persisted cursor after reload', async ({ page }) => {
 	const title = `Recovery e2e ${Date.now()}`;
 	await createGreekPassage(page, title);
@@ -135,7 +173,8 @@ test('an interrupted session resumes at the persisted cursor after reload', asyn
 
 	await expect(page.getByText('Recite this line to the end.')).toBeVisible();
 	await page.keyboard.press(' '); // check first — grading unlocks after the reveal
-	await page.keyboard.press('3'); // "Good" → hesitant on item 1
+	await expect(page.getByRole('button', { name: '3 Good' })).toBeEnabled();
+	await gradeWithKey(page, '3');
 	await expect(page.getByText(/Good · mastery/)).toBeVisible();
 
 	// Simulate a crash: hard reload, then verify the same item cursor.
@@ -161,7 +200,8 @@ test('Cmd+Z reopens the last graded card and rewinds the tally', async ({ page }
 	// Check, then grade item 1, advancing the cursor.
 	await expect(page.getByText('Recite this line to the end.')).toBeVisible();
 	await page.keyboard.press(' ');
-	await page.keyboard.press('4');
+	await expect(page.getByRole('button', { name: '4 Easy' })).toBeEnabled();
+	await gradeWithKey(page, '4');
 	await expect(page.getByText('1/2 items')).toBeVisible();
 
 	// Cmd/Ctrl+Z rolls the card back: the cursor returns and the first cue shows.
@@ -222,12 +262,12 @@ test('smart session teaches fresh lines through acquisition while junctures keep
 	// check unlocks grading, and bare-cue production waits for a later visit.
 	await expect(page.getByText('acquisition', { exact: true })).toBeVisible();
 	await completeAcquisition(page);
-	await page.keyboard.press('4');
+	await gradeWithKey(page, '4');
 	await expect(page.getByText('1/2 items')).toBeVisible();
 
 	await expect(page.getByText('acquisition', { exact: true })).toBeVisible();
 	await completeAcquisition(page);
-	await page.keyboard.press('4');
+	await gradeWithKey(page, '4');
 	await expect(page.getByText('Session complete')).toBeVisible();
 
 	// With both flanking lines started, the next session admits the juncture
@@ -239,30 +279,34 @@ test('smart session teaches fresh lines through acquisition while junctures keep
 	await expect(page.getByText('0/3 items')).toBeVisible();
 });
 
-test('smart sessions rotate a learning line through distinct exercises', async ({ page }) => {
+test('smart sessions gate each guided phase behind three successful recalls', async ({ page }) => {
+	test.setTimeout(150_000);
 	const title = `Smart rotation e2e ${Date.now()}`;
 	await createSingleLinePassage(page, title);
 	const passageUrl = page.url();
 
-	for (const expectedMode of [
-		'acquisition',
-		'cue recall',
-		'word bank',
-		'forward chaining'
-	]) {
+	await page.getByRole('button', { name: '✦ Smart session' }).first().click();
+	await completeAcquisition(page);
+	await gradeWithKey(page, '3');
+	await expect(page.getByText('Session complete')).toBeVisible();
+	await page.goto(passageUrl);
+
+	for (const successCount of [0, 1, 2]) {
 		await page.getByRole('button', { name: '✦ Smart session' }).first().click();
 		await expect(page).toHaveURL(/\/practice\/[\w-]+/);
-		await expect(page.getByText(expectedMode, { exact: true })).toBeVisible();
-		if (expectedMode === 'acquisition') {
-			await completeAcquisition(page);
-		} else {
-			const reveal = page.getByRole('button', { name: /Show answer/ });
-			if (await reveal.isVisible()) await reveal.click();
-		}
-		await page.keyboard.press('3'); // Good keeps the line in learning.
+		await expect(page.getByText('guided recall', { exact: true })).toBeVisible();
+		await expect(page.getByText('Cumulative chunks')).toBeVisible();
+		await expect(page.getByLabel(`${successCount} of 3 successful recalls`)).toBeVisible();
+		await page.getByRole('button', { name: /Show answer/ }).click();
+		await expect(page.getByRole('button', { name: '3 Good' })).toBeEnabled();
+		await gradeWithKey(page, '3');
 		await expect(page.getByText('Session complete')).toBeVisible();
 		await page.goto(passageUrl);
 	}
+
+	await page.getByRole('button', { name: '✦ Smart session' }).first().click();
+	await expect(page.getByText('Fade the ending')).toBeVisible();
+	await expect(page.getByText('Phase 2 of 5')).toBeVisible();
 });
 
 test('recordings stay browser-local until explicitly saved as best', async ({ page }) => {
@@ -325,7 +369,8 @@ test('adding lines to a practiced passage keeps it in place, no fork', async ({ 
 	await startManualSession(page);
 	await expect(page.getByText('Recite this line to the end.')).toBeVisible();
 	await page.keyboard.press(' ');
-	await page.keyboard.press('3');
+	await expect(page.getByRole('button', { name: '3 Good' })).toBeEnabled();
+	await gradeWithKey(page, '3');
 	await page.goto('/');
 	await page.getByRole('link', { name: title }).click();
 

@@ -38,6 +38,8 @@ def snapshot_review_state(db: Session, segment_id: str) -> dict[str, Any]:
         "clean_count": state.clean_count,
         "attempt_count": state.attempt_count,
         "acquisition_succeeded": state.acquisition_succeeded,
+        "learning_step": state.learning_step,
+        "learning_success_count": state.learning_success_count,
     }
 
 
@@ -63,6 +65,8 @@ def restore_review_state(db: Session, snapshot: dict[str, Any]) -> None:
     # Snapshots written before this field existed belong to review rows that
     # the migration marks acquired.
     state.acquisition_succeeded = snapshot.get("acquisition_succeeded", True)
+    state.learning_step = snapshot.get("learning_step")
+    state.learning_success_count = snapshot.get("learning_success_count", 0)
 
 
 # Setting key holding personally fitted FSRS weights, written by
@@ -100,6 +104,7 @@ def review_segment(
     rating: str,
     attempt_id: str | None = None,
     review_duration_ms: int | None = None,
+    mode: str | None = None,
 ) -> models.ReviewState:
     state = db.scalar(select(models.ReviewState).where(models.ReviewState.segment_id == segment_id))
     card = Card.from_json(state.fsrs_card_json) if state else Card()
@@ -119,6 +124,7 @@ def review_segment(
             )
         )
     if state is None:
+        segment = db.get(models.Segment, segment_id)
         state = models.ReviewState(
             segment_id=segment_id,
             fsrs_card_json=card.to_json(),
@@ -127,6 +133,8 @@ def review_segment(
             clean_count=0,
             attempt_count=0,
             acquisition_succeeded=False,
+            learning_step=0 if segment is not None and segment.kind != "juncture" else None,
+            learning_success_count=0,
         )
         db.add(state)
     state.fsrs_card_json = card.to_json()
@@ -135,12 +143,35 @@ def review_segment(
     state.clean_count = _next_clean_streak(state.clean_count, rating)
     if rating in {"hesitant", "clean"}:
         state.acquisition_succeeded = True
+        if mode == "guided_recall" and state.learning_step is not None:
+            state.learning_success_count += 1
+            if state.learning_success_count >= LEARNING_STEP_SUCCESSES:
+                from rhapsode.services.planning import (
+                    learning_scaffold_steps,
+                    learning_step_successes_required,
+                )
+
+                segment = db.get(models.Segment, segment_id)
+                step_count = len(learning_scaffold_steps(segment)) if segment else 0
+                required = (
+                    learning_step_successes_required(segment, state.learning_step)
+                    if segment
+                    else LEARNING_STEP_SUCCESSES
+                )
+                if state.learning_success_count >= required:
+                    state.learning_step = (
+                        state.learning_step + 1
+                        if state.learning_step + 1 < step_count
+                        else None
+                    )
+                    state.learning_success_count = 0
     state.mastery_stage = mastery_stage(state)
     return state
 
 
 DURABLE_STREAK = 5
 REVIEW_STREAK = 2
+LEARNING_STEP_SUCCESSES = 3
 
 
 def _next_clean_streak(streak: int, rating: str) -> int:
@@ -162,6 +193,8 @@ def _next_clean_streak(streak: int, rating: str) -> int:
 def mastery_stage(state: models.ReviewState) -> str:
     if not state.acquisition_succeeded:
         return "new"
+    if state.learning_step is not None:
+        return "learning"
     if state.clean_count >= DURABLE_STREAK:
         return "durable"
     if state.clean_count >= REVIEW_STREAK:

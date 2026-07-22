@@ -1134,6 +1134,7 @@
         "enum": [
           "shadowing",
           "acquisition",
+          "guided_recall",
           "progressive_fading",
           "word_bank",
           "forward_chaining",

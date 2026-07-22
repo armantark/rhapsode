@@ -17,6 +17,13 @@
   after successful acquisition keys off both the preceding mode and rating:
   Good requests cue recall, while Easy may build forward flow when learned
   predecessor context exists; subsequent turns use the normal varied cycle.
+- Non-juncture acquisition now hands off to a persistent guided-recall ladder.
+  `ReviewState.learning_step` is the active phase and null means graduation;
+  `learning_success_count` is cumulative within that phase. Good and Easy in
+  `guided_recall` advance the counter. Again and Hard leave prior successes in
+  place. The planner derives the current cue level from that stored counter and
+  does not fill a session with repeated ladder cards, so each success is a
+  spaced visit. Typed and oral prompts share the same state transition.
 - Source references are optional display metadata on revisions and segments.
   They never replace local ordinals, which remain the stable keys for chaining,
   junctures, appends, and review history. Chaining copy prefers complete source
@@ -55,3 +62,6 @@
   long alpha, iota, and upsilon. Do not add redundant macrons to eta, omega, or
   diphthongs, and do not promote metrical lengthening by position into vowel
   quantity marks.
+- Cue slicing must preserve Unicode combining marks. Half-word and first-letter
+  prompts operate on base-plus-combining-mark clusters, not Python code points,
+  so an Ancient Greek macron or accent never detaches from its vowel.

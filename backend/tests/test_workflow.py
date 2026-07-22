@@ -68,6 +68,62 @@ def test_smart_session_scaffolds_new_segments(
     assert {item["mode"] for item in session["items"]} == {"acquisition"}
 
 
+def test_guided_ladder_advances_after_three_cumulative_successes(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    revision = passage["active_revision"]
+    acquisition = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    ).json()
+    target_id = acquisition["items"][0]["segment_id"]
+    for item in acquisition["items"]:
+        learned = client.post(
+            f"/api/v1/sessions/{acquisition['id']}/attempts",
+            json={"item_id": item["id"], "rating": "hesitant"},
+            headers=mutation(),
+        )
+        assert learned.status_code == 201, learned.text
+
+    def next_target() -> tuple[dict[str, object], dict[str, object]]:
+        session = client.post(
+            "/api/v1/sessions",
+            json={"revision_id": revision["id"], "segment_kinds": ["line"]},
+            headers=mutation(),
+        ).json()
+        item = next(entry for entry in session["items"] if entry["segment_id"] == target_id)
+        return session, item
+
+    for success_count in range(3):
+        session, item = next_target()
+        assert item["mode"] == "guided_recall"
+        assert item["prompt"]["learning_step"] == 0
+        assert item["prompt"]["learning_success_count"] == success_count
+        if success_count == 1:
+            failed = client.post(
+                f"/api/v1/sessions/{session['id']}/attempts",
+                json={"item_id": item["id"], "rating": "incorrect"},
+                headers=mutation(),
+            )
+            assert failed.status_code == 201, failed.text
+            session, item = next_target()
+            assert item["prompt"]["learning_success_count"] == 1
+        succeeded = client.post(
+            f"/api/v1/sessions/{session['id']}/attempts",
+            json={"item_id": item["id"], "rating": "hesitant"},
+            headers=mutation(),
+        )
+        assert succeeded.status_code == 201, succeeded.text
+
+    _session, next_item = next_target()
+    assert next_item["mode"] == "guided_recall"
+    assert next_item["prompt"]["learning_step"] == 1
+    assert next_item["prompt"]["learning_success_count"] == 0
+
+
 def test_acquisition_failure_retries_once_at_session_tail(
     client: TestClient,
     mutation: Callable[..., dict[str, str]],
@@ -607,11 +663,10 @@ def test_due_only_session_targets_due_segments(
     assert due_session.status_code == 201, due_session.text
     body = due_session.json()
     assert body["plan"]["due_only"] is True
-    # Only the single graded-and-now-due segment is in the plan. It is still
-    # learning, but cue recall was just used, so the rotation introduces the
-    # least-used learning exercise (word bank) instead of repeating.
+    # Only the single graded-and-now-due segment is in the plan. It stays in
+    # the gated scaffold before the normal mixed learning rotation begins.
     assert [item["segment_id"] for item in body["items"]] == [first["segment_id"]]
-    assert body["items"][0]["mode"] == "word_bank"
+    assert body["items"][0]["mode"] == "guided_recall"
 
 
 def _tokenized_passage(

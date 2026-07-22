@@ -10,6 +10,7 @@
 		profile = null,
 		revealed = false,
 		revealText = null,
+		passageReference = '',
 		node = null,
 		nodes = [],
 		layers = [],
@@ -27,6 +28,8 @@
 		/** cue_recall/full_passage prompts omit the answer; the parent looks it
 		 *  up from the revision's segments. */
 		revealText?: string | null;
+		/** Exact source range for holistic cards, supplied by the active revision. */
+		passageReference?: string;
 		/** The practised segment's subtree, so the checked answer can show its
 		 *  gloss / translation / meter interlinearly (the learner is still
 		 *  acquiring the vocabulary). */
@@ -63,6 +66,14 @@
 	// and intentionally open-ended for plugin modes, hence the JSON fallback.
 	const prompt = $derived(item.prompt as Record<string, unknown>);
 	const instruction = $derived(typeof prompt.instruction === 'string' ? prompt.instruction : '');
+	const guidedLabel = $derived(typeof prompt.label === 'string' ? prompt.label : 'Guided recall');
+	const guidedCue = $derived(typeof prompt.cue_text === 'string' ? prompt.cue_text : '');
+	const guidedTarget = $derived(typeof prompt.target_text === 'string' ? prompt.target_text : '');
+	const guidedResponse = $derived(prompt.response_format === 'typed' ? 'typed' : 'oral');
+	const guidedStep = $derived(typeof prompt.learning_step === 'number' ? prompt.learning_step : 0);
+	const guidedStepCount = $derived(typeof prompt.learning_step_count === 'number' ? prompt.learning_step_count : 5);
+	const guidedSuccesses = $derived(typeof prompt.learning_success_count === 'number' ? prompt.learning_success_count : 0);
+	const guidedRequired = $derived(typeof prompt.required_successes === 'number' ? prompt.required_successes : 3);
 	const stages = $derived(Array.isArray(prompt.stages) ? (prompt.stages as string[]) : []);
 	const chain = $derived(Array.isArray(prompt.chain) ? (prompt.chain as string[]) : []);
 	const chainReferences = $derived(
@@ -135,7 +146,7 @@
 		japanese && fadeLeadIn ? nodeForText(fadeLeadIn) : null
 	);
 	const fullPassageNodes = $derived.by(() =>
-		japanese && item.mode === 'full_passage'
+		item.mode === 'full_passage'
 			? nodes.filter((candidate) => candidate.kind === 'line').sort((a, b) => a.ordinal - b.ordinal)
 			: []
 	);
@@ -318,7 +329,7 @@
 		}
 	}
 	const knownMode = $derived(
-		['shadowing', 'acquisition', 'progressive_fading', 'word_bank', 'forward_chaining', 'backward_chaining', 'cue_recall', 'typed_recall', 'meaning_recall', 'random_start', 'weak_link', 'full_passage', 'recital'].includes(item.mode)
+		['shadowing', 'acquisition', 'guided_recall', 'progressive_fading', 'word_bank', 'forward_chaining', 'backward_chaining', 'cue_recall', 'typed_recall', 'meaning_recall', 'random_start', 'weak_link', 'full_passage', 'recital'].includes(item.mode)
 	);
 
 	let stageIndex = $state(0);
@@ -424,7 +435,9 @@
 	<div class="head">
 		<span class="tag">{item.mode.replaceAll('_', ' ')}</span>
 		{#if instruction}<p class="instruction">{instruction}</p>{/if}
-		{#if node?.reference_label}
+		{#if item.mode === 'full_passage' && passageReference}
+			<span class="line-reference" aria-label="Current passage">{passageReference}</span>
+		{:else if node?.reference_label}
 			<span class="line-reference" aria-label="Current line">{node.reference_label}</span>
 		{/if}
 	</div>
@@ -509,6 +522,35 @@
 					onclick={checkReconstruction}
 				>Check reconstruction</button>
 			{/if}
+		{/if}
+	{:else if item.mode === 'guided_recall'}
+		<div class="guided-status">
+			<div>
+				<strong>{guidedLabel}</strong>
+				<span class="muted small-note">Phase {guidedStep + 1} of {guidedStepCount}</span>
+			</div>
+			<div class="success-track" aria-label="{guidedSuccesses} of {guidedRequired} successful recalls">
+				{#each Array(guidedRequired) as _, index}
+					<span class:done={index < guidedSuccesses}></span>
+				{/each}
+			</div>
+		</div>
+		<p class="muted small-note">
+			{guidedResponse === 'typed' ? 'Write this attempt.' : 'Say this attempt aloud.'}
+			Good or Easy advances the support; {guidedRequired - guidedSuccesses} successful
+			{guidedRequired - guidedSuccesses === 1 ? ' recall remains' : ' recalls remain'} in this phase.
+		</p>
+		<div class="passage-text guided-cue" {lang} style:font-family={fonts}>{guidedCue}</div>
+		{#if guidedResponse === 'typed'}
+			<textarea
+				class="typed-input"
+				bind:value={typedDraft}
+				rows="4"
+				lang={lang || undefined}
+				style:font-family={fonts}
+				placeholder="Type the requested span from memory…"
+				aria-label="Typed guided recall"
+			></textarea>
 		{/if}
 	{:else if item.mode === 'progressive_fading' && stages.length}
 		{#if fadeLeadIn}
@@ -742,14 +784,40 @@
 			{/if}
 		</div>
 	{:else if item.mode === 'full_passage'}
-		<p class="muted blank">Recite the whole passage from memory, start to finish.</p>
+		<div class="full-passage-task">
+			<strong>Recite {String(prompt.range_label || passageReference || 'the whole passage')}</strong>
+			<p class="muted small-note">
+				Start at the first named line, continue in order through the last, then show the
+				complete text and check every line.
+			</p>
+		</div>
 	{:else if !knownMode}
 		<!-- Plugin practice modes render their open-ended payload verbatim. -->
 		<pre class="plugin-prompt">{JSON.stringify(item.prompt, null, 2)}</pre>
 	{/if}
 
-	{#if revealed && (revealText || isChaining)}
-		{#if isChaining && chainDisplays.length}
+	{#if revealed && (revealText || isChaining || guidedTarget || fullPassageNodes.length)}
+		{#if item.mode === 'guided_recall'}
+			{#if guidedResponse === 'typed' && typedDraft.trim()}
+				<div class="typed-attempt">
+					<span class="note-tag">your attempt</span>
+					<p class="passage-text" {lang} style:font-family={fonts}>{typedDraft}</p>
+				</div>
+			{/if}
+			<div class="revealed-text guided-answer">
+				<span class="note-tag">target span</span>
+				<p class="passage-text" {lang} style:font-family={fonts}>{guidedTarget}</p>
+			</div>
+		{:else if item.mode === 'full_passage' && fullPassageNodes.length}
+			<div class="revealed-text full-passage-reveal">
+				{#each fullPassageNodes as line, index (line.id)}
+					<div class="full-passage-line">
+						<span class="answer-line-reference">{line.reference_label || `Line ${index + 1}`}</span>
+						<SegmentText node={line} {profile} {layers} showRuby={readingEnabled} />
+					</div>
+				{/each}
+			</div>
+		{:else if isChaining && chainDisplays.length}
 			<ul class="chain revealed-text revealed-chain">
 				{#each chainDisplays as link (link.text)}
 					{#if link.node}
@@ -768,18 +836,12 @@
 			<div class="revealed-text annotated">
 				<SegmentText {node} {profile} {layers} showRuby={readingEnabled} />
 			</div>
-		{:else if fullPassageNodes.length}
-			<div class="revealed-text annotated full-passage-reveal">
-				{#each fullPassageNodes as line (line.id)}
-					<SegmentText node={line} {profile} {layers} showRuby={readingEnabled} />
-				{/each}
-			</div>
 		{:else}
 			<p class="passage-text revealed-text" {lang} style:font-family={fonts}>{revealText}</p>
 		{/if}
 	{/if}
 
-	{#if !revealed && (item.mode === 'cue_recall' || item.mode === 'weak_link' || item.mode === 'random_start' || item.mode === 'word_bank' || item.mode === 'typed_recall' || item.mode === 'meaning_recall' || item.mode === 'full_passage' || isChaining)}
+	{#if !revealed && (item.mode === 'guided_recall' || item.mode === 'cue_recall' || item.mode === 'weak_link' || item.mode === 'random_start' || item.mode === 'word_bank' || item.mode === 'typed_recall' || item.mode === 'meaning_recall' || item.mode === 'full_passage' || isChaining)}
 		<button class="reveal" onclick={onReveal}>Show answer to check</button>
 	{/if}
 </div>
@@ -1040,6 +1102,83 @@
 
 	.small-note {
 		font-size: 0.8rem;
+	}
+
+	.guided-status {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
+	}
+
+	.guided-status > div:first-child {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.success-track {
+		display: flex;
+		gap: 6px;
+	}
+
+	.success-track span {
+		width: 18px;
+		height: 8px;
+		border: 1px solid var(--border);
+		border-radius: 3px;
+		background: var(--surface-2);
+	}
+
+	.success-track span.done {
+		border-color: var(--green);
+		background: var(--green);
+	}
+
+	.guided-cue {
+		margin: 0;
+		padding: 14px;
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		background: var(--bg);
+	}
+
+	.guided-answer .passage-text {
+		margin: 6px 0 0;
+	}
+
+	.full-passage-task {
+		display: flex;
+		flex-direction: column;
+		gap: 5px;
+	}
+
+	.full-passage-task p {
+		margin: 0;
+	}
+
+	.full-passage-reveal {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.full-passage-line {
+		display: grid;
+		grid-template-columns: minmax(70px, auto) 1fr;
+		align-items: baseline;
+		gap: 12px;
+	}
+
+	.answer-line-reference {
+		font-family: var(--font-mono);
+		font-size: 0.7rem;
+		color: var(--gold);
+		white-space: nowrap;
+	}
+
+	.full-passage-line :global(.segment) {
+		margin: 0 !important;
 	}
 
 	.typed-input {

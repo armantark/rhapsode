@@ -274,3 +274,13 @@
   while keeping junctures on progressive fading. PinchTab verified encounter,
   ordered reconstruction, and bankless production against the live database;
   its diagnostic sessions were deleted afterward.
+- Guided learning ladder and full-passage clarity (2026-07-21): added a stored
+  five-phase line-learning curriculum with cumulative three-success gates and
+  random typed/oral variants. Added exact range copy and per-line labels to
+  full-passage cards, and fixed the reveal branch that previously showed only
+  the active segment. The migration starts active new/learning rows at phase 1
+  and leaves already acquired rows graduated. Verified with 111 backend tests,
+  96 frontend tests, Ruff, strict mypy, OpenAPI, svelte-check, production build,
+  the 16 relevant Playwright flows, and an isolated PinchTab manual pass. The
+  fake-microphone Playwright probe and recorder case remain environmental
+  failures because `getUserMedia()` times out before app recording begins.

@@ -224,6 +224,37 @@ describe('built-in mode rendering', () => {
 		expect(onAcquisitionReady).toHaveBeenLastCalledWith(false);
 	});
 
+	it('guided recall shows the gated phase and supports oral and typed variants', async () => {
+		const guidedItem = item('guided_recall', {
+			instruction: 'From the first word, recall words 1–3, then stop.',
+			label: 'Cumulative chunks',
+			cue_text: 'Μῆνιν',
+			target_text: 'Μῆνιν ἄειδε θεὰ̄',
+			learning_step: 0,
+			learning_step_count: 5,
+			learning_success_count: 1,
+			required_successes: 3,
+			response_format: 'oral'
+		});
+		const onReveal = vi.fn();
+		const { rerender } = render(PromptCard, { item: guidedItem, onReveal });
+
+		expect(screen.getByText('Cumulative chunks')).toBeInTheDocument();
+		expect(screen.getByText('Phase 1 of 5')).toBeInTheDocument();
+		expect(screen.getByLabelText('1 of 3 successful recalls').querySelectorAll('.done')).toHaveLength(1);
+		expect(screen.getByText(/Say this attempt aloud/)).toBeInTheDocument();
+		expect(screen.queryByLabelText('Typed guided recall')).toBeNull();
+
+		await rerender({
+			item: { ...guidedItem, id: 'typed-guided', prompt: { ...guidedItem.prompt, response_format: 'typed' } },
+			revealed: true
+		});
+		const input = screen.getByLabelText('Typed guided recall');
+		await fireEvent.input(input, { target: { value: 'Μῆνιν ἄειδε' } });
+		expect(screen.getByText('target span')).toBeInTheDocument();
+		expect(screen.getByText('Μῆνιν ἄειδε θεὰ̄')).toBeInTheDocument();
+	});
+
 	it('word bank deals chips that move between pool and arrangement', async () => {
 		render(PromptCard, {
 			item: item('word_bank', {
@@ -500,13 +531,27 @@ describe('built-in mode rendering', () => {
 		]);
 	});
 
-	it('full passage starts blank with a reveal escape hatch', () => {
+	it('full passage names its scope and reveals every referenced line', () => {
+		const first = { ...lineNode('alpha beta'), id: 'line-1', ordinal: 0, reference_label: 'Iliad 1.1' };
+		const second = { ...lineNode('gamma delta'), id: 'line-2', ordinal: 1, reference_label: 'Iliad 1.2' };
 		render(PromptCard, {
-			item: item('full_passage', { instruction: 'Recite the full passage from memory.', blank: true }),
+			item: item('full_passage', {
+				instruction: 'Recite Iliad 1.1 through Iliad 1.2 from memory, start to finish, in order.',
+				range_label: 'Iliad 1.1 through Iliad 1.2',
+				blank: true
+			}),
+			passageReference: 'Iliad 1.1–2',
+			nodes: [first, second],
+			revealText: 'alpha beta\ngamma delta',
+			revealed: true,
 			onReveal: vi.fn()
 		});
-		expect(screen.getByText('Recite the whole passage from memory, start to finish.', { selector: '.blank' })).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: /Show answer/ })).toBeInTheDocument();
+		expect(screen.getByLabelText('Current passage')).toHaveTextContent('Iliad 1.1–2');
+		expect(screen.getByText('Recite Iliad 1.1 through Iliad 1.2')).toBeInTheDocument();
+		expect(screen.getByText('Iliad 1.1', { selector: '.answer-line-reference' })).toBeInTheDocument();
+		expect(screen.getByText('Iliad 1.2', { selector: '.answer-line-reference' })).toBeInTheDocument();
+		expect(screen.getByText('alpha beta')).toBeInTheDocument();
+		expect(screen.getByText('gamma delta')).toBeInTheDocument();
 	});
 
 	it('weak link shows the verbatim lead-in, hides the hint, reveals the target', async () => {

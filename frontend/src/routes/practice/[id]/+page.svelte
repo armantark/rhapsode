@@ -202,8 +202,8 @@
 	const revealText = $derived.by(() => {
 		if (!currentItem) return null;
 		const prompt = currentItem.prompt as Record<string, unknown>;
-		if (typeof prompt.target_text === 'string') return prompt.target_text;
 		if (currentItem.mode === 'full_passage') return revision?.source_text ?? null;
+		if (typeof prompt.target_text === 'string') return prompt.target_text;
 		return currentItem.segment_id ? (segmentById.get(currentItem.segment_id)?.text ?? null) : null;
 	});
 
@@ -436,6 +436,7 @@
 			(currentItem.mode === 'acquisition'
 				? false
 				: [
+				'guided_recall',
 				'cue_recall',
 				'weak_link',
 				'random_start',
@@ -595,6 +596,7 @@
 					{profile}
 					{revealed}
 					{revealText}
+					{passageReference}
 					node={currentNode}
 					nodes={allNodes}
 					layers={enabledLayers}
@@ -676,7 +678,7 @@
 				<p class="muted small">
 					{#if currentItem.mode === 'acquisition' && !acquisitionReady}
 						Read the line, rebuild it, and check the rebuild — grading unlocks at the check.
-					{:else if currentItem.mode === 'typed_recall'}
+					{:else if currentItem.mode === 'typed_recall' || (currentItem.mode === 'guided_recall' && (currentItem.prompt as Record<string, unknown>).response_format === 'typed')}
 						<!-- Space types into the textarea, so pointing at it would lie. -->
 						Type from memory, then click “Show answer to check” — grading unlocks after
 						the check.

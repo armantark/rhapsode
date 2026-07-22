@@ -24,6 +24,16 @@ async function completeAcquisition(page: Page): Promise<void> {
 	}
 	await page.getByRole('button', { name: 'Check reconstruction' }).click();
 	await page.getByText('true line').waitFor();
+	await expect(page.getByRole('button', { name: '4 Easy' })).toBeEnabled();
+}
+
+async function gradeEasy(page: Page): Promise<void> {
+	await Promise.all([
+		page.waitForResponse(
+			(response) => response.url().includes('/attempts') && response.request().method() === 'POST'
+		),
+		page.keyboard.press('4')
+	]);
 }
 
 test('group two passages into a collection, reorder, and practice the whole arc', async ({
@@ -75,11 +85,11 @@ test('group two passages into a collection, reorder, and practice the whole arc'
 	// Each card carries its own passage context (subtitle switches per item).
 	await expect(page.locator('.head-sub')).toContainText(titleA);
 	await completeAcquisition(page);
-	await page.keyboard.press('4');
+	await gradeEasy(page);
 	await expect(page.getByText('1/2 items')).toBeVisible();
 	await expect(page.locator('.head-sub')).toContainText(titleB);
 	await completeAcquisition(page);
-	await page.keyboard.press('4');
+	await gradeEasy(page);
 	await expect(page.getByText('Session complete')).toBeVisible();
 
 	// The session appears in the practice list tagged as a collection.

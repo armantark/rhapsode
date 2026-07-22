@@ -293,6 +293,20 @@ push, install smoke) remains the other open thread.
   already encode length and receive no added macron. Audit against the marked
   Iliad reference corrected live 1.10 `λᾱοί` and confirmed 1.1–9 and 1.11–20;
   the first-run and sandbox 1.1–5 sources now carry the same quantities.
+- Guided learning ladder (2026-07-21): successful acquisition now opens five
+  persistent, spaced phases for each non-juncture line: cumulative three-word
+  chunks, ending-to-opening fade, opening-to-ending fade, half-word cues, then
+  first-letter cues. Each phase needs three cumulative Good or Easy recalls;
+  longer chunk phases need enough recalls to expose the whole line. Oral and
+  typed cards occur at random and count toward the same gate. A failed recall
+  does not erase earlier successes. Only after the fifth phase does the smart
+  planner use the established maintenance modes. Existing acquired review rows
+  skip the new ladder; active new/learning rows enter it through migration.
+- Full-passage scope (2026-07-21): the prompt names the exact first and last
+  source references, tells the learner to recite the full range in order, and
+  reveals every line with a source-reference gutter. Unlabeled lines use a
+  local `Line N` fallback. Full-passage practice stays locked until all lines
+  finish the guided ladder.
 
 - Real-app UX pass (2026-07-06, Arman's steer: actual UX, not Tauri
   packaging): (1) launcher burrs fixed — the manual-modes <details> now binds
@@ -340,6 +354,13 @@ push, install smoke) remains the other open thread.
 - Junctures backfilled onto the practiced Iliad revision (+4) via
   `scripts/backfill_junctures.py`; Chamberlain's CC-BY recitation of Iliad
   1.1-100 imported as reference audio via `scripts/import_reference_audio.py`.
+- Guided-ladder/full-passage pass: 111 backend tests and 96 frontend tests pass;
+  Ruff, strict mypy, OpenAPI check, svelte-check, and the production build pass.
+  All 16 non-media Playwright tests pass, including the four-session phase gate
+  and exact full-passage reveal. The two media tests fail because Chromium's
+  fake microphone request times out before the recorder starts. PinchTab on an
+  isolated database verified the exact Iliad 1.1–1.2 scope, both revealed line
+  labels, and a typed Phase 1 cumulative-chunk card with three recalls required.
 
 ## Next Work
 

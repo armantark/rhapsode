@@ -21,6 +21,7 @@ from rhapsode.services.planning import (
     build_plan,
     build_smart_plan,
     build_smart_plan_for_revisions,
+    learning_scaffold_steps,
     progressive_masks,
     prompt_for,
     register_practice_mode,
@@ -52,6 +53,53 @@ def test_progressive_masks_handle_no_space_scripts_gradually() -> None:
         "空こ•••••",
         "•••••••",
     ]
+
+
+def test_learning_scaffold_is_five_spaced_phases() -> None:
+    line = models.Segment(
+        kind="line",
+        ordinal=0,
+        text="one two three four five six seven eight",
+    )
+
+    steps = learning_scaffold_steps(line)
+
+    assert [step["kind"] for step in steps] == [
+        "chunk",
+        "fade_tail",
+        "fade_front",
+        "half_words",
+        "initials",
+    ]
+    assert steps[0]["target_levels"] == [
+        "one two three",
+        "one two three four five six",
+        line.text,
+    ]
+    assert steps[0]["required_successes"] == 3
+    assert steps[1]["cue_levels"][0].startswith("one two three")
+    assert steps[1]["cue_levels"][-1].startswith("one two")
+    assert steps[2]["cue_levels"][0].startswith("•••")
+    assert steps[2]["cue_levels"][-1].endswith("seven eight")
+    assert steps[3]["cue_levels"] == ["on… tw… thr… fo… fi… si… sev… eig…"]
+    assert steps[4]["cue_levels"] == ["o. t. t. f. f. s. s. e."]
+
+
+def test_learning_scaffold_keeps_combining_macrons_attached_to_greek_cues() -> None:
+    line = models.Segment(kind="line", ordinal=0, text="ψῡχὰ̄ς θεὰ̄ ᾱρα")
+
+    steps = learning_scaffold_steps(line)
+
+    assert steps[3]["cue_levels"] == ["ψῡχ… θε… ᾱρ…"]
+    assert steps[4]["cue_levels"] == ["ψ. θ. ᾱ."]
+
+
+def test_learning_scaffold_keeps_every_phase_usable_for_one_unit() -> None:
+    line = models.Segment(kind="line", ordinal=0, text="arma")
+
+    steps = learning_scaffold_steps(line)
+
+    assert all(step["cue_levels"] for step in steps)
 
 
 def test_progressive_masks_never_hide_juncture_ellipsis() -> None:
@@ -1620,6 +1668,7 @@ def test_every_mode_states_its_recitation_extent() -> None:
     context = [line, following]
     endpoint_phrase = {
         "shadowing": "line",
+        "guided_recall": "stop",
         "progressive_fading": "line",
         "word_bank": "then check",
         "forward_chaining": "then check",

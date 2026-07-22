@@ -192,6 +192,13 @@ class ReviewState(Base, TimestampMixin):
     acquisition_succeeded: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default="1"
     )
+    # A nullable index into planning.learning_scaffold_steps. NULL means the
+    # line has completed the gated ladder (or predates it); new line review
+    # states start at step zero. Successes are cumulative within one step.
+    learning_step: Mapped[int | None] = mapped_column(Integer, default=None)
+    learning_success_count: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0"
+    )
 
 
 class PracticeSession(Base, TimestampMixin):

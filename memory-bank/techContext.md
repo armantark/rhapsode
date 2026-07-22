@@ -49,6 +49,17 @@ npx playwright test
 The Vite dev server proxies `/api` to the backend via `server.proxy`. Override
 with `RHAPSODE_API_TARGET` env var.
 
+## Optional Cloud Development Lane
+
+Prefer a ChatGPT Work or Codex cloud environment when it is available under the
+existing ChatGPT plan at no incremental charge and setup is straightforward.
+Use it for the reproducible FastAPI backend, SvelteKit browser app,
+unit/integration checks, static builds, contract generation, and Playwright E2E
+when the required services can run there. This lane supplements rather than
+replaces the existing validation requirements. Keep Tauri desktop packaging,
+microphone and audio behavior, OS integration, and final device validation
+local.
+
 Long-lived development processes do not reload backend Python changes. Before
 manual browser verification of newly shipped planner behavior, restart
 `uv run rhapsode` and confirm the new process is listening on port 8000. On

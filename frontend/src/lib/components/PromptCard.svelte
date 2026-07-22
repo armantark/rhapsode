@@ -424,6 +424,9 @@
 	<div class="head">
 		<span class="tag">{item.mode.replaceAll('_', ' ')}</span>
 		{#if instruction}<p class="instruction">{instruction}</p>{/if}
+		{#if node?.reference_label}
+			<span class="line-reference" aria-label="Current line">{node.reference_label}</span>
+		{/if}
 	</div>
 
 	{#if item.mode === 'shadowing'}
@@ -792,11 +795,25 @@
 		display: flex;
 		align-items: center;
 		gap: 12px;
+		flex-wrap: wrap;
 	}
 
 	.instruction {
 		margin: 0;
 		color: var(--text-dim);
+	}
+
+	.line-reference {
+		margin-inline-start: auto;
+		padding: 5px 9px;
+		border: 1px solid var(--gold);
+		border-radius: 6px;
+		color: var(--gold);
+		background: color-mix(in srgb, var(--gold) 8%, transparent);
+		font-family: var(--font-mono);
+		font-size: 0.78rem;
+		font-weight: 600;
+		white-space: nowrap;
 	}
 
 	.stage-controls {

@@ -106,6 +106,20 @@ function item(mode: string, prompt: Record<string, unknown>): PracticeItem {
 }
 
 describe('built-in mode rendering', () => {
+	it('shows the canonical line reference throughout a line exercise', () => {
+		render(PromptCard, {
+			item: item('acquisition', {
+				instruction: 'Learn this line, then rebuild it from its own words.',
+				target_text: 'Ἀτρεΐδης· ὁ γὰρ ἦλθε θοὰς ἐπὶ νῆας Ἀχαιῶν',
+				word_bank: []
+			}),
+			node: { ...lineNode('Ἀτρεΐδης· ὁ γὰρ ἦλθε θοὰς ἐπὶ νῆας Ἀχαιῶν'), reference_label: 'Iliad 1.12' },
+			onReveal: vi.fn()
+		});
+
+		expect(screen.getByLabelText('Current line')).toHaveTextContent('Iliad 1.12');
+	});
+
 	it('shadowing shows the target text', () => {
 		render(PromptCard, {
 			item: item('shadowing', { instruction: 'Listen, then shadow aloud.', target_text: 'μῆνιν ἄειδε θεὰ' }),

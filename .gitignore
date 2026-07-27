@@ -22,3 +22,4 @@ frontend/build/
 frontend/test-results/
 frontend/playwright-report/
 /data/
+/site/

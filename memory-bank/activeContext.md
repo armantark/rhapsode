@@ -480,8 +480,24 @@ Deploy route note (2026-07-28, Arman): GPT Sites is believed to be a Codex
 PLUGIN, so Claude can likely drive deploys indirectly via `codex exec`
 (house path `/Applications/ChatGPT.app/Contents/Resources/codex`) instead
 of Arman running a separate Codex session by hand. Untested; try on the
-next deploy (Phase B of `handoffs/sites-data-sync.md`). Arman's own Codex
-session is running Phase A (D1 export) as of this note.
+next deploy (Phase B of `handoffs/sites-data-sync.md`).
+
+Sync + merge executed (2026-07-28 evening): Codex's Phase A exported all
+D1 tables via a temporary token-gated Worker route (route still live,
+Phase B must remove it; practice freeze on the deployed site began
+22:48:04 UTC). `scripts/import_d1_export.py` replaced local data with the
+D1 truth (2,469 rows, counts + foreign keys verified; media storage_path
+repointed to `data/media/`; two pre-import snapshots exist under
+`data/backups/manual/`). `scripts/merge_passages.py` then merged the four
+Iliad passages into "Iliad 1" (20 lines, 19 junctures, labels backfilled
+`Iliad 1.1`-`1.20` via backfill_source_references). Verified live: the
+D1 truth has 1.1-1.12 MASTERED (Arman's site cramming finished the
+ladders), window = 1.13-1.15, smart plan opens with a warmup chain over
+1.10-1.12 and ends with the prefix chain finisher, no random_start.
+LOCAL IS NOW THE SOURCE OF TRUTH: Arman practices locally until Phase B
+deploys the merged database and the runway/warmup Worker port back to
+Sites. Retired source passages remain, marked "Merged into", deletable
+via the UI whenever.
 
 ## Next Work
 

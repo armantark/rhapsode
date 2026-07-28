@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from fsrs import Rating
 from pydantic import ValidationError
+from sqlalchemy import select
 
 from rhapsode import models, schemas
 from rhapsode.services import furigana, planning, prep
@@ -14,7 +15,7 @@ from rhapsode.services.backup import (
     snapshot_sqlite,
     startup_snapshot,
 )
-from rhapsode.services.passages import create_revision
+from rhapsode.services.passages import create_revision, merge_passages
 from rhapsode.services.planning import (
     BUILT_IN_MODES,
     _difficult_segment_ids,
@@ -883,6 +884,192 @@ def test_difficulty_decays_after_two_consecutive_cleans(session_factory: object)
         assert repaired.id not in difficult
         assert recovering.id in difficult
         assert relapsed.id in difficult
+
+
+def test_merge_passages_stitches_progress_onto_the_host(session_factory: object) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="greek-merge", name="Ancient Greek")
+        host = models.Passage(title="Iliad 1-2", language_profile=language)
+        source = models.Passage(title="Iliad 3-4", language_profile=language)
+        db.add_all([host, source])
+        db.flush()
+
+        def lines(*texts: str, labels: list[str] | None = None) -> list[schemas.SegmentInput]:
+            return [
+                schemas.SegmentInput(
+                    kind="line",
+                    ordinal=index,
+                    text=text,
+                    reference_label=(labels or [None] * len(texts))[index],
+                )
+                for index, text in enumerate(texts)
+            ]
+
+        host_revision = create_revision(
+            db,
+            host,
+            schemas.RevisionInput(
+                source_text="one two three\nfour five six",
+                segments=lines(
+                    "one two three", "four five six", labels=["Iliad 1.1", "Iliad 1.2"]
+                ),
+            ),
+        )
+        source_revision = create_revision(
+            db,
+            source,
+            schemas.RevisionInput(
+                source_text="seven eight nine\nten eleven twelve",
+                segments=lines(
+                    "seven eight nine", "ten eleven twelve", labels=["Iliad 1.3", "Iliad 1.4"]
+                ),
+            ),
+        )
+        host_lines = sorted(
+            (s for s in host_revision.segments if s.kind == "line"),
+            key=lambda s: s.ordinal,
+        )
+        source_lines = sorted(
+            (s for s in source_revision.segments if s.kind == "line"),
+            key=lambda s: s.ordinal,
+        )
+        source_juncture = next(
+            s for s in source_revision.segments if s.kind == "juncture"
+        )
+
+        def add_state(segment_id: str, step: int | None, successes: int = 0) -> None:
+            db.add(
+                models.ReviewState(
+                    segment_id=segment_id,
+                    fsrs_card_json="{}",
+                    due_at=datetime.now(UTC) + timedelta(days=7),
+                    mastery_stage="review" if step is None else "learning",
+                    clean_count=2 if step is None else 0,
+                    attempt_count=3,
+                    acquisition_succeeded=True,
+                    learning_step=step,
+                    learning_success_count=successes,
+                )
+            )
+
+        for line in host_lines:
+            add_state(line.id, None)
+        add_state(source_lines[0].id, None)
+        add_state(source_lines[1].id, 1, successes=2)
+        add_state(source_juncture.id, None)
+        history = models.PracticeSession(revision_id=source_revision.id, plan={})
+        db.add(history)
+        db.flush()
+        item = models.PracticeItem(
+            session_id=history.id,
+            revision_id=source_revision.id,
+            segment_id=source_lines[0].id,
+            position=0,
+            mode="cue_recall",
+            prompt={},
+        )
+        db.add(item)
+        db.flush()
+        db.add(
+            models.Attempt(
+                session_id=history.id,
+                item_id=item.id,
+                segment_id=source_lines[0].id,
+                mode="cue_recall",
+                rating="clean",
+                review_snapshot=[],
+            )
+        )
+        db.add(models.PersonalNote(segment_id=source_lines[1].id, text="boulē → tabouleh"))
+        db.add(
+            models.MediaAsset(
+                revision_id=source_revision.id,
+                category="reference",
+                mime_type="audio/mpeg",
+                original_name="teacher.mp3",
+                storage_path="media/teacher.mp3",
+                size_bytes=1,
+                cue_points=[{"segment_id": source_lines[0].id, "time": 0.0, "end": 2.5}],
+            )
+        )
+        collection = models.Collection(name="Iliad thus far")
+        db.add(collection)
+        db.flush()
+        db.add(
+            models.CollectionPassage(
+                collection_id=collection.id, passage_id=host.id, position=0
+            )
+        )
+        db.add(
+            models.CollectionPassage(
+                collection_id=collection.id, passage_id=source.id, position=1
+            )
+        )
+        db.commit()
+
+        moved = merge_passages(db, host, [source])
+        assert moved["lines"] == 2 and moved["states"] == 3
+
+        merged = db.get(models.PassageRevision, host.active_revision_id)
+        assert merged is not None
+        merged_lines = sorted(
+            (s for s in merged.segments if s.kind == "line"), key=lambda s: s.ordinal
+        )
+        assert [line.text for line in merged_lines] == [
+            "one two three",
+            "four five six",
+            "seven eight nine",
+            "ten eleven twelve",
+        ]
+        assert [line.reference_label for line in merged_lines] == [
+            "Iliad 1.1",
+            "Iliad 1.2",
+            "Iliad 1.3",
+            "Iliad 1.4",
+        ]
+        # The host's own rows and states were never touched.
+        assert [line.id for line in merged_lines[:2]] == [line.id for line in host_lines]
+
+        states = {
+            state.segment_id: state
+            for state in db.scalars(select(models.ReviewState))
+        }
+        # Progress rode along: the mid-ladder line keeps its exact rung.
+        moved_line = merged_lines[3]
+        assert states[moved_line.id].learning_step == 1
+        assert states[moved_line.id].learning_success_count == 2
+        assert source_lines[1].id not in states
+
+        junctures = sorted(
+            (s for s in merged.segments if s.kind == "juncture"),
+            key=lambda s: s.ordinal,
+        )
+        assert len(junctures) == 3
+        # The former seam juncture (1.2 → 1.3) is brand new and ungated state-
+        # free; the source's internal juncture kept its state.
+        seam, internal = junctures[1], junctures[2]
+        assert seam.cue is not None and "five six" in seam.cue
+        assert seam.id not in states
+        assert internal.id in states
+
+        attempt = db.scalar(select(models.Attempt))
+        assert attempt is not None and attempt.segment_id == merged_lines[2].id
+        note = db.scalar(select(models.PersonalNote))
+        assert note is not None and note.segment_id == merged_lines[3].id
+        asset = db.scalar(select(models.MediaAsset))
+        assert asset is not None
+        assert asset.revision_id == merged.id
+        assert asset.cue_points == [
+            {"segment_id": merged_lines[2].id, "time": 0.0, "end": 2.5}
+        ]
+
+        members = list(db.scalars(select(models.CollectionPassage)))
+        assert [(member.passage_id, member.position) for member in members] == [
+            (host.id, 0)
+        ]
+        assert source.description is not None and "Merged into" in source.description
+        with pytest.raises(ValueError, match="already merged"):
+            merge_passages(db, host, [source])
 
 
 def test_junctures_generated_between_lines(session_factory: object) -> None:

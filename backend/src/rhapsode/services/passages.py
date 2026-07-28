@@ -1,4 +1,6 @@
-from sqlalchemy import func, select
+from typing import Any, cast
+
+from sqlalchemy import CursorResult, func, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from rhapsode import models, schemas
@@ -239,6 +241,204 @@ def append_segments(
     # returning query reloads the full, current set.
     db.expire_all()
     return get_revision(db, revision.id)
+
+
+def merge_passages(
+    db: Session,
+    host: models.Passage,
+    sources: list[models.Passage],
+) -> dict[str, int]:
+    """Stitch source passages onto the END of the host passage, in order,
+    carrying every learning artifact along.
+
+    A work that grows in batches (the Iliad, assigned a few lines each week)
+    belongs in ONE passage: the runway then spans the whole text, junctures
+    generate at every line boundary including the former passage seams, and
+    collections go back to being shelves for families of works. This performs
+    the one-time repair for material that accumulated as separate passages.
+
+    The host keeps its segment ids untouched; each source's lines are appended
+    through the same path incremental additions use (append_segments), then
+    the source's review states, attempts, review logs, notes, and media are
+    re-pointed at the new segment rows. Seam junctures start fresh — they gate
+    on their flanks' mastery like any other juncture. Source passages are kept
+    (their completed session history still references them) but marked merged,
+    and their collection memberships transfer to the host. append_segments
+    commits per source, so a mid-merge failure needs the backup the CLI script
+    takes first."""
+    merged_marker = "Merged into"
+    moved = {"lines": 0, "junctures": 0, "states": 0, "attempts": 0, "media": 0}
+    for source in sources:
+        if source.id == host.id:
+            raise ValueError("A passage cannot be merged into itself.")
+        if source.language_profile_id != host.language_profile_id:
+            raise ValueError(f"{source.title}: language profile differs from the host.")
+        if source.description and merged_marker in source.description:
+            raise ValueError(f"{source.title}: already merged.")
+    host_revision = get_revision(db, host.active_revision_id or "")
+    host_kinds = {segment.kind for segment in host_revision.segments}
+    for source in sources:
+        source_revision = get_revision(db, source.active_revision_id or "")
+        source_lines = sorted(
+            (s for s in source_revision.segments if s.kind in APPENDABLE_KINDS),
+            key=lambda segment: segment.ordinal,
+        )
+        if {s.kind for s in source_lines} - host_kinds:
+            raise ValueError(f"{source.title}: segment grain differs from the host.")
+        children_by_parent: dict[str, list[models.Segment]] = {}
+        for segment in source_revision.segments:
+            if segment.parent_id is not None:
+                children_by_parent.setdefault(segment.parent_id, []).append(segment)
+
+        def _input(segment: models.Segment, parent: models.Segment | None) -> schemas.SegmentInput:
+            return schemas.SegmentInput(
+                client_id=segment.id,
+                parent_client_id=parent.id if parent is not None else None,
+                kind=segment.kind,
+                ordinal=segment.ordinal,
+                text=segment.text,
+                reference_label=segment.reference_label,
+                cue=segment.cue,
+                metadata_json=segment.metadata_json or {},
+                annotations=[
+                    schemas.AnnotationInput(
+                        layer=annotation.layer,
+                        value=annotation.value,
+                        data=annotation.data,
+                    )
+                    for annotation in segment.annotations
+                ],
+            )
+
+        inputs: list[schemas.SegmentInput] = []
+        for line in source_lines:
+            inputs.append(_input(line, None))
+            inputs.extend(
+                _input(child, line)
+                for child in sorted(
+                    children_by_parent.get(line.id, []), key=lambda s: s.ordinal
+                )
+            )
+        prior_ids = {
+            segment.id
+            for segment in host_revision.segments
+            if segment.kind in APPENDABLE_KINDS
+        }
+        prior_max = max(
+            (
+                segment.ordinal
+                for segment in host_revision.segments
+                if segment.kind in APPENDABLE_KINDS
+            ),
+            default=-1,
+        )
+        offset = prior_max + 1
+        host_revision = append_segments(db, host_revision, inputs)
+
+        appended = sorted(
+            (
+                segment
+                for segment in host_revision.segments
+                if segment.kind in APPENDABLE_KINDS and segment.id not in prior_ids
+            ),
+            key=lambda segment: segment.ordinal,
+        )
+        if len(appended) != len(source_lines):
+            raise RuntimeError(f"{source.title}: appended line count mismatch.")
+        id_map = {
+            old.id: new.id for old, new in zip(source_lines, appended, strict=True)
+        }
+        moved["lines"] += len(source_lines)
+        new_junctures_by_after = {
+            (segment.metadata_json or {}).get("juncture_after"): segment
+            for segment in host_revision.segments
+            if segment.kind == "juncture"
+        }
+        for juncture in (
+            s for s in source_revision.segments if s.kind == "juncture"
+        ):
+            after = (juncture.metadata_json or {}).get("juncture_after")
+            if not isinstance(after, int):
+                continue
+            counterpart = new_junctures_by_after.get(after + offset)
+            if counterpart is not None:
+                id_map[juncture.id] = counterpart.id
+                moved["junctures"] += 1
+
+        for old_id, new_id in id_map.items():
+            states_result = db.execute(
+                update(models.ReviewState)
+                .where(models.ReviewState.segment_id == old_id)
+                .values(segment_id=new_id)
+            )
+            moved["states"] += cast(CursorResult[Any], states_result).rowcount
+            attempts_result = db.execute(
+                update(models.Attempt)
+                .where(models.Attempt.segment_id == old_id)
+                .values(segment_id=new_id)
+            )
+            moved["attempts"] += cast(CursorResult[Any], attempts_result).rowcount
+            db.execute(
+                update(models.FsrsReviewLog)
+                .where(models.FsrsReviewLog.segment_id == old_id)
+                .values(segment_id=new_id)
+            )
+            db.execute(
+                update(models.PersonalNote)
+                .where(models.PersonalNote.segment_id == old_id)
+                .values(segment_id=new_id)
+            )
+        for asset in db.scalars(
+            select(models.MediaAsset).where(
+                models.MediaAsset.revision_id == source_revision.id
+            )
+        ):
+            asset.revision_id = host_revision.id
+            if asset.segment_id in id_map:
+                asset.segment_id = id_map[asset.segment_id]
+            if asset.cue_points:
+                asset.cue_points = [
+                    {
+                        **cue,
+                        "segment_id": id_map.get(
+                            str(cue.get("segment_id")), cue.get("segment_id")
+                        ),
+                    }
+                    for cue in asset.cue_points
+                ]
+            moved["media"] += 1
+
+        source.description = (
+            f"{source.description}\n" if source.description else ""
+        ) + f"{merged_marker} {host.title} ({host.id})."
+        db.commit()
+
+    # Collection shelves keep one entry for the merged work: the host takes
+    # the earliest slot any participant held, and the sources leave.
+    member_rows = list(
+        db.scalars(
+            select(models.CollectionPassage).where(
+                models.CollectionPassage.passage_id.in_(
+                    [host.id, *[source.id for source in sources]]
+                )
+            )
+        )
+    )
+    by_collection: dict[str, list[models.CollectionPassage]] = {}
+    for row in member_rows:
+        by_collection.setdefault(row.collection_id, []).append(row)
+    for collection_id, rows in by_collection.items():
+        keep_position = min(row.position for row in rows)
+        for row in rows:
+            db.delete(row)
+        db.flush()
+        db.add(
+            models.CollectionPassage(
+                collection_id=collection_id, passage_id=host.id, position=keep_position
+            )
+        )
+    db.commit()
+    return moved
 
 
 def get_revision(db: Session, revision_id: str) -> models.PassageRevision:

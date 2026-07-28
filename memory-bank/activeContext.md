@@ -446,6 +446,25 @@ chain with no lead-in. Cross-revision junctures (the 1.7→1.8 seam in
 collections) remain an open gap — the warmup mitigates but does not cue
 across the boundary.
 
+One-work-one-passage doctrine (2026-07-28, Arman's ruling): a work that
+grows in batches (the Iliad) lives in ONE passage — future additions use
+the existing "+ Add lines" append (append_segments already keeps the
+revision, regenerates the seam juncture, and preserves progress); the
+provision-a-new-passage-per-batch pattern is retired. Collections are
+shelves for FAMILIES of works (e.g. Jojo theme songs), not segments of one
+work — which dissolves the cross-revision juncture gap for the Iliad case.
+`merge_passages` in services/passages.py + `scripts/merge_passages.py`
+(manual pre-merge DB snapshot, host keeps its segment ids, sources append
+in order via append_segments, review states/attempts/FSRS logs/notes/media
+cue spans remap to the new rows, seam junctures start fresh and gate on
+flank mastery, collection memberships collapse to the host, sources are
+marked "Merged into …" and refuse re-merge). NOT yet run on any live DB:
+blocked on the source-of-truth decision (local SQLite vs the deployed
+Sites D1, which has diverged practice progress). Sequencing once decided:
+import/choose truth → run merge there (locally via the script; for D1
+either import D1 → merge locally → data:export → redeploy, or mirror the
+merge as SQL per the handoff) → delete or keep retired source passages.
+
 ## Next Work
 
 - Push repo to GitHub and cut first desktop release tag (`desktop-v0.0.1` or

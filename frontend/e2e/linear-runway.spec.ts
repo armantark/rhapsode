@@ -131,7 +131,9 @@ async function completeSession(request: APIRequestContext, sessionId: string): P
  * Drive one line's guided ladder to completion through the API, the way the
  * existing specs seed state. Each round starts a smart session, grades only the
  * target line's ladder items clean, and abandons the rest, so neighbouring
- * lines stay unmastered and the window boundary remains observable.
+ * lines stay unmastered and the window boundary remains observable. Mastery is
+ * read from the review state's own gate — a mastered line keeps appearing in
+ * sessions (warmup, reviews), so "no more ladder cards" is not a signal.
  */
 async function masterLine(
 	request: APIRequestContext,
@@ -147,7 +149,17 @@ async function masterLine(
 			await gradeClean(request, session.id, item.id);
 		}
 		await completeSession(request, session.id);
-		if (ladderItems.length === 0) {
+		const statesResponse = await request.get(
+			`${BACKEND}/api/v1/analytics/due?before=2999-01-01T00:00:00Z`
+		);
+		expect(statesResponse.ok()).toBe(true);
+		const states = (await statesResponse.json()) as Array<{
+			segment_id: string;
+			acquisition_succeeded: boolean;
+			learning_step: number | null;
+		}>;
+		const state = states.find((candidate) => candidate.segment_id === segmentId);
+		if (state && state.acquisition_succeeded && state.learning_step === null) {
 			return;
 		}
 	}

@@ -648,7 +648,6 @@ def smart_mode_for(
     acquisition_succeeded: bool | None = None,
     last_rating: str | None = None,
     last_mode: str | None = None,
-    has_chain_context: bool = False,
 ) -> str:
     """Choose the least-used useful exercise for this mastery stage.
 
@@ -679,19 +678,15 @@ def smart_mode_for(
             if kind == "juncture"
             else PracticeMode.word_bank.value
         )
-    if kind != "juncture" and last_mode == PracticeMode.acquisition.value:
-        # The first return after acquisition is response-contingent rather than
-        # another arbitrary turn through the rotation. A hesitant success needs
-        # a clean cue-only retrieval; a clean success can begin passage flow as
-        # soon as a learned predecessor makes chaining a real exercise.
-        if last_rating == "hesitant":
-            return PracticeMode.cue_recall.value
-        if last_rating == "clean":
-            return (
-                PracticeMode.forward_chaining.value
-                if has_chain_context
-                else PracticeMode.cue_recall.value
-            )
+    if (
+        kind != "juncture"
+        and last_mode == PracticeMode.acquisition.value
+        and last_rating in {"hesitant", "clean"}
+    ):
+        # The first return after acquisition is a clean cue-only retrieval
+        # before the rotation varies anything; passage flow belongs to the
+        # warmup and finisher chains, not to a per-line review card.
+        return PracticeMode.cue_recall.value
     if kind == "juncture":
         # Junctures skip word_bank (a 3-word head makes ordering trivial) but
         # graduate to a typed bridge: writing the landing words pins them.
@@ -706,21 +701,23 @@ def smart_mode_for(
     elif stage == "learning":
         # word_bank leads the learning cycle: all units are given, only order
         # is recalled, so it is the gentlest step up from fading before full
-        # production (cue recall, chaining) is asked for.
+        # production is asked for. Chains are NOT review exercises: a chain is
+        # a run-through, and run-throughs are the session's warmup and
+        # finisher. Dealing one mid-rotation opened sessions with a cold
+        # multi-line recall of exactly the newest material (Arman's ruling,
+        # 2026-07-28, after the Sites deploy opened on "recite 1.8-1.10").
         cycle = [
             PracticeMode.word_bank.value,
             PracticeMode.cue_recall.value,
-            PracticeMode.forward_chaining.value,
-            PracticeMode.backward_chaining.value,
             PracticeMode.progressive_fading.value,
         ]
     else:
         # Graduated lines earn typed recall: written production verifies the
-        # character-level exactness oral self-grading cannot hear.
+        # character-level exactness oral self-grading cannot hear. Every mode
+        # here is single-line with a verbatim lead-in; see above for why
+        # chains are excluded.
         cycle = [
             PracticeMode.typed_recall.value,
-            PracticeMode.forward_chaining.value,
-            PracticeMode.backward_chaining.value,
             PracticeMode.cue_recall.value,
         ]
     if has_reference_audio and kind != "juncture" and (stage == "learning" or difficult):
@@ -749,11 +746,11 @@ SMART_SESSION_CAP = 12
 # mode is skipped so the first repeat always varies the retrieval. The rotation
 # length also caps reps per segment, which stops a tiny passage from being
 # ground to death when a long budget is picked.
+# Chains are absent here for the same reason they left the review rotation:
+# a chain is a run-through, and run-throughs are the warmup and the finisher.
 FILL_MODE_CYCLE = [
     PracticeMode.progressive_fading.value,
     PracticeMode.word_bank.value,
-    PracticeMode.forward_chaining.value,
-    PracticeMode.backward_chaining.value,
     PracticeMode.cue_recall.value,
 ]
 
@@ -968,16 +965,6 @@ def build_smart_plan_for_revisions(
         if segment_id is not None:
             last_ratings[segment_id] = rating
             last_modes[segment_id] = mode
-    has_chain_context: dict[str, bool] = {}
-    for revision, _segments in revision_segments:
-        prefix = _mastered_prefix(
-            _line_segments(_ordered_segments(revision, ["line"])),
-            acquisition_succeeded,
-            learning_steps,
-        )
-        for index, line in enumerate(prefix):
-            has_chain_context[line.id] = index > 0
-
     def automatic_mode(segment: models.Segment) -> str:
         return smart_mode_for(
             stages.get(segment.id),
@@ -989,7 +976,6 @@ def build_smart_plan_for_revisions(
             acquisition_succeeded=acquisition_succeeded.get(segment.id, False),
             last_rating=last_ratings.get(segment.id),
             last_mode=last_modes.get(segment.id),
-            has_chain_context=has_chain_context.get(segment.id, False),
         )
 
     cue_spans_by_revision = {
@@ -1174,16 +1160,42 @@ def build_smart_plan_for_revisions(
         target = prefix[0] if mode == PracticeMode.full_passage.value else prefix[-1]
         finishers.append((target, mode, lines if mode == "full_passage" else prefix))
 
+    # Warmup: the session opens on a short run-through of the last few
+    # mastered lines, so the first real work arrives with a running start.
+    # Without it, dueness skews the opening card to the NEWEST material — the
+    # Sites deploy opened a collection session on a cold "recite 1.8-1.10"
+    # (Arman's ruling, 2026-07-28). Chains cannot span revisions, so the tail
+    # comes from the last collection member with a mastered prefix.
+    warmup: list[tuple[models.Segment, str, list[models.Segment]]] = []
+    if candidates:
+        for revision, _segments in reversed(revision_segments):
+            lines = sorted(
+                lines_by_ordinal_by_revision[revision.id].values(),
+                key=lambda line: line.ordinal,
+            )
+            prefix = _mastered_prefix(lines, acquisition_succeeded, learning_steps)
+            if not prefix:
+                continue
+            tail = prefix[-3:]
+            if len(tail) >= 2:
+                warmup.append((tail[-1], PracticeMode.forward_chaining.value, tail))
+            elif all(segment.id != tail[0].id for segment, _mode in candidates):
+                # A one-line warmup is a plain cued recall — unless the review
+                # portion already deals that very line, which serves as the
+                # warmup itself (it is first in passage order anyway).
+                warmup.append((tail[0], PracticeMode.cue_recall.value, [tail[0]]))
+            break
+
     seconds = _mode_seconds(db)
     selected_candidates: list[tuple[models.Segment, str]] = []
     fill_turns: list[tuple[models.Segment, str]] = []
     if minutes is None:
-        available = None if cap is None else max(0, cap - len(finishers))
+        available = None if cap is None else max(0, cap - len(finishers) - len(warmup))
         selected_candidates = candidates if available is None else candidates[:available]
     else:
         budget = minutes * 60.0 - sum(
             seconds.get(mode, FALLBACK_MODE_SECONDS)
-            for _target, mode, _context in finishers
+            for _target, mode, _context in [*warmup, *finishers]
         )
         for candidate in candidates:
             cost = seconds.get(candidate[1], FALLBACK_MODE_SECONDS)
@@ -1229,12 +1241,7 @@ def build_smart_plan_for_revisions(
                     if mode != dealt_mode
                     and not (
                         segment.kind == "juncture"
-                        and mode
-                        in {
-                            PracticeMode.forward_chaining.value,
-                            PracticeMode.backward_chaining.value,
-                            PracticeMode.word_bank.value,
-                        }
+                        and mode == PracticeMode.word_bank.value
                     )
                 ]
                 for segment, dealt_mode in fill_targets
@@ -1251,10 +1258,11 @@ def build_smart_plan_for_revisions(
                     budget -= cost
                     fill_turns.append((segment, mode))
 
-    items = [
+    items = [definition(target, mode, context) for target, mode, context in warmup]
+    items.extend(
         definition(segment, mode)
         for segment, mode in [*selected_candidates, *fill_turns]
-    ]
+    )
     items.extend(
         definition(target, mode, context) for target, mode, context in finishers
     )

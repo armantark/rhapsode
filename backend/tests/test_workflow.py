@@ -368,7 +368,10 @@ def test_smart_session_never_deals_random_start(
     assert created.status_code == 201, created.text
     items = created.json()["items"]
     assert all(item["mode"] != "random_start" for item in items)
-    assert [item["segment_id"] for item in items[:-1]] == [
+    # A warmup chain opens the session; the reviews between it and the
+    # finisher stay in passage order.
+    assert items[0]["mode"] == "forward_chaining"
+    assert [item["segment_id"] for item in items[1:-1]] == [
         segment["id"] for segment in lines
     ]
 

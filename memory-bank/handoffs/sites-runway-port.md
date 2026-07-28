@@ -102,6 +102,39 @@ progress data that is already in the live D1 database.
 Return: the list of changed files, the test counts, the publish result with
 the live URL, and any behavior you could not match exactly with the reason.
 
+## Addendum (2026-07-28): warmup → work → cooldown
+
+The local backend changed again after the first Sites deploy, at commit
+`568c7e8`'s successor. Port these changes with the same rules as above:
+
+1. Chains left every automatic rotation. `forward_chaining` and
+   `backward_chaining` are no longer valid outputs of the review-mode
+   rotation or the minutes-fill cycle, for lines or junctures. Both stay
+   available as manual modes. In manual plans, `backward_chaining` chains
+   from each start line to the end of the passage.
+2. Every smart session opens with one warmup card before the due reviews:
+   a `forward_chaining` card over the last three (or fewer) lines of the
+   mastered prefix. The prefix tail comes from the LAST collection member
+   that has a mastered prefix, because a chain cannot span revisions. When
+   the tail is a single line, the warmup is one `cue_recall` card instead —
+   unless the review portion already deals that line, in which case there is
+   no warmup card.
+3. The warmup reserves one slot inside the 12-item cap, exactly like the
+   finisher. Under a minutes budget, the warmup cost is subtracted first.
+4. The graduated review rotation is now `typed_recall` and `cue_recall`
+   only. The learning rotation is `word_bank`, `cue_recall`, and
+   `progressive_fading`. The first return after a successful acquisition
+   always deals `cue_recall`.
+5. The reference tests changed with the behavior. Re-read
+   `backend/tests/test_domain.py` (warmup, rotation, and fill tests) and
+   `frontend/e2e/linear-runway.spec.ts` (the `masterLine` helper now reads
+   mastery from `/api/v1/analytics/due` fields, not from card absence).
+
+The reason, for context in code comments: dueness decides review
+membership, so when only the newest lines were due, "reviews first" meant
+"hardest first", and the rotation could open a session with a cold
+multi-line chain ("recite Iliad 1.8 through 1.10") that had no lead-in.
+
 ## Risks and open questions
 
 - Warning: `npm run data:export` overwrites the live data migration from

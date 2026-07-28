@@ -426,6 +426,26 @@ non-media Playwright, and a PinchTab smoke on the e2e database (strip showed
 the 1/2/3 control and purist copy). Known scope gap: the passage page's own
 launcher has no lock copy (the collection launcher does).
 
+Session shape (2026-07-28, Arman's ruling after the Sites deploy opened a
+collection session on a cold "recite Iliad 1.8–1.10" backward chain): a
+lesson is warmup → work → cooldown. Chains are run-throughs, and
+run-throughs are ONLY the warmup and the finisher — forward/backward
+chaining left the automatic review rotations and the fill cycle entirely
+(both remain manual modes; backward_chaining chains to the passage end in
+manual plans). Every smart session now opens with one warmup: a forward
+chain over the last ≤3 lines of the mastered prefix (from the last
+collection member with a prefix, since chains cannot span revisions), or a
+single cue_recall when the prefix tail is one line not already dealt. The
+review rotation is single-line lead-in modes only (typed_recall/cue_recall
+graduated; word_bank/cue_recall/progressive_fading learning). The
+first-return-after-acquisition branch always deals cue_recall now. Warmup
+reserves a cap slot like the finisher. Root cause of the bad first card:
+dueness decides review membership, so when only the NEWEST lines are due,
+"reviews first" meant "hardest first", and the rotation could hand them a
+chain with no lead-in. Cross-revision junctures (the 1.7→1.8 seam in
+collections) remain an open gap — the warmup mitigates but does not cue
+across the boundary.
+
 ## Next Work
 
 - Push repo to GitHub and cut first desktop release tag (`desktop-v0.0.1` or

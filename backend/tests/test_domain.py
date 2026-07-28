@@ -177,10 +177,12 @@ def test_smart_mode_ladder_fades_support_with_mastery() -> None:
     assert smart_mode_for("learning", difficult=False) == "word_bank"
     assert smart_mode_for("review", difficult=False) == "typed_recall"
     assert smart_mode_for("durable", difficult=False) == "typed_recall"
-    # Graduated lines earn the typed check without an automatic cold-start card.
+    # Graduated lines earn the typed check without an automatic cold-start
+    # card; the rotation holds only single-line lead-in modes, because chains
+    # are run-throughs and run-throughs are the warmup and the finisher.
     assert (
         smart_mode_for("review", difficult=False, mode_counts={"typed_recall": 1})
-        == "forward_chaining"
+        == "cue_recall"
     )
     # Difficulty pulls a segment into weak-link drilling, but a brand-new
     # segment still needs scaffolding before being drilled cold.
@@ -207,9 +209,9 @@ def test_smart_mode_ladder_fades_support_with_mastery() -> None:
         )
         == "progressive_fading"
     )
-    # The first return after a successful acquisition follows the outcome:
-    # Good asks for a clean cue-only retrieval, while Easy begins real passage
-    # flow only when a learned predecessor exists.
+    # The first return after a successful acquisition is a clean cue-only
+    # retrieval regardless of the grade; passage flow belongs to the warmup
+    # and finisher chains, never to a per-line review card.
     assert (
         smart_mode_for(
             "learning",
@@ -230,24 +232,13 @@ def test_smart_mode_ladder_fades_support_with_mastery() -> None:
         )
         == "cue_recall"
     )
-    assert (
-        smart_mode_for(
-            "learning",
-            difficult=False,
-            acquisition_succeeded=True,
-            last_mode="acquisition",
-            last_rating="clean",
-            has_chain_context=True,
-        )
-        == "forward_chaining"
-    )
     # Once a technique has been used, the coach deliberately introduces the
     # least-practiced useful exercise instead of repeating the same label.
     assert (
         smart_mode_for(
             "learning", difficult=False, mode_counts={"word_bank": 1, "cue_recall": 1}
         )
-        == "forward_chaining"
+        == "progressive_fading"
     )
     assert (
         smart_mode_for(
@@ -255,7 +246,7 @@ def test_smart_mode_ladder_fades_support_with_mastery() -> None:
             difficult=True,
             mode_counts={"weak_link": 5, "typed_recall": 1},
         )
-        == "forward_chaining"
+        == "cue_recall"
     )
     # Transition fragments stay on transition-appropriate drills.
     assert (
@@ -284,7 +275,7 @@ def test_smart_mode_ladder_fades_support_with_mastery() -> None:
     )
 
 
-def test_smart_plan_rotates_line_exercises_and_builds_forward_context(
+def test_smart_plan_opens_with_a_warmup_chain_over_the_mastered_tail(
     session_factory: object,
 ) -> None:
     with session_factory() as db:  # type: ignore[operator]
@@ -337,26 +328,31 @@ def test_smart_plan_rotates_line_exercises_and_builds_forward_context(
         db.commit()
 
         plan = build_smart_plan(db, revision, ["line"])
+        # Warmup → work → cooldown: one chain over the mastered tail opens the
+        # session, reviews stay single-line lead-in modes (chains left the
+        # rotation — a chain is a run-through, and run-throughs are warmup and
+        # finisher), and the holistic close still ends it.
+        # These mastered rows still sit in stage "learning" (clean streak
+        # below the review threshold), so the single-line rotation deals its
+        # gentlest production step rather than the graduated typed check.
         assert [item["mode"] for item in plan] == [
             "forward_chaining",
-            "forward_chaining",
-            "forward_chaining",
+            "word_bank",
+            "word_bank",
+            "word_bank",
             "full_passage",
         ]
-        assert [item["prompt"]["chain"] for item in plan[:-1]] == [
-            ["line 0"],
-            ["line 0", "line 1"],
-            ["line 0", "line 1", "line 2"],
+        warmup = plan[0]
+        assert warmup["segment_id"] == revision.segments[2].id
+        assert warmup["prompt"]["chain"] == ["line 0", "line 1", "line 2"]
+        assert warmup["prompt"]["range_label"] == "lines 1-3 in this passage"
+        assert warmup["prompt"]["chain_segment_ids"] == [
+            revision.segments[0].id,
+            revision.segments[1].id,
+            revision.segments[2].id,
         ]
-        assert [item["prompt"]["range_label"] for item in plan[:-1]] == [
-            "line 1 in this passage",
-            "lines 1-2 in this passage",
-            "lines 1-3 in this passage",
-        ]
-        assert [item["prompt"]["chain_segment_ids"] for item in plan[:-1]] == [
-            [revision.segments[0].id],
-            [revision.segments[0].id, revision.segments[1].id],
-            [revision.segments[0].id, revision.segments[1].id, revision.segments[2].id],
+        assert [item["segment_id"] for item in plan[1:-1]] == [
+            segment.id for segment in revision.segments
         ]
 
 
@@ -415,7 +411,7 @@ def test_smart_plan_restores_support_after_recent_acquired_lapse(
         assert [planned["mode"] for planned in plan] == ["word_bank"]
 
 
-def test_smart_plan_backward_chaining_uses_current_learned_prefix(
+def test_backward_chaining_is_manual_only_and_chains_to_the_passage_end(
     session_factory: object,
 ) -> None:
     with session_factory() as db:  # type: ignore[operator]
@@ -467,17 +463,19 @@ def test_smart_plan_backward_chaining_uses_current_learned_prefix(
                 )
         db.commit()
 
+        # Chains left the automatic rotation entirely — a smart session's only
+        # chains are the warmup and the finisher, both forward.
         plan = build_smart_plan(db, revision, ["line"])
-        backward = [item for item in plan if item["mode"] == "backward_chaining"]
-        assert [item["prompt"]["chain"] for item in backward] == [
-            ["line 0", "line 1", "line 2"],
-            ["line 1", "line 2"],
-            ["line 2"],
-        ]
-        assert [item["prompt"]["range_label"] for item in backward] == [
-            "lines 1-3 in this passage",
-            "lines 2-3 in this passage",
-            "line 3 in this passage",
+        assert all(item["mode"] != "backward_chaining" for item in plan)
+
+        # The mode itself survives for manual sessions, chaining each start
+        # point through to the end of the passage.
+        manual = build_plan(db, revision, ["backward_chaining"], ["line"])
+        assert [item["prompt"]["chain"] for item in manual] == [
+            ["line 0", "line 1", "line 2", "line 3"],
+            ["line 1", "line 2", "line 3"],
+            ["line 2", "line 3"],
+            ["line 3"],
         ]
 
 
@@ -516,6 +514,7 @@ def test_smart_plan_appends_full_passage_once_all_segments_graduate(
 
         plan = build_smart_plan(db, revision, ["line"])
         assert [item["mode"] for item in plan] == [
+            "forward_chaining",
             "typed_recall",
             "typed_recall",
             "full_passage",
@@ -552,7 +551,8 @@ def test_smart_plan_never_deals_random_start_and_preserves_passage_order(
 
         plan = build_smart_plan(db, revision, ["line"])
         assert all(item["mode"] != "random_start" for item in plan)
-        assert [item["segment_id"] for item in plan[:-1]] == [
+        assert plan[0]["mode"] == "forward_chaining"
+        assert [item["segment_id"] for item in plan[1:-1]] == [
             segment.id for segment in revision.segments
         ]
         assert plan[-1]["mode"] == "full_passage"
@@ -641,8 +641,13 @@ def test_linear_window_one_deals_one_consecutive_guided_block(
         db.commit()
 
         plan = build_smart_plan(db, revision, ["line"])
-        assert [item["segment_id"] for item in plan] == [revision.segments[1].id] * 3
-        assert [item["mode"] for item in plan] == ["guided_recall"] * 3
+        # The single mastered (not-due) line still opens the session as a
+        # one-line warmup recall before the frontier's guided block.
+        assert [item["segment_id"] for item in plan] == [
+            revision.segments[0].id,
+            *[revision.segments[1].id] * 3,
+        ]
+        assert [item["mode"] for item in plan] == ["cue_recall", *["guided_recall"] * 3]
         assert all(
             item["segment_id"] not in {line.id for line in revision.segments[2:]}
             for item in plan
@@ -718,12 +723,15 @@ def test_smart_plan_serves_due_reviews_before_new_material(session_factory: obje
         plan = build_smart_plan(db, revision, ["line"])
         ordinals = {segment.id: segment.ordinal for segment in revision.segments}
         planned = {ordinals[item["segment_id"]] for item in plan}
-        # Due mastered lines lead, followed by all three window lines. The
+        # The warmup chain opens on the mastered tail, due mastered lines
+        # lead the work, followed by all three window lines. The
         # mastered-prefix finisher closes the session, credited to the NEWEST
         # mastered line so line 1's rotation is not permanently skewed;
         # not-due maintenance is no longer used to backfill.
         assert planned == {2, 3, 4, 5, 6}
-        assert [ordinals[item["segment_id"]] for item in plan[:5]] == [2, 3, 4, 5, 6]
+        assert plan[0]["mode"] == "forward_chaining"
+        assert ordinals[plan[0]["segment_id"]] == 3
+        assert [ordinals[item["segment_id"]] for item in plan[1:6]] == [2, 3, 4, 5, 6]
         assert plan[-1]["mode"] == "forward_chaining"
         assert ordinals[plan[-1]["segment_id"]] == 3
 
@@ -799,13 +807,16 @@ def test_collection_window_spans_revisions_in_member_order(session_factory: obje
         db.commit()
 
         plan = build_smart_plan_for_revisions(db, revisions, ["line"])
+        # The warmup chain comes from the last member with a mastered prefix.
+        assert plan[0]["mode"] == "forward_chaining"
+        assert plan[0]["segment_id"] == revisions[0].segments[2].id
         expected_window = [
             revisions[0].segments[3].id,
             revisions[1].segments[0].id,
             revisions[1].segments[1].id,
         ]
-        assert [item["segment_id"] for item in plan[:3]] == expected_window
-        assert all(item["mode"] == "acquisition" for item in plan[:3])
+        assert [item["segment_id"] for item in plan[1:4]] == expected_window
+        assert all(item["mode"] == "acquisition" for item in plan[1:4])
         assert plan[-1]["mode"] == "forward_chaining"
         assert {
             revisions[1].segments[2].id,
@@ -943,7 +954,10 @@ def test_junctures_generated_between_lines(session_factory: object) -> None:
         db.commit()
         plan = build_smart_plan(db, revision, None)
         planned = [kinds[item["segment_id"]] for item in plan]
-        assert planned == ["juncture", "line"]
+        # Warmup chain over the mastered pair, the unlocked juncture, then the
+        # holistic close.
+        assert planned == ["line", "juncture", "line"]
+        assert plan[0]["mode"] == "forward_chaining"
         assert plan[-1]["mode"] == "full_passage"
 
         # The invariant also holds when the learner manually chooses word
@@ -1030,7 +1044,8 @@ def test_due_mastered_lines_and_juncture_are_passage_ordered(
         db.commit()
 
         plan = build_smart_plan(db, revision, None)
-        assert [item["segment_id"] for item in plan[:-1]] == [
+        assert plan[0]["mode"] == "forward_chaining"
+        assert [item["segment_id"] for item in plan[1:-1]] == [
             first.id,
             juncture.id,
             second.id,

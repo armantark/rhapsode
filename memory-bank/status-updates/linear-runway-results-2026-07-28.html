@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linear Mastery Runway — Shipped</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛤️</text></svg>">
+<style>
+:root {
+    --bg: #0c0e12;
+    --surface: #161a21;
+    --surface-2: #1e232c;
+    --border: #2a3040;
+    --text: #e8ecf4;
+    --text-dim: #8b95a8;
+    --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.15);
+    --red: #ff5c5c;
+    --green: #4ade80;
+    --amber: #fbbf24;
+    --purple: #a78bfa;
+    --radius: 12px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Outfit', 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
+    line-height: 1.55; padding: 2.5rem 1.5rem 4rem;
+}
+.wrap { max-width: 1060px; margin: 0 auto; }
+.badge {
+    display: inline-block; font-family: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+    font-size: 0.7rem; letter-spacing: 0.12em; color: var(--green);
+    background: rgba(74,222,128,0.12); border: 1px solid var(--green);
+    border-radius: 999px; padding: 0.3rem 0.9rem; margin-bottom: 1rem;
+}
+h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+.subtitle { color: var(--text-dim); font-size: 0.95rem; max-width: 62ch; }
+h2 { font-size: 1.1rem; margin: 2.2rem 0 0.9rem; }
+p { margin-bottom: 0.7rem; }
+.dim { color: var(--text-dim); }
+.small { font-size: 0.8rem; }
+.card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.2rem 1.35rem; margin-bottom: 1rem;
+}
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.7rem; }
+.metric {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 0.75rem 0.9rem; text-align: center;
+}
+.metric .val { font-family: 'JetBrains Mono', Menlo, monospace; font-size: 1.15rem; color: var(--green); font-weight: 700; }
+.metric .lbl { font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.06em; margin-top: 0.15rem; }
+.tag {
+    font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.65rem;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 0.15rem 0.5rem; margin: 0.15rem 0.25rem 0 0;
+    display: inline-block; color: var(--text-dim);
+}
+.runway { display: flex; gap: 4px; margin: 0.8rem 0 0.4rem; }
+.rw {
+    flex: 1; height: 2rem; border-radius: 6px; display: flex;
+    align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.68rem;
+}
+.rw-done { background: rgba(74,222,128,0.18); color: var(--green); border: 1px solid rgba(74,222,128,0.35); }
+.rw-active { background: var(--accent-glow); color: var(--accent); border: 1px solid var(--accent); }
+.rw-locked { background: var(--surface-2); color: #4a5468; border: 1px dashed var(--border); }
+.mock { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-top: 0.6rem; }
+.mock .mtitle {
+    font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.62rem;
+    letter-spacing: 0.14em; padding: 0.4rem 0.7rem; background: var(--surface-2);
+    color: var(--text-dim); border-bottom: 1px solid var(--border);
+}
+.mrow {
+    display: flex; align-items: center; gap: 0.55rem; padding: 0.3rem 0.7rem;
+    font-size: 0.74rem; border-bottom: 1px solid rgba(42,48,64,0.5);
+}
+.mrow:last-child { border-bottom: none; }
+.chip {
+    font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.6rem;
+    border-radius: 4px; padding: 0.05rem 0.4rem; flex-shrink: 0; min-width: 5.6rem; text-align: center;
+}
+.c-rev { background: rgba(74,222,128,0.15); color: var(--green); }
+.c-lad { background: rgba(79,140,255,0.18); color: var(--accent); }
+.c-new { background: rgba(167,139,250,0.18); color: var(--purple); }
+.c-jun { background: rgba(251,191,36,0.15); color: var(--amber); }
+.mtext { color: var(--text-dim); }
+ul.plain { list-style: none; }
+ul.plain li { margin-bottom: 0.45rem; padding-left: 1.1rem; position: relative; font-size: 0.88rem; }
+ul.plain li::before { content: "—"; position: absolute; left: 0; color: var(--accent); }
+ul.plain li.fix::before { content: "✚"; color: var(--amber); }
+.lane {
+    font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.62rem;
+    letter-spacing: 0.1em; color: var(--text-dim); margin: 1.1rem 0 0.5rem;
+}
+.warn { border-left: 3px solid var(--amber); padding-left: 0.9rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<span class="badge">COMPLETED · 2026-07-28 · commit 568c7e8</span>
+<h1>Linear Mastery Runway — Shipped</h1>
+<p class="subtitle">
+Practice is now strictly linear. Lines unlock in passage order behind a sliding window,
+each session is one front-to-back pass, and nothing is randomized anywhere in automatic
+practice. The purist one-line mode exists as a setting, with its cost stated.
+</p>
+
+<h2>Verification — all green</h2>
+<div class="metrics">
+  <div class="metric"><div class="val">118</div><div class="lbl">BACKEND PYTEST</div></div>
+  <div class="metric"><div class="val">100</div><div class="lbl">VITEST</div></div>
+  <div class="metric"><div class="val">21/21</div><div class="lbl">PLAYWRIGHT E2E</div></div>
+  <div class="metric"><div class="val">0/0</div><div class="lbl">SVELTE-CHECK</div></div>
+  <div class="metric"><div class="val">✓</div><div class="lbl">RUFF · MYPY · CONTRACT</div></div>
+  <div class="metric"><div class="val">✓</div><div class="lbl">PINCHTAB SMOKE</div></div>
+</div>
+<p class="dim small" style="margin-top:0.6rem;">
+The PinchTab smoke test ran on the isolated e2e database: the passage page showed the live
+strip below with the correct caption, and the settings card rendered the 1/2/3 control with
+the purist-cost copy. The two pre-existing media e2e tests stay excluded (Chromium fake-mic
+timeout, unrelated).
+</p>
+<div class="card" style="margin-top:0.8rem;">
+<div class="runway">
+  <div class="rw rw-done">1 ✓</div><div class="rw rw-active">2</div><div class="rw rw-active">3</div>
+  <div class="rw rw-active">4</div><div class="rw rw-locked">5 🔒</div>
+</div>
+<p class="dim small">Live smoke result: "Runway — 1 of 5 mastered — Line 5 unlocks when line 2 is mastered."</p>
+</div>
+
+<h2>What a session is now</h2>
+<div class="card">
+<div class="mock">
+<div class="mtitle">EVERY SMART SESSION — ONE PASS, FRONT TO BACK</div>
+<div class="mrow"><span class="chip c-rev">review</span><span class="mtext">due mastered lines and junctures, passage order (FSRS picks membership, position picks order)</span></div>
+<div class="mrow"><span class="chip c-lad">ladder ×3</span><span class="mtext">each window line: one block — acquisition if new, else 3 guided reps whose cues advance between reps</span></div>
+<div class="mrow"><span class="chip c-jun">juncture</span><span class="mtext">seams whose BOTH flanking lines are mastered</span></div>
+<div class="mrow"><span class="chip c-rev">chain</span><span class="mtext">finisher every session: recite the mastered prefix in order (full passage once everything is mastered)</span></div>
+</div>
+<ul class="plain" style="margin-top:0.8rem;">
+<li>The window is the first W unmastered lines; W is the `linear_window` setting (default 3, range 1–3). Settings copy states the purist tradeoff: W=1 takes ~50% longer per passage.</li>
+<li>Mastery is the guided ladder itself — about 15 Good/Easy recalls across the five cue-fading phases. Your pace target holds: 15–22 study-minutes per mastered line in simulation, ~3x faster than one line per hour.</li>
+<li>`random_start` is manual-only everywhere. Triage-rank selection and the new-unit trickle are gone; the runway decides selection, dueness only orders reviews.</li>
+<li>Guided prompts rebuild at deal time, so undo restores the exact cue level; `ReviewStateRead` now exposes the real mastery flags the strip reads.</li>
+</ul>
+</div>
+
+<h2>How it was built and hardened</h2>
+<div class="grid2">
+<div class="card">
+<div class="lane">PIPELINE</div>
+<ul class="plain">
+<li>Backend: Codex (Sol) implemented the runway planner, setting, and deal-time rebuilds; 585-line planner rewrite.</li>
+<li>Frontend: a 4-agent workflow built the runway strip, settings card, launcher hint, and e2e specs in parallel (~10 min wall-clock), then an integrator reconciled contracts and verified.</li>
+<li>Claude reconciled the wire contract (mastery flags), regenerated OpenAPI + client, and fixed three e2e specs that asserted pre-runway behavior.</li>
+</ul>
+<span class="tag">services/planning.py</span><span class="tag">services/sessions.py</span><span class="tag">RunwayStrip.svelte</span><span class="tag">runway.ts</span><span class="tag">linear-runway.spec.ts</span>
+</div>
+<div class="card">
+<div class="lane">INDEPENDENT REVIEW (OPUS) — SHIP AFTER SMALL FIXES, ALL APPLIED</div>
+<ul class="plain">
+<li class="fix">Minutes-fill now exempts ladder material — the block is the whole allowance (was re-dealing cold-recall cards the ladder defers).</li>
+<li class="fix">The lock reaches junctures through their flanking lines (legacy out-of-order data could deal a locked seam).</li>
+<li class="fix">Today's due count counts only cards the runway will deal.</li>
+<li class="fix">The chain finisher credits the newest prefix line (was permanently skewing line 1's rotation).</li>
+<li class="fix">Plus: guided-card latency default for the minutes estimator, dead-branch and duplicate-code removal, two strengthened tests, one new cap test.</li>
+</ul>
+</div>
+</div>
+
+<h2>Open items</h2>
+<div class="card warn">
+<ul class="plain">
+<li>The passage page's own launcher has no lock copy yet — the collection launcher and the strip's caption carry it. One sentence if you want it in both places.</li>
+<li>The 7-day forecast still counts locked mid-ladder lines in its day totals; only the headline due count was made lock-aware.</li>
+<li>Whether massed 3-rep blocks hold up as well as fully spaced reps is now answerable from your own FSRS logs; reps-per-block and the window stayed knobs for exactly that.</li>
+</ul>
+</div>
+
+</div>
+</body>
+</html>

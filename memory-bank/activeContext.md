@@ -377,9 +377,22 @@ https://postplan.dev/d/nxcpu10f5if0/raw): runway gate derived from existing
 ReviewState fields (no migration), linear session anatomy (due reviews in
 passage order → window blocks of ~3 ladder reps → junctures gated on
 mastered flanks → chain finisher), random_start removed from automatic
-rotation, `linear_window` app setting. Awaiting Arman's D1 (window default,
-rec W=3), D2 (random_start fate, rec manual-only), D3 (per-session chain
-finisher, rec yes) before implementation.
+rotation, `linear_window` app setting.
+
+Decisions resolved (2026-07-28, Arman): pace target is ~1 mastered line per
+study hour by default, faster on easy text. A study-time re-score of the
+probe showed every policy already beats that ~3x (15–22 study-min/line even
+at 70% accuracy; policy choice only moves calendar spread, i.e. spacing),
+so the mastery standard stays the existing ladder (3 Good/Easy per phase,
+~15 total) and no lighter ladder is needed. D1: window W=3 default, setting
+1–3. D2: random_start manual-only AND removed from the graduated rotation
+(Arman doubts its value even there). D3 (delegated): chain finisher every
+session. Disposable evidence declared exhausted: durability of massed
+blocks and the right success bar for Arman's memory are learner-empirical,
+answerable only by live FSRS logs post-ship; reps-per-block and window stay
+knobs for that reason. Backend implementation delegated to Codex (Sol,
+workspace-write); frontend (runway strip, settings knob, launcher copy)
+follows after review.
 
 ## Next Work
 

@@ -362,6 +362,25 @@ push, install smoke) remains the other open thread.
   isolated database verified the exact Iliad 1.1–1.2 scope, both revealed line
   labels, and a typed Phase 1 cumulative-chunk card with three recalls required.
 
+## Pending Decision — Linear Mastery Runway (2026-07-28)
+
+Arman rejected randomized ordering outright: recitation is sequential, so
+vocabulary-deck randomization logic does not apply. A disposable pacing
+simulation (scratchpad-only, not committed) tested mastery-gated linear
+scheduling for a 10-line passage at 12 cards/day, 85% accuracy: a pure
+one-line gate at the ladder's one-card-per-session pacing takes ~193 days
+(unusable); one line with 5 massed reps/session takes ~46 days with ~50%
+idle sessions; a strictly ordered sliding window of 3 lines takes ~30 days
+vs ~26 for today's parallel scheduler. Plan settled in
+`status-updates/linear-runway-plan-2026-07-28.html` (Postplan
+https://postplan.dev/d/nxcpu10f5if0/raw): runway gate derived from existing
+ReviewState fields (no migration), linear session anatomy (due reviews in
+passage order → window blocks of ~3 ladder reps → junctures gated on
+mastered flanks → chain finisher), random_start removed from automatic
+rotation, `linear_window` app setting. Awaiting Arman's D1 (window default,
+rec W=3), D2 (random_start fate, rec manual-only), D3 (per-session chain
+finisher, rec yes) before implementation.
+
 ## Next Work
 
 - Push repo to GitHub and cut first desktop release tag (`desktop-v0.0.1` or

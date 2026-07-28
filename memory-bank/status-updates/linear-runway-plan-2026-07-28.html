@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linear Mastery Runway — Plan</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📜</text></svg>">
+<style>
+:root {
+    --bg: #0c0e12;
+    --surface: #161a21;
+    --surface-2: #1e232c;
+    --border: #2a3040;
+    --text: #e8ecf4;
+    --text-dim: #8b95a8;
+    --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.15);
+    --red: #ff5c5c;
+    --green: #4ade80;
+    --amber: #fbbf24;
+    --purple: #a78bfa;
+    --radius: 12px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Outfit', 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
+    line-height: 1.55; padding: 2.5rem 1.5rem 4rem;
+}
+.wrap { max-width: 1080px; margin: 0 auto; }
+.badge {
+    display: inline-block; font-family: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+    font-size: 0.7rem; letter-spacing: 0.12em; color: var(--accent);
+    background: var(--accent-glow); border: 1px solid var(--accent);
+    border-radius: 999px; padding: 0.3rem 0.9rem; margin-bottom: 1rem;
+}
+h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+.subtitle { color: var(--text-dim); font-size: 0.95rem; max-width: 60ch; }
+h2 { font-size: 1.15rem; margin: 2.5rem 0 1rem; display: flex; align-items: center; gap: 0.6rem; }
+h2 .num {
+    font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.75rem;
+    background: var(--accent); color: #0c0e12; border-radius: 6px;
+    width: 1.6rem; height: 1.6rem; display: inline-flex;
+    align-items: center; justify-content: center; flex-shrink: 0;
+}
+p { margin-bottom: 0.75rem; }
+.dim { color: var(--text-dim); }
+.card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.25rem 1.4rem; margin-bottom: 1rem;
+}
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+.tag {
+    font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.65rem;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 0.15rem 0.5rem; margin: 0.15rem 0.25rem 0 0;
+    display: inline-block; color: var(--text-dim);
+}
+/* bar chart */
+.bars { display: flex; flex-direction: column; gap: 0.55rem; margin: 1rem 0 0.5rem; }
+.barrow { display: grid; grid-template-columns: 190px 1fr 130px; gap: 0.8rem; align-items: center; font-size: 0.85rem; }
+.barlabel { text-align: right; color: var(--text-dim); font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.72rem; }
+.bartrack { background: var(--surface-2); border-radius: 6px; height: 1.35rem; overflow: hidden; position: relative; }
+.barfill { height: 100%; border-radius: 6px; display: flex; align-items: center; }
+.barval { font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.75rem; }
+.broken { position: relative; }
+.broken::after {
+    content: "⫽"; position: absolute; right: 6px; top: 50%;
+    transform: translateY(-52%); color: #0c0e12; font-weight: 700;
+}
+/* session anatomy mockup */
+.mock { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-top: 0.75rem; }
+.mock .mtitle {
+    font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.62rem;
+    letter-spacing: 0.14em; padding: 0.4rem 0.7rem; background: var(--surface-2);
+    color: var(--text-dim); border-bottom: 1px solid var(--border);
+}
+.mrow {
+    display: flex; align-items: center; gap: 0.55rem; padding: 0.32rem 0.7rem;
+    font-size: 0.74rem; border-bottom: 1px solid rgba(42,48,64,0.5);
+}
+.mrow:last-child { border-bottom: none; }
+.chip {
+    font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.6rem;
+    border-radius: 4px; padding: 0.05rem 0.4rem; flex-shrink: 0; min-width: 5.4rem; text-align: center;
+}
+.c-rev { background: rgba(74,222,128,0.15); color: var(--green); }
+.c-lad { background: rgba(79,140,255,0.18); color: var(--accent); }
+.c-new { background: rgba(167,139,250,0.18); color: var(--purple); }
+.c-jun { background: rgba(251,191,36,0.15); color: var(--amber); }
+.c-rand { background: rgba(255,92,92,0.15); color: var(--red); }
+.mtext { color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* runway strip */
+.runway { display: flex; gap: 4px; margin: 0.9rem 0 0.3rem; }
+.rw {
+    flex: 1; height: 2rem; border-radius: 6px; display: flex;
+    align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.68rem;
+}
+.rw-done { background: rgba(74,222,128,0.18); color: var(--green); border: 1px solid rgba(74,222,128,0.35); }
+.rw-active { background: var(--accent-glow); color: var(--accent); border: 1px solid var(--accent); }
+.rw-locked { background: var(--surface-2); color: #4a5468; border: 1px dashed var(--border); }
+/* decision panels */
+.opt { cursor: pointer; border: 1px solid var(--border); border-radius: 10px; padding: 0.8rem 1rem; background: var(--surface-2); transition: border-color .15s, box-shadow .15s; }
+.opt:hover { border-color: var(--accent); }
+.opt.sel { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+.opt .ot { font-weight: 600; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; }
+.opt .od { color: var(--text-dim); font-size: 0.78rem; margin-top: 0.25rem; }
+.rec { font-size: 0.6rem; font-family: 'JetBrains Mono', Menlo, monospace; color: var(--green); border: 1px solid var(--green); border-radius: 999px; padding: 0.05rem 0.45rem; }
+.optrow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.7rem; }
+@media (max-width: 900px) { .optrow { grid-template-columns: 1fr; } }
+button.copybtn {
+    background: var(--accent); color: #0c0e12; font-weight: 700; border: none;
+    border-radius: 8px; padding: 0.6rem 1.2rem; font-size: 0.85rem;
+    cursor: pointer; font-family: inherit; margin-top: 1rem;
+}
+button.copybtn:hover { filter: brightness(1.1); }
+/* steps */
+.step { display: flex; gap: 0.9rem; margin-bottom: 0.9rem; }
+.step-num {
+    font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.75rem;
+    background: var(--accent); color: #0c0e12; border-radius: 6px;
+    width: 1.7rem; height: 1.7rem; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; font-weight: 700; margin-top: 0.15rem;
+}
+.step-num.fe { background: var(--purple); }
+.step p { margin-bottom: 0.2rem; font-size: 0.9rem; }
+.lane {
+    font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.62rem;
+    letter-spacing: 0.1em; color: var(--text-dim); margin: 1.4rem 0 0.7rem;
+}
+ul.plain { list-style: none; }
+ul.plain li { margin-bottom: 0.4rem; padding-left: 1.1rem; position: relative; font-size: 0.88rem; }
+ul.plain li::before { content: "—"; position: absolute; left: 0; color: var(--accent); }
+.warn { border-left: 3px solid var(--amber); padding-left: 0.9rem; }
+.kill { border-left: 3px solid var(--red); padding-left: 0.9rem; }
+table { border-collapse: collapse; width: 100%; font-size: 0.82rem; }
+.tablewrap { overflow-x: auto; }
+th, td { text-align: left; padding: 0.45rem 0.7rem; border-bottom: 1px solid var(--border); }
+th { color: var(--text-dim); font-weight: 500; font-size: 0.72rem; font-family: 'JetBrains Mono', Menlo, monospace; }
+td.mono { font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.75rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<span class="badge">PRE-IMPLEMENTATION PLAN · 2026-07-28</span>
+<h1>Linear Mastery Runway</h1>
+<p class="subtitle">
+Random card order is correct for vocabulary decks because each card is independent.
+Recitation is the opposite: each line is the cue for the next line. This plan makes
+the whole practice loop follow the passage order, and it locks each new line behind
+mastery of the lines before it.
+</p>
+
+<h2><span class="num">1</span>Evidence: a pure one-line gate is too slow</h2>
+<div class="card">
+<p>
+A throwaway simulation modeled the real ladder (about 15 successful recalls for each line),
+the 12-card session cap, juncture learning, and expanding review intervals.
+The table shows days to master a 10-line passage at 85% recall accuracy, one session per day.
+The purist gate ("finish line N fully, then start line N+1") fails: the ladder deals one card
+per line per session, so the learner waits months. A <strong>sliding window of 3 lines</strong> keeps
+strict order and costs only 4 extra days.
+</p>
+<div class="bars">
+  <div class="barrow"><span class="barlabel">today (parallel)</span><div class="bartrack"><div class="barfill" style="width:13%; background:var(--text-dim);"></div></div><span class="barval dim">26 days</span></div>
+  <div class="barrow"><span class="barlabel">window W=3 ★</span><div class="bartrack"><div class="barfill" style="width:15%; background:var(--green);"></div></div><span class="barval" style="color:var(--green)">30 days</span></div>
+  <div class="barrow"><span class="barlabel">window W=2</span><div class="bartrack"><div class="barfill" style="width:19%; background:var(--amber);"></div></div><span class="barval" style="color:var(--amber)">38 days</span></div>
+  <div class="barrow"><span class="barlabel">W=1, 5 reps/session</span><div class="bartrack"><div class="barfill" style="width:23%; background:var(--amber);"></div></div><span class="barval" style="color:var(--amber)">46 days</span></div>
+  <div class="barrow"><span class="barlabel">W=1, ladder pacing</span><div class="bartrack"><div class="barfill broken" style="width:97%; background:var(--red);"></div></div><span class="barval" style="color:var(--red)">193 days</span></div>
+</div>
+<p class="dim" style="font-size:0.78rem; margin-top:0.5rem;">
+Results hold at 70% and 95% accuracy (200 trials per cell). At W=1 about half of every
+session sits empty, because nothing else is unlocked. The probe script is disposable and
+is not part of the repository.
+</p>
+</div>
+
+<h2><span class="num">2</span>The runway model</h2>
+<div class="card">
+<p>
+Lines unlock only in passage order. A line enters the active window when it is one of the
+first W lines that are not yet mastered. "Mastered" means the guided ladder is complete
+(<span class="tag" style="margin:0">learning_step = None</span> and acquisition succeeded) — no new
+database fields, no migration. Everything behind the window stays in review. Everything
+ahead of the window stays locked and is never dealt.
+</p>
+<div class="runway">
+  <div class="rw rw-done">1 ✓</div><div class="rw rw-done">2 ✓</div><div class="rw rw-done">3 ✓</div>
+  <div class="rw rw-active">4</div><div class="rw rw-active">5</div><div class="rw rw-active">6</div>
+  <div class="rw rw-locked">7 🔒</div><div class="rw rw-locked">8 🔒</div><div class="rw rw-locked">9 🔒</div><div class="rw rw-locked">10 🔒</div>
+</div>
+<p class="dim" style="font-size:0.78rem;">Mastered prefix (reviews only) · active window (ladder work) · locked tail (never dealt).</p>
+<ul class="plain" style="margin-top:0.6rem;">
+<li>Junctures unlock when <em>both</em> flanking lines are mastered (today: both merely started).</li>
+<li>Full-passage stays locked until every line finishes the ladder (unchanged).</li>
+<li>The window size is a setting. W=1 is available for purists, with the cost shown above.</li>
+</ul>
+</div>
+
+<h2><span class="num">3</span>Session anatomy: before and after</h2>
+<div class="grid2">
+<div class="card">
+<div class="mock">
+<div class="mtitle">BEFORE — TRIAGE ORDER, RANDOM COLD STARTS</div>
+<div class="mrow"><span class="chip c-rand">weak_link</span><span class="mtext">line 7 (jumped ahead — triage rank 0)</span></div>
+<div class="mrow"><span class="chip c-lad">guided</span><span class="mtext">line 2 · one ladder card only</span></div>
+<div class="mrow"><span class="chip c-rand">random_start</span><span class="mtext">line 9 ← shuffled entry point</span></div>
+<div class="mrow"><span class="chip c-rev">review</span><span class="mtext">line 4</span></div>
+<div class="mrow"><span class="chip c-new">acquisition</span><span class="mtext">line 12 (new, regardless of 3–11)</span></div>
+<div class="mrow"><span class="chip c-rand">random_start</span><span class="mtext">line 5 ← shuffled entry point</span></div>
+</div>
+</div>
+<div class="card">
+<div class="mock">
+<div class="mtitle">AFTER — ONE LINEAR PASS, FRONT TO BACK</div>
+<div class="mrow"><span class="chip c-rev">review</span><span class="mtext">lines 1 → 3, due first, passage order</span></div>
+<div class="mrow"><span class="chip c-lad">ladder ×3</span><span class="mtext">line 4 — three reps, block</span></div>
+<div class="mrow"><span class="chip c-lad">ladder ×3</span><span class="mtext">line 5 — three reps, block</span></div>
+<div class="mrow"><span class="chip c-new">acquisition</span><span class="mtext">line 6 — only because 1–3 are mastered</span></div>
+<div class="mrow"><span class="chip c-jun">juncture</span><span class="mtext">seam 2→3 (both flanks mastered)</span></div>
+<div class="mrow"><span class="chip c-rev">chain</span><span class="mtext">finisher: recite lines 1 → 5 in order</span></div>
+</div>
+</div>
+</div>
+<div class="card">
+<p style="font-size:0.88rem;">
+Each session is one pass through the passage: due reviews of the mastered prefix in passage
+order, then each window line as a block of up to 3 ladder reps, then ready junctures, then one
+forward chain across the learned prefix as the finisher. Ladder prompts rebuild at deal time,
+so the second and third rep of a block show the advanced cue level.
+</p>
+</div>
+
+<h2><span class="num">4</span>What is removed, what stays</h2>
+<div class="grid2">
+<div class="card kill">
+<p style="font-weight:600; margin-bottom:0.5rem;">Removed from automatic planning</p>
+<ul class="plain">
+<li><span class="tag" style="margin:0">random_start</span> leaves every smart cycle and the fill rotation.</li>
+<li><code style="font-size:0.8rem;">_shuffle_random_start_turns</code> is deleted.</li>
+<li>Triage rank no longer selects <em>which</em> lines to deal; the runway does. Dueness still orders the review portion.</li>
+<li><span class="tag" style="margin:0">NEW_UNITS_PER_SESSION</span> trickle is replaced by the window gate.</li>
+</ul>
+</div>
+<div class="card">
+<p style="font-weight:600; margin-bottom:0.5rem;">Kept</p>
+<ul class="plain">
+<li>FSRS decides <em>when</em> a mastered line returns; the passage decides <em>in what order</em>.</li>
+<li>The guided ladder itself (it is already linear inside a line).</li>
+<li>Mode variety on mastered lines (typed, meaning, chaining) — variety of retrieval, not of order.</li>
+<li><span class="tag" style="margin:0">random_start</span> and <span class="tag" style="margin:0">recital</span> stay as manual modes you launch on purpose.</li>
+<li>Undo, latency budget ("minutes"), collections (the runway spans member passages in collection order).</li>
+</ul>
+</div>
+</div>
+
+<h2><span class="num">5</span>Decisions — pick and copy</h2>
+<div class="card">
+<p style="font-size:0.85rem;" class="dim">Click one option in each row. The button copies your choices as a reply.</p>
+
+<p style="font-weight:600; margin:0.8rem 0 0.4rem;">D1 · Window size default</p>
+<div class="optrow" data-q="D1">
+  <div class="opt sel" data-v="W=3 default, setting allows 1-3"><div class="ot">W = 3 <span class="rec">RECOMMENDED</span></div><div class="od">30 days per 10 lines. Strict order, near-today pacing. Setting allows 1–3.</div></div>
+  <div class="opt" data-v="W=2 default"><div class="ot">W = 2</div><div class="od">38 days. Tighter focus, +46% time.</div></div>
+  <div class="opt" data-v="W=1 purist default"><div class="ot">W = 1</div><div class="od">46+ days with massed reps. The purist experience.</div></div>
+</div>
+
+<p style="font-weight:600; margin:1.1rem 0 0.4rem;">D2 · Fate of random_start</p>
+<div class="optrow" data-q="D2">
+  <div class="opt sel" data-v="keep random_start as manual-only mode"><div class="ot">Manual only <span class="rec">RECOMMENDED</span></div><div class="od">Never dealt automatically. Available when you want to stress-test entry points.</div></div>
+  <div class="opt" data-v="delete random_start entirely"><div class="ot">Delete it</div><div class="od">Remove the mode, its prompts, and its UI entirely.</div></div>
+  <div class="opt" data-v="keep random_start in graduated rotation"><div class="ot">Keep in rotation</div><div class="od">Status quo for graduated lines only.</div></div>
+</div>
+
+<p style="font-weight:600; margin:1.1rem 0 0.4rem;">D3 · Per-session finisher</p>
+<div class="optrow" data-q="D3">
+  <div class="opt sel" data-v="end every session with forward chain over learned prefix"><div class="ot">Chain every session <span class="rec">RECOMMENDED</span></div><div class="od">One forward chain across the mastered prefix closes each session. Costs one card.</div></div>
+  <div class="opt" data-v="finisher only when passage fully graduated (status quo)"><div class="ot">Only at the end</div><div class="od">Status quo: full-passage finisher appears only when everything is mastered.</div></div>
+  <div class="opt" data-v="chain finisher every other session"><div class="ot">Every other session</div><div class="od">Halves the finisher cost on long prefixes.</div></div>
+</div>
+
+<button class="copybtn" onclick="copyDecisions(this)">Copy decisions as reply</button>
+</div>
+
+<h2><span class="num">6</span>Implementation steps</h2>
+<div class="card">
+<div class="lane">BACKEND — Codex (Sol)</div>
+<div class="step"><span class="step-num">1</span><div><p>Add the runway gate: compute the mastered prefix and the active window in <code>build_smart_plan_for_revisions</code>. Do not deal lines past the window.</p><span class="tag">services/planning.py</span></div></div>
+<div class="step"><span class="step-num">2</span><div><p>Deal in one linear pass: due reviews (passage order) → window blocks of up to 3 ladder reps → ready junctures → chain finisher. Remove triage-based selection; keep dueness inside the review portion.</p><span class="tag">services/planning.py</span></div></div>
+<div class="step"><span class="step-num">3</span><div><p>Rebuild <code>guided_recall</code> prompts at deal time, so rep 2 and rep 3 of a block show the advanced cue level after a success.</p><span class="tag">services/sessions.py</span> <span class="tag">api/</span></div></div>
+<div class="step"><span class="step-num">4</span><div><p>Remove <code>random_start</code> from smart cycles and the fill rotation. Delete <code>_shuffle_random_start_turns</code>. Gate junctures on mastered flanks. Add the <code>linear_window</code> app setting.</p><span class="tag">services/planning.py</span> <span class="tag">config</span></div></div>
+<div class="step"><span class="step-num">5</span><div><p>Update tests: window gating, block dealing, juncture gate, deal-time prompt rebuild, and the W=1 path.</p><span class="tag">tests/</span> <span class="tag">contracts/openapi.json</span></div></div>
+<div class="lane">FRONTEND — taste seat (Opus/Kimi review)</div>
+<div class="step"><span class="step-num fe">6</span><div><p>Runway strip on the passage page: mastered prefix, active window, locked tail (the mockup in section 2).</p><span class="tag">routes/passages</span></div></div>
+<div class="step"><span class="step-num fe">7</span><div><p>Window-size control in Settings. Launcher copy explains the lock ("line 7 unlocks when line 4 is mastered").</p><span class="tag">routes/settings</span> <span class="tag">launcher</span></div></div>
+<div class="step"><span class="step-num fe">8</span><div><p>Playwright: a session deals in passage order; a locked line never appears; the runway strip advances after mastery.</p><span class="tag">e2e/</span></div></div>
+</div>
+
+<h2><span class="num">7</span>Risks</h2>
+<div class="card warn">
+<ul class="plain">
+<li>Blocked reps compress the ladder's spacing inside a session. The simulation did not model a massed-practice penalty. If mastery feels hollow, reduce reps per block to 2 before touching the gate.</li>
+<li>The live Iliad data has lines mid-ladder out of order (triage introduced them). On first run the mastered prefix may sit behind a started-but-unmastered line; the window simply contains that line — no data repair needed.</li>
+<li>W=1 remains available but the pacing cost is real (section 1). The setting copy must state it.</li>
+</ul>
+</div>
+
+</div>
+<script>
+document.querySelectorAll('.optrow').forEach(row => {
+  row.querySelectorAll('.opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      row.querySelectorAll('.opt').forEach(o => o.classList.remove('sel'));
+      opt.classList.add('sel');
+    });
+  });
+});
+function copyDecisions(btn) {
+  const lines = [];
+  document.querySelectorAll('.optrow').forEach(row => {
+    const sel = row.querySelector('.opt.sel');
+    lines.push(row.dataset.q + ': ' + (sel ? sel.dataset.v : 'undecided'));
+  });
+  navigator.clipboard.writeText('Linear runway decisions — ' + lines.join('; ') + '. Proceed with implementation.').then(() => {
+    btn.textContent = 'Copied ✓';
+    setTimeout(() => { btn.textContent = 'Copy decisions as reply'; }, 1500);
+  });
+}
+</script>
+</body>
+</html>

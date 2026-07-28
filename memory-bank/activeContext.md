@@ -464,6 +464,12 @@ Sites D1, which has diverged practice progress). Sequencing once decided:
 import/choose truth → run merge there (locally via the script; for D1
 either import D1 → merge locally → data:export → redeploy, or mirror the
 merge as SQL per the handoff) → delete or keep retired source passages.
+Deploy route note (2026-07-28, Arman): GPT Sites is believed to be a Codex
+PLUGIN, so Claude can likely drive deploys indirectly via `codex exec`
+(house path `/Applications/ChatGPT.app/Contents/Resources/codex`) instead
+of Arman running a separate Codex session by hand. Untested; try on the
+next deploy (Phase B of `handoffs/sites-data-sync.md`). Arman's own Codex
+session is running Phase A (D1 export) as of this note.
 
 ## Next Work
 

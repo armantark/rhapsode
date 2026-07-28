@@ -464,6 +464,18 @@ Sites D1, which has diverged practice progress). Sequencing once decided:
 import/choose truth → run merge there (locally via the script; for D1
 either import D1 → merge locally → data:export → redeploy, or mirror the
 merge as SQL per the handoff) → delete or keep retired source passages.
+
+Sites Phase A export completed (2026-07-28): a temporary token-gated
+`GET /api/v1/admin/export` route is live on Sites and returned a complete
+self-describing D1 snapshot to ignored `work/d1-export/`. The snapshot contains
+18 selectable tables and 2,469 rows, including 360 attempts, 161 FSRS review
+logs, 66 sessions, 850 practice items, and 33 review states. Integrity checks
+found no orphans across ten learning-data relationships; live passage,
+collection, and review-state totals match. Cloudflare's `_cf_KV` and
+`sqlite_sequence` are recorded in `sqlite_master` but are not directly readable
+and contain no Rhapsode learning data. The practice freeze began at
+2026-07-28T22:48:04Z (15:48:04 PDT): use local practice until Phase B deploys
+the merged database and removes the temporary route.
 Deploy route note (2026-07-28, Arman): GPT Sites is believed to be a Codex
 PLUGIN, so Claude can likely drive deploys indirectly via `codex exec`
 (house path `/Applications/ChatGPT.app/Contents/Resources/codex`) instead

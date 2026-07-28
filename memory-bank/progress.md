@@ -294,3 +294,11 @@
   `random_start` remains. `linear_window` persists through AppSetting, validates
   1–3, defaults to 3, and is exposed by system status. No migration or FSRS
   math changed.
+- Sites D1 Phase A export (2026-07-28): deployed a temporary authenticated
+  Worker export route without changing the existing migrations, captured all
+  18 selectable D1 tables (2,469 rows) into ignored `work/d1-export/`, verified
+  table counts and ten foreign-key relationships, and matched the live app's
+  6 passages, 1 collection, and 33 review states. The snapshot includes all
+  attempts, practice items/sessions, FSRS logs/cards, notes, settings, media
+  metadata, and content rows. Practice freeze began at 2026-07-28T22:48:04Z;
+  Phase B must remove the route after deploying the merged database.

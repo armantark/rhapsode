@@ -59,6 +59,29 @@ Outcome: the deployed site runs the same behavior and data.
   `random_start`; the old split Iliad passages are absent or clearly marked
   merged.
 
+## Phase A amendment (2026-07-28): export through the Worker
+
+Phase A was blocked as reported: the Sites connector has no raw D1 surface,
+and no Cloudflare credentials exist. The unblock uses the access you have.
+A code-only deploy is now allowed in Phase A, with this exact scope:
+
+- Add one temporary Worker route, `GET /api/v1/admin/export`, that returns
+  every D1 table verbatim as JSON: the `sqlite_master` schema plus
+  `SELECT *` per table, including `fsrs_card_json` and the FSRS review
+  logs. The route must require a long random token that you generate and
+  bake into the build; without the token it returns 404. Print the token
+  only in your local report, never in logs or commits.
+- The deploy must change code only. Do not run `npm run data:export`. Before
+  you deploy, confirm the bundled D1 migrations are identical to the ones
+  already applied to the live database, and confirm from the platform's
+  status output that the deploy will not re-apply data migrations. If you
+  cannot confirm either, stop and report.
+- After the deploy, fetch the export to `work/d1-export/` (uncommitted; it
+  is personal learning history), verify row counts against the live app's
+  visible state, and report. The practice freeze begins at the moment the
+  fetch succeeds.
+- Removal of the export route is part of the Phase B deploy.
+
 ## Stop rules
 
 - If D1 access or the export tooling is unavailable, stop and report exactly

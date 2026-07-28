@@ -601,23 +601,6 @@ def _random_start_order(targets: list[models.Segment]) -> list[models.Segment]:
     return shuffled[1:] + shuffled[:1]
 
 
-def _shuffle_random_start_turns(
-    turns: list[tuple[models.Segment, str]],
-) -> list[tuple[models.Segment, str]]:
-    random_targets = [
-        target for target, mode in turns if mode == PracticeMode.random_start.value
-    ]
-    if len(random_targets) < 2:
-        return turns
-    shuffled_targets = iter(_random_start_order(random_targets))
-    return [
-        (next(shuffled_targets), mode)
-        if mode == PracticeMode.random_start.value
-        else (target, mode)
-        for target, mode in turns
-    ]
-
-
 # A weak link counts as repaired after this many consecutive cleans since the
 # last difficult attempt (grill B1): once could be luck, twice is demonstrated.
 REPAIR_STREAK = 2
@@ -669,7 +652,7 @@ def smart_mode_for(
 ) -> str:
     """Choose the least-used useful exercise for this mastery stage.
 
-    Triage still decides *which* segments deserve attention. Within a selected
+    The runway decides *which* segments deserve attention. Within a selected
     line, rotating techniques prevents "weak link" from becoming the only way
     difficult material is ever practiced. Junctures keep a narrower repertoire
     because chaining a transition fragment is not a coherent exercise.
@@ -716,7 +699,6 @@ def smart_mode_for(
             [PracticeMode.cue_recall.value, PracticeMode.progressive_fading.value]
             if stage == "learning"
             else [
-                PracticeMode.random_start.value,
                 PracticeMode.cue_recall.value,
                 PracticeMode.typed_recall.value,
             ]
@@ -736,7 +718,6 @@ def smart_mode_for(
         # Graduated lines earn typed recall: written production verifies the
         # character-level exactness oral self-grading cannot hear.
         cycle = [
-            PracticeMode.random_start.value,
             PracticeMode.typed_recall.value,
             PracticeMode.forward_chaining.value,
             PracticeMode.backward_chaining.value,
@@ -760,12 +741,6 @@ def smart_mode_for(
 # a capped session is one the user actually completes and comes back from.
 SMART_SESSION_CAP = 12
 
-# At most this many never-practiced units enter a session. First lessons are
-# the heaviest cards there are; a freshly provisioned batch of lines (Iliad
-# 1.11-20 arrived as ten at once) must trickle in, Anki-new-cards style, or
-# every session becomes a wall of unfamiliar material.
-NEW_UNITS_PER_SESSION = 2
-
 # When a minutes budget is chosen it is a TARGET, not just a ceiling: once every
 # targeted segment has had its primary turn and time remains (a short passage
 # can't otherwise fill 15 minutes), the leftover budget buys extra repetitions
@@ -780,8 +755,28 @@ FILL_MODE_CYCLE = [
     PracticeMode.forward_chaining.value,
     PracticeMode.backward_chaining.value,
     PracticeMode.cue_recall.value,
-    PracticeMode.random_start.value,
 ]
+
+LINEAR_WINDOW_SETTING = "linear_window"
+DEFAULT_LINEAR_WINDOW = 3
+MIN_LINEAR_WINDOW = 1
+MAX_LINEAR_WINDOW = 3
+
+
+def validate_linear_window(value: Any) -> int:
+    if type(value) is not int or not MIN_LINEAR_WINDOW <= value <= MAX_LINEAR_WINDOW:
+        raise ValueError("linear_window must be an integer from 1 through 3.")
+    return value
+
+
+def linear_window(db: Session) -> int:
+    setting = db.get(models.AppSetting, LINEAR_WINDOW_SETTING)
+    if setting is None:
+        return DEFAULT_LINEAR_WINDOW
+    try:
+        return validate_linear_window(setting.value)
+    except ValueError:
+        return DEFAULT_LINEAR_WINDOW
 
 # Cold-start seconds-per-item until personal latency history exists (grill
 # A1). Wrong for at most a few sessions; the per-mode means take over once a
@@ -789,6 +784,7 @@ FILL_MODE_CYCLE = [
 DEFAULT_MODE_SECONDS: dict[str, float] = {
     "shadowing": 30,
     "acquisition": 60,
+    "guided_recall": 40,
     "progressive_fading": 75,
     "word_bank": 40,
     "forward_chaining": 45,
@@ -832,21 +828,6 @@ def _has_reference_audio(db: Session, revision_id: str) -> bool:
     return bool(count)
 
 
-def _triage_rank(stage: str | None, difficult: bool, due: bool) -> int:
-    """When the cap bites, spend the session where it pays most: repair weak
-    links, push learning segments, then service DUE reviews (their memory is
-    decaying now), then introduce new material, and only then maintain solid
-    lines that are not yet due — the spaced-repetition "reviews before new"
-    rule, so a long budget doesn't crowd due maintenance out with novelty."""
-    if difficult and stage not in (None, "new"):
-        return 0
-    if stage == "learning":
-        return 1
-    if stage is None or stage == "new":
-        return 3
-    return 2 if due else 4
-
-
 def _line_segments(segments: list[models.Segment]) -> list[models.Segment]:
     return [segment for segment in segments if segment.kind == "line"]
 
@@ -864,17 +845,22 @@ def _line_numbers(
     return [number for number in numbers if number is not None]
 
 
-def _started_stage(stage: str | None) -> bool:
-    return stage not in (None, "new")
+def _mastered(
+    segment_id: str,
+    acquisition_succeeded: Mapping[str, bool],
+    learning_steps: Mapping[str, int | None],
+) -> bool:
+    return acquisition_succeeded.get(segment_id, False) and learning_steps.get(segment_id) is None
 
 
-def _learned_prefix(
+def _mastered_prefix(
     lines: list[models.Segment],
-    stages: Mapping[str, str | None],
+    acquisition_succeeded: Mapping[str, bool],
+    learning_steps: Mapping[str, int | None],
 ) -> list[models.Segment]:
     prefix: list[models.Segment] = []
     for line in lines:
-        if _started_stage(stages.get(line.id)):
+        if _mastered(line.id, acquisition_succeeded, learning_steps):
             prefix.append(line)
             continue
         break
@@ -912,8 +898,6 @@ def build_smart_plan_for_revisions(
     revision_segments: list[tuple[models.PassageRevision, list[models.Segment]]] = []
     for revision in revisions:
         segments = _ordered_segments(revision, segment_kinds)
-        if only_segment_ids is not None:
-            segments = [segment for segment in segments if segment.id in only_segment_ids]
         if segments:
             revision_segments.append((revision, segments))
     all_segments = [segment for _, segments in revision_segments for segment in segments]
@@ -936,40 +920,25 @@ def build_smart_plan_for_revisions(
         state.segment_id: state.learning_success_count for state in review_states
     }
 
-    # A juncture is the seam between two KNOWN lines; dealing one before both
-    # flanking lines have been started teaches a transition into nothing and
-    # inflates a fresh passage's first sessions. Unstarted junctures wait for
-    # their flanks; junctures with review history always stay schedulable.
-    def _juncture_ready(revision: models.PassageRevision, segment: models.Segment) -> bool:
-        if segment.kind != "juncture" or segment.id in stages:
-            return True
-        lines_by_ordinal = {
-            candidate.ordinal: candidate
-            for candidate in revision.segments
-            if candidate.kind == "line"
-        }
-        previous_ordinal = (segment.metadata_json or {}).get("juncture_after")
-        previous = (
-            lines_by_ordinal.get(previous_ordinal)
-            if isinstance(previous_ordinal, int)
-            else None
+    ordered_lines = [
+        line
+        for revision, _segments in revision_segments
+        for line in sorted(
+            (segment for segment in revision.segments if segment.kind == "line"),
+            key=lambda segment: segment.ordinal,
         )
-        landing = lines_by_ordinal.get(segment.ordinal)
-        return (
-            previous is not None
-            and landing is not None
-            and previous.id in stages
-            and landing.id in stages
-        )
-
-    revision_segments = [
-        (revision, kept)
-        for revision, segments in revision_segments
-        if (kept := [s for s in segments if _juncture_ready(revision, s)])
     ]
-    all_segments = [segment for _, segments in revision_segments for segment in segments]
-    if not all_segments:
-        return []
+    active_window = [
+        line
+        for line in ordered_lines
+        if not _mastered(line.id, acquisition_succeeded, learning_steps)
+    ][: linear_window(db)]
+    if active_window:
+        boundary = ordered_lines.index(active_window[-1])
+        unlocked_line_ids = {line.id for line in ordered_lines[: boundary + 1]}
+    else:
+        unlocked_line_ids = {line.id for line in ordered_lines}
+
     line_numbers_by_revision = {
         revision.id: _line_number_map(_ordered_segments(revision, None))
         for revision, _segments in revision_segments
@@ -1001,30 +970,28 @@ def build_smart_plan_for_revisions(
             last_modes[segment_id] = mode
     has_chain_context: dict[str, bool] = {}
     for revision, _segments in revision_segments:
-        learned_prefix = _learned_prefix(_line_segments(revision.segments), stages)
-        for index, line in enumerate(learned_prefix):
+        prefix = _mastered_prefix(
+            _line_segments(_ordered_segments(revision, ["line"])),
+            acquisition_succeeded,
+            learning_steps,
+        )
+        for index, line in enumerate(prefix):
             has_chain_context[line.id] = index > 0
-    modes = {}
-    for segment in all_segments:
-        if (
-            segment.kind != "juncture"
-            and acquisition_succeeded.get(segment.id, False)
-            and learning_steps.get(segment.id) is not None
-        ):
-            modes[segment.id] = PracticeMode.guided_recall.value
-        else:
-            modes[segment.id] = smart_mode_for(
-                stages.get(segment.id),
-                segment.id in difficult_ids,
-                kind=segment.kind,
-                mode_counts=mode_counts[segment.id],
-                has_reference_audio=segment.revision_id in revisions_with_reference,
-                has_translation=_translation_text(segment) is not None,
-                acquisition_succeeded=acquisition_succeeded.get(segment.id, False),
-                last_rating=last_ratings.get(segment.id),
-                last_mode=last_modes.get(segment.id),
-                has_chain_context=has_chain_context.get(segment.id, False),
-            )
+
+    def automatic_mode(segment: models.Segment) -> str:
+        return smart_mode_for(
+            stages.get(segment.id),
+            segment.id in difficult_ids,
+            kind=segment.kind,
+            mode_counts=mode_counts[segment.id],
+            has_reference_audio=segment.revision_id in revisions_with_reference,
+            has_translation=_translation_text(segment) is not None,
+            acquisition_succeeded=acquisition_succeeded.get(segment.id, False),
+            last_rating=last_ratings.get(segment.id),
+            last_mode=last_modes.get(segment.id),
+            has_chain_context=has_chain_context.get(segment.id, False),
+        )
+
     cue_spans_by_revision = {
         revision.id: _reference_cue_spans(db, revision.id)
         for revision, _segments in revision_segments
@@ -1038,148 +1005,59 @@ def build_smart_plan_for_revisions(
         }
         for revision, _segments in revision_segments
     }
-    # Acquisition's encounter phase is now the single first-exposure surface;
-    # reference audio remains available on that card, so a separate shadowing
-    # item would split one deliberate lesson into two graded attempts.
-    shadow_first: set[str] = set()
-    # The finisher is appended once every targeted segment graduates —
-    # per-segment drilling alone never exercises flow.
-    all_graduated = {
-        revision.id: len(segments) > 1
-        and all(
-            stages.get(segment.id) in {"review", "durable"}
-            and learning_steps.get(segment.id) is None
-            for segment in segments
+
+    def juncture_flanks(
+        segment: models.Segment,
+    ) -> tuple[models.Segment | None, models.Segment | None]:
+        lines = lines_by_ordinal_by_revision[segment.revision_id]
+        previous_ordinal = (segment.metadata_json or {}).get("juncture_after")
+        previous = (
+            lines.get(previous_ordinal) if isinstance(previous_ordinal, int) else None
         )
-        for revision, segments in revision_segments
-    }
+        return previous, lines.get(segment.ordinal)
 
-    triaged = sorted(
-        (
-            (revision_index, revision, segment)
-            for revision_index, (revision, segments) in enumerate(revision_segments)
-            for segment in segments
-        ),
-        key=lambda entry: (
-            _triage_rank(
-                stages.get(entry[2].id),
-                entry[2].id in difficult_ids,
-                entry[2].id in due_ids,
-            ),
-            entry[0],
-            entry[2].ordinal,
-        ),
-    )
-    chosen: list[tuple[int, models.PassageRevision, models.Segment]] = []
-    # First lessons are the heaviest cards in the app; a provisioned batch of
-    # fresh lines must trickle in a couple per session, not arrive as a wall.
-    # Skipped new material simply waits for the next session — everything else
-    # (due reviews, learning, maintenance) still fills the plan.
-    introduced = 0
+    def juncture_unlocked(segment: models.Segment) -> bool:
+        previous, landing = juncture_flanks(segment)
+        return (
+            previous is not None
+            and landing is not None
+            and previous.id in unlocked_line_ids
+            and landing.id in unlocked_line_ids
+        )
 
-    def _within_intro_cap(segment: models.Segment) -> bool:
-        nonlocal introduced
-        if stages.get(segment.id) is not None:
-            return True
-        if introduced >= NEW_UNITS_PER_SESSION:
-            return False
-        introduced += 1
-        return True
-
-    # Extra repetitions keyed by segment id, populated only by the minutes path
-    # when one full pass leaves budget on the clock. fill_rotations[id][round]
-    # is the mode to use for that segment's (round+1)-th extra turn.
-    fill_reps: dict[str, int] = {}
-    fill_rotations: dict[str, list[str]] = {}
-    if minutes is not None:
-        seconds = _mode_seconds(db)
-        budget = minutes * 60.0
-        # For fully graduated passages, holistic recitations are budgeted
-        # first. A collection remains one shared budget rather than granting
-        # every member passage its own full session allowance.
-        for revision, _segments in revision_segments:
-            if not all_graduated[revision.id]:
-                continue
-            budget -= seconds.get(
-                PracticeMode.full_passage.value, FALLBACK_MODE_SECONDS
+    def context_for(target: models.Segment, mode: str) -> list[models.Segment]:
+        revision = next(
+            revision
+            for revision, _segments in revision_segments
+            if revision.id == target.revision_id
+        )
+        lines = sorted(
+            (segment for segment in revision.segments if segment.kind == "line"),
+            key=lambda segment: segment.ordinal,
+        )
+        prefix = _mastered_prefix(lines, acquisition_succeeded, learning_steps)
+        if mode in {
+            PracticeMode.forward_chaining.value,
+            PracticeMode.backward_chaining.value,
+        }:
+            if target.id not in {line.id for line in prefix}:
+                return [target]
+            target_index = next(
+                index for index, line in enumerate(prefix) if line.id == target.id
             )
-        for entry in triaged:
-            segment = entry[2]
-            if not _within_intro_cap(segment):
-                continue
-            cost = seconds.get(modes[segment.id], FALLBACK_MODE_SECONDS)
-            if segment.id in shadow_first:
-                cost += seconds.get(
-                    PracticeMode.shadowing.value, FALLBACK_MODE_SECONDS
-                )
-            if chosen and budget - cost < 0:
-                break
-            budget -= cost
-            chosen.append(entry)
-        # Every targeted segment fit in one pass and time remains: spend the
-        # leftover budget on varied repetitions so the chosen minutes are a
-        # target, not just a ceiling. Reps are dealt highest-triage-first, so
-        # weak links and learning material soak up the extra time before solid
-        # lines do; the per-segment rotation cap keeps it from over-drilling.
-        if chosen and len(chosen) == len(triaged):
-            for entry in triaged:
-                segment = entry[2]
-                fill_rotations[entry[2].id] = [
-                    mode
-                    for mode in FILL_MODE_CYCLE
-                    if mode != modes[segment.id]
-                    and modes[segment.id] != PracticeMode.guided_recall.value
-                    and not (
-                        segment.kind == "juncture"
-                        and mode
-                        in {
-                            PracticeMode.forward_chaining.value,
-                            PracticeMode.backward_chaining.value,
-                            # Ordering a 3-word head is trivial; junctures skip
-                            # word_bank in the fill rotation too.
-                            PracticeMode.word_bank.value,
-                        }
-                    )
-                ]
-                fill_reps[segment.id] = 0
-            progressed = True
-            while progressed:
-                progressed = False
-                for entry in triaged:
-                    segment = entry[2]
-                    rotation = fill_rotations[segment.id]
-                    count = fill_reps[segment.id]
-                    if count >= len(rotation):
-                        continue
-                    cost = seconds.get(rotation[count], FALLBACK_MODE_SECONDS)
-                    if budget - cost < 0:
-                        continue
-                    budget -= cost
-                    fill_reps[segment.id] = count + 1
-                    progressed = True
-    else:
-        # The cap limits ITEMS, not segments: a shadowed new segment takes
-        # two slots, so a fresh passage with audio still ends while momentum
-        # lasts. cap=None (the library-wide Today queue) takes everything —
-        # a due queue must be clearable, and FSRS already bounds its size.
-        used = 0
-        for entry in triaged:
-            segment = entry[2]
-            if not _within_intro_cap(segment):
-                continue
-            weight = 2 if segment.id in shadow_first else 1
-            if cap is not None and chosen and used + weight > cap:
-                break
-            used += weight
-            chosen.append(entry)
+            if mode == PracticeMode.forward_chaining.value:
+                return prefix[: target_index + 1]
+            return prefix[target_index:]
+        return [target]
 
-    items: list[dict[str, Any]] = []
-
-    def emit(target: models.Segment, mode: str, context: list[models.Segment]) -> None:
+    def definition(
+        target: models.Segment, mode: str, context: list[models.Segment] | None = None
+    ) -> dict[str, Any]:
+        prompt_context = context or context_for(target, mode)
         # The revision snapshot on each item keeps full-passage grading scoped
         # correctly, so the target's own revision id rides along.
         line_numbers = (
-            _line_numbers(context, line_numbers_by_revision[target.revision_id])
+            _line_numbers(prompt_context, line_numbers_by_revision[target.revision_id])
             if mode
             in {
                 PracticeMode.forward_chaining.value,
@@ -1191,7 +1069,7 @@ def build_smart_plan_for_revisions(
         prompt = prompt_for(
             mode,
             target,
-            context,
+            prompt_context,
             personal_notes.get(target.id, target.cue),
             line_numbers,
             learning_step=learning_steps.get(target.id) or 0,
@@ -1204,101 +1082,182 @@ def build_smart_plan_for_revisions(
             cue_spans_by_revision.get(target.revision_id, {}),
             lines_by_ordinal_by_revision.get(target.revision_id, {}),
         )
-        items.append(
-            {
-                "revision_id": target.revision_id,
-                "segment_id": target.id,
-                "mode": mode,
-                "prompt": prompt,
-            }
+        return {
+            "revision_id": target.revision_id,
+            "segment_id": target.id,
+            "mode": mode,
+            "prompt": prompt,
+        }
+
+    candidates: list[tuple[models.Segment, str]] = []
+
+    # FSRS decides membership in the review portion; recitation position,
+    # never difficulty, decides its order.
+    for _revision, segments in revision_segments:
+        for segment in segments:
+            if only_segment_ids is not None and segment.id not in only_segment_ids:
+                continue
+            if segment.kind == "line" and segment.id not in unlocked_line_ids:
+                continue
+            # Grandfathered out-of-order history can leave a due juncture whose
+            # flanks sit past the boundary; its text is the seam of locked
+            # material, so the lock reaches junctures through their flanks.
+            if segment.kind == "juncture" and not juncture_unlocked(segment):
+                continue
+            if (
+                segment.id in due_ids
+                and _mastered(segment.id, acquisition_succeeded, learning_steps)
+            ):
+                candidates.append((segment, automatic_mode(segment)))
+
+    # Each active line is one uninterrupted learning block. The Today queue
+    # retains one-card-per-due-unit semantics; ordinary runway sessions mass
+    # up to three guided successes while the line is in working memory.
+    due_only = only_segment_ids is not None
+    for line in active_window:
+        if line.kind not in _practice_kinds(line.revision, segment_kinds):
+            continue
+        if only_segment_ids is not None and line.id not in only_segment_ids:
+            continue
+        if not acquisition_succeeded.get(line.id, False):
+            candidates.append((line, PracticeMode.acquisition.value))
+            continue
+        repetitions = 1 if due_only else 3
+        candidates.extend(
+            (line, PracticeMode.guided_recall.value) for _ in range(repetitions)
         )
 
-    def context_for(
-        available: list[models.Segment],
-        selected: list[models.Segment],
-        target: models.Segment,
-        mode: str,
-    ) -> list[models.Segment]:
-        if mode == PracticeMode.full_passage.value:
-            return _line_segments(available)
-        if mode in {
-            PracticeMode.forward_chaining.value,
-            PracticeMode.backward_chaining.value,
-        }:
-            chain = _line_segments(available)
-            learned_prefix = _learned_prefix(chain, stages)
-            if target.id not in {segment.id for segment in learned_prefix}:
-                return [target]
-            target_index = next(
-                position
-                for position, segment in enumerate(learned_prefix)
-                if segment.id == target.id
-            )
-            if mode == PracticeMode.forward_chaining.value:
-                return learned_prefix[: target_index + 1]
-            return learned_prefix[target_index:]
-        target_index = next(
-            position for position, segment in enumerate(selected) if segment.id == target.id
+    def juncture_ready(segment: models.Segment) -> bool:
+        if segment.id in stages:
+            return True
+        previous, landing = juncture_flanks(segment)
+        return (
+            previous is not None
+            and landing is not None
+            and juncture_unlocked(segment)
+            and _mastered(previous.id, acquisition_succeeded, learning_steps)
+            and _mastered(landing.id, acquisition_succeeded, learning_steps)
         )
-        return selected[target_index:]
 
-    # Present survivors in collection-member order and passage order.
-    selected_by_revision: list[
-        tuple[models.PassageRevision, list[models.Segment], list[models.Segment]]
-    ] = []
-    for revision, _available in revision_segments:
-        # Chaining must remain a continuous passage exercise even when triage
-        # or due-only filtering selected only a subset of targets.
-        available = _ordered_segments(revision, segment_kinds)
-        selected = sorted(
-            (
-                segment
-                for _, chosen_revision, segment in chosen
-                if chosen_revision.id == revision.id
-            ),
-            key=lambda segment: (segment.ordinal, segment.kind != "juncture"),
-        )
-        selected_by_revision.append((revision, available, selected))
+    already_selected = {segment.id for segment, _mode in candidates}
+    for _revision, segments in revision_segments:
+        for segment in segments:
+            if segment.kind != "juncture" or segment.id in already_selected:
+                continue
+            if only_segment_ids is not None and segment.id not in only_segment_ids:
+                continue
+            if stages.get(segment.id) not in {None, "new", "learning"}:
+                continue
+            if juncture_ready(segment):
+                candidates.append((segment, automatic_mode(segment)))
 
-    # Primary pass: each segment's stage-chosen mode, with a shadow lead-in on
-    # first audio exposure.
-    for _revision, available, selected in selected_by_revision:
-        turns = _shuffle_random_start_turns(
-            [(target, modes[target.id]) for target in selected]
+    finishers: list[tuple[models.Segment, str, list[models.Segment]]] = []
+    selected_revision_ids = {segment.revision_id for segment, _mode in candidates}
+    for revision, _segments in revision_segments:
+        lines = sorted(
+            lines_by_ordinal_by_revision[revision.id].values(),
+            key=lambda line: line.ordinal,
         )
-        for target, mode in turns:
-            if target.id in shadow_first:
-                emit(
-                    target,
-                    PracticeMode.shadowing.value,
-                    context_for(
-                        available,
-                        selected,
-                        target,
-                        PracticeMode.shadowing.value,
+        prefix = _mastered_prefix(lines, acquisition_succeeded, learning_steps)
+        if len(prefix) < 2:
+            continue
+        if due_only and revision.id not in selected_revision_ids:
+            continue
+        mode = (
+            PracticeMode.full_passage.value
+            if len(prefix) == len(lines)
+            else PracticeMode.forward_chaining.value
+        )
+        # The chain credits the NEWEST mastered line: crediting prefix[0] would
+        # grow line 1's forward_chaining count every session and permanently
+        # skew its own least-used-mode rotation.
+        target = prefix[0] if mode == PracticeMode.full_passage.value else prefix[-1]
+        finishers.append((target, mode, lines if mode == "full_passage" else prefix))
+
+    seconds = _mode_seconds(db)
+    selected_candidates: list[tuple[models.Segment, str]] = []
+    fill_turns: list[tuple[models.Segment, str]] = []
+    if minutes is None:
+        available = None if cap is None else max(0, cap - len(finishers))
+        selected_candidates = candidates if available is None else candidates[:available]
+    else:
+        budget = minutes * 60.0 - sum(
+            seconds.get(mode, FALLBACK_MODE_SECONDS)
+            for _target, mode, _context in finishers
+        )
+        for candidate in candidates:
+            cost = seconds.get(candidate[1], FALLBACK_MODE_SECONDS)
+            if selected_candidates and budget - cost < 0:
+                break
+            budget -= cost
+            selected_candidates.append(candidate)
+
+        # Once the whole linear pass fits, remaining time buys additional
+        # passage-order rounds over already-unlocked material.
+        if selected_candidates and len(selected_candidates) == len(candidates):
+            # Ladder material is exempt from fills: acquisition is one
+            # deliberate first lesson and a guided block already masses its
+            # three successes, so extra cold-production reps here would
+            # reintroduce exactly the cards the ladder exists to defer.
+            fill_targets: list[tuple[models.Segment, str]] = []
+            seen_fill_ids: set[str] = set()
+            for segment, mode in selected_candidates:
+                if mode in {
+                    PracticeMode.acquisition.value,
+                    PracticeMode.guided_recall.value,
+                }:
+                    continue
+                if segment.id in seen_fill_ids:
+                    continue
+                seen_fill_ids.add(segment.id)
+                fill_targets.append((segment, mode))
+            fill_targets.sort(
+                key=lambda entry: (
+                    next(
+                        index
+                        for index, (revision, _segments) in enumerate(revision_segments)
+                        if revision.id == entry[0].revision_id
                     ),
+                    entry[0].ordinal,
+                    entry[0].kind != "juncture",
                 )
-            emit(target, mode, context_for(available, selected, target, mode))
-
-    # Budget-fill repetitions, presented as further run-throughs of the passage
-    # rather than one segment drilled back to back.
-    for round_index in range(max(fill_reps.values(), default=0)):
-        for _revision, available, selected in selected_by_revision:
-            turns = _shuffle_random_start_turns(
-                [
-                    (target, fill_rotations[target.id][round_index])
-                    for target in selected
-                    if fill_reps.get(target.id, 0) > round_index
-                ]
             )
-            for target, mode in turns:
-                emit(target, mode, context_for(available, selected, target, mode))
+            rotations = {
+                segment.id: [
+                    mode
+                    for mode in FILL_MODE_CYCLE
+                    if mode != dealt_mode
+                    and not (
+                        segment.kind == "juncture"
+                        and mode
+                        in {
+                            PracticeMode.forward_chaining.value,
+                            PracticeMode.backward_chaining.value,
+                            PracticeMode.word_bank.value,
+                        }
+                    )
+                ]
+                for segment, dealt_mode in fill_targets
+            }
+            for round_index in range(max(map(len, rotations.values()), default=0)):
+                for segment, _dealt_mode in fill_targets:
+                    rotation = rotations[segment.id]
+                    if round_index >= len(rotation):
+                        continue
+                    mode = rotation[round_index]
+                    cost = seconds.get(mode, FALLBACK_MODE_SECONDS)
+                    if budget - cost < 0:
+                        continue
+                    budget -= cost
+                    fill_turns.append((segment, mode))
 
-    # The holistic finisher closes the session, once every targeted segment of
-    # a passage has graduated.
-    for revision, _available, selected in selected_by_revision:
-        if all_graduated[revision.id] and selected:
-            emit(selected[0], PracticeMode.full_passage.value, selected)
+    items = [
+        definition(segment, mode)
+        for segment, mode in [*selected_candidates, *fill_turns]
+    ]
+    items.extend(
+        definition(target, mode, context) for target, mode, context in finishers
+    )
     return items
 
 

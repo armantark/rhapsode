@@ -362,7 +362,7 @@ push, install smoke) remains the other open thread.
   isolated database verified the exact Iliad 1.1–1.2 scope, both revealed line
   labels, and a typed Phase 1 cumulative-chunk card with three recalls required.
 
-## Pending Decision — Linear Mastery Runway (2026-07-28)
+## Linear Mastery Runway (2026-07-28)
 
 Arman rejected randomized ordering outright: recitation is sequential, so
 vocabulary-deck randomization logic does not apply. A disposable pacing
@@ -393,6 +393,38 @@ answerable only by live FSRS logs post-ship; reps-per-block and window stay
 knobs for that reason. Backend implementation delegated to Codex (Sol,
 workspace-write); frontend (runway strip, settings knob, launcher copy)
 follows after review.
+
+Backend implementation now replaces triage selection with the ordered runway:
+due mastered reviews → consecutive active-line blocks → ready junctures →
+holistic finisher. The active window is the first 1–3 non-mastered lines
+(default 3) across collection revisions in member order. Lines past its
+boundary cannot enter a smart plan, including old out-of-order triage history.
+Unstarted junctures require both flanks to satisfy the same persisted mastery
+predicate; historical junctures remain grandfathered. Guided prompts rebuild
+when the next card is served, so repeated cards see the preceding grade and
+undo restores the corresponding prompt state. `random_start` remains manual
+only. `GET /system/status` exposes `linear_window`; the existing
+`PUT /settings/linear_window` surface persists a validated integer from 1–3.
+No schema migration was needed.
+
+Post-implementation hardening (2026-07-28): an independent Opus review of the
+Codex diff (verdict: ship after small fixes) led to five behavioral fixes —
+minutes-fill exempts ladder material (acquisition/guided blocks are the whole
+allowance), the lock reaches junctures through their flanks, Today's
+`due_count` counts only dealt units, the chain finisher credits the NEWEST
+prefix line (crediting line 1 skewed its rotation forever), and
+`guided_recall` gained a `DEFAULT_MODE_SECONDS` entry — plus simplifications
+(dead full_passage branch, duplicate line dict, vestigial `modes` loop).
+`ReviewStateRead` now exposes `acquisition_succeeded` + `learning_step` so the
+frontend runway strip reads the planner's exact mastery gate instead of
+approximating from `mastery_stage`. Frontend: RunwayStrip on the passage page
+(`runwayStates` pure helper), Linear-window settings card, collection-launcher
+lock hint, `linear-runway.spec.ts`. Verified: 118 backend pytest, Ruff, strict
+mypy, contract check, 100 vitest, svelte-check 0/0, production build, 21/21
+non-media Playwright, and a PinchTab smoke on the e2e database (strip showed
+`1 ✓ | 2 3 4 | 5 🔒` with the correct unlock caption; settings card renders
+the 1/2/3 control and purist copy). Known scope gap: the passage page's own
+launcher has no lock copy (the collection launcher does).
 
 ## Next Work
 

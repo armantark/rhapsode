@@ -1181,6 +1181,10 @@
       },
       "ReviewStateRead": {
         "properties": {
+          "acquisition_succeeded": {
+            "title": "Acquisition Succeeded",
+            "type": "boolean"
+          },
           "attempt_count": {
             "title": "Attempt Count",
             "type": "integer"
@@ -1193,6 +1197,17 @@
             "format": "date-time",
             "title": "Due At",
             "type": "string"
+          },
+          "learning_step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Learning Step"
           },
           "mastery_stage": {
             "title": "Mastery Stage",
@@ -1208,7 +1223,9 @@
           "due_at",
           "mastery_stage",
           "clean_count",
-          "attempt_count"
+          "attempt_count",
+          "acquisition_succeeded",
+          "learning_step"
         ],
         "title": "ReviewStateRead",
         "type": "object"
@@ -1690,6 +1707,12 @@
               }
             ],
             "title": "Last Backup At"
+          },
+          "linear_window": {
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Linear Window",
+            "type": "integer"
           }
         },
         "required": [
@@ -1697,7 +1720,8 @@
           "last_backup_at",
           "gemini_key_configured",
           "fsrs_personal_parameters",
-          "desired_retention"
+          "desired_retention",
+          "linear_window"
         ],
         "title": "SystemStatusRead",
         "type": "object"

@@ -1035,6 +1035,8 @@ export interface components {
         };
         /** ReviewStateRead */
         ReviewStateRead: {
+            /** Acquisition Succeeded */
+            acquisition_succeeded: boolean;
             /** Attempt Count */
             attempt_count: number;
             /** Clean Count */
@@ -1044,6 +1046,8 @@ export interface components {
              * Format: date-time
              */
             due_at: string;
+            /** Learning Step */
+            learning_step: number | null;
             /** Mastery Stage */
             mastery_stage: string;
             /** Segment Id */
@@ -1202,6 +1206,8 @@ export interface components {
             gemini_key_configured: boolean;
             /** Last Backup At */
             last_backup_at: string | null;
+            /** Linear Window */
+            linear_window: number;
         };
         /** TodayForecastDay */
         TodayForecastDay: {

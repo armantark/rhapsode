@@ -322,6 +322,12 @@ class ReviewStateRead(ORMModel):
     mastery_stage: str
     clean_count: int
     attempt_count: int
+    # The runway's mastery gate. The derived mastery_stage cannot carry it:
+    # "learning" covers both a live ladder step and a finished ladder that has
+    # not yet reached the review clean-streak, so the frontend strip needs the
+    # same raw flags the planner's _mastered predicate reads.
+    acquisition_succeeded: bool
+    learning_step: int | None
 
 
 class MasteryPage(BaseModel):
@@ -409,6 +415,7 @@ class SystemStatusRead(BaseModel):
     # weights; False means the population defaults are scheduling.
     fsrs_personal_parameters: bool
     desired_retention: float
+    linear_window: int = Field(ge=1, le=3)
 
 
 class SettingInput(BaseModel):

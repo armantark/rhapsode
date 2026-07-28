@@ -284,3 +284,13 @@
   the 16 relevant Playwright flows, and an isolated PinchTab manual pass. The
   fake-microphone Playwright probe and recorder case remain environmental
   failures because `getUserMedia()` times out before app recording begins.
+- Linear Mastery Runway backend (2026-07-28): smart sessions now unlock the
+  first W non-mastered lines in strict passage/collection order, deal due
+  mastered reviews first, keep each active line's acquisition or three guided
+  cards consecutive, require both mastered flanks for new junctures, and close
+  with a mastered-prefix chain or all-mastered full passage. Deal-time ladder
+  prompt rebuilding keeps repeated cards current and preserves snapshot undo.
+  Triage/new-unit selection and automatic `random_start` were removed; manual
+  `random_start` remains. `linear_window` persists through AppSetting, validates
+  1–3, defaults to 3, and is exposed by system status. No migration or FSRS
+  math changed.

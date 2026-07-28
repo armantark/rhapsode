@@ -5,6 +5,7 @@
 	import { onMount } from 'svelte';
 	import AudioPlayer from '$lib/components/AudioPlayer.svelte';
 	import LineAligner from '$lib/components/LineAligner.svelte';
+	import RunwayStrip from '$lib/components/RunwayStrip.svelte';
 	import SegmentEditor from '$lib/components/SegmentEditor.svelte';
 	import SegmentText from '$lib/components/SegmentText.svelte';
 	import { api, isConflict } from '$lib/api/client';
@@ -29,8 +30,15 @@
 	// Per-line mastery for the reading gutter: where each line stands on the
 	// ladder, visible while reading rather than buried in the review tab.
 	let reviewStages: Map<string, string> = $state(new Map());
+	let masteredIds: Set<string> = $state(new Set());
 	let showProgress = $state(true);
 	const MASTERY_HORIZON = '2999-01-01T00:00:00Z';
+
+	// How many unmastered lines the planner keeps unlocked at once. The strip
+	// has to read the same app setting the planner does, or it would promise
+	// work the session will not deal.
+	const DEFAULT_LINEAR_WINDOW = 3;
+	let linearWindow = $state(DEFAULT_LINEAR_WINDOW);
 
 	// reading view options
 	let enabledLayers: string[] = $state([]);
@@ -148,11 +156,18 @@
 				forkSourceText = revision.source_text;
 				referenceMedia = await api.listMedia(revision.id, 'reference');
 				const segmentIds = new Set((revision.segments ?? []).map((segment) => segment.id));
-				reviewStages = new Map(
-					(await api.dueReviews(MASTERY_HORIZON))
-						.filter((state) => segmentIds.has(state.segment_id))
-						.map((state) => [state.segment_id, state.mastery_stage])
+				const reviewStates = (await api.dueReviews(MASTERY_HORIZON)).filter((state) =>
+					segmentIds.has(state.segment_id)
 				);
+				reviewStages = new Map(
+					reviewStates.map((state) => [state.segment_id, state.mastery_stage])
+				);
+				masteredIds = new Set(
+					reviewStates
+						.filter((state) => state.acquisition_succeeded && state.learning_step === null)
+						.map((state) => state.segment_id)
+				);
+				linearWindow = (await api.systemStatus()).linear_window;
 				if (!chosenKinds.every((kind) => kinds.includes(kind)) && kinds.length) {
 					chosenKinds = [kinds.includes('line') ? 'line' : kinds[0]];
 				}
@@ -350,6 +365,12 @@
 	{#if error}<p class="error-banner" role="alert">{error}</p>{/if}
 
 	{#if revision}
+		{#if lineSegments.length > 1}
+			<section class="card">
+				<RunwayStrip lines={lineSegments} mastered={masteredIds} windowSize={linearWindow} />
+			</section>
+		{/if}
+
 		<section class="card reading">
 			<div class="toolbar">
 				<span class="eyebrow">Reading view</span>

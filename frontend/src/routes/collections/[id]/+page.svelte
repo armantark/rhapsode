@@ -232,6 +232,12 @@
 			disabled={startingSession || collection.members.length === 0}
 			onclick={() => startSession(true)}
 		>{startingSession ? 'Starting…' : '✦ Smart session'}</button>
+		<!-- The collection page knows nothing about per-line mastery, so the
+		     hint is the general rule rather than a named next line. -->
+		<p class="muted small">
+			Lines unlock in order, so a smart session never reaches past the lines each passage has open
+			right now.
+		</p>
 
 		<details class="manual">
 			<summary class="muted small">Manual: choose modes and grain</summary>

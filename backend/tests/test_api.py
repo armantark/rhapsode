@@ -103,6 +103,31 @@ def test_plugin_validation_and_settings(
     assert client.get("/api/v1/settings").json() == [saved.json()]
 
 
+def test_linear_window_setting_round_trip_and_validation(
+    client: TestClient, mutation: Callable[..., dict[str, str]]
+) -> None:
+    assert client.get("/api/v1/system/status").json()["linear_window"] == 3
+
+    saved = client.put(
+        "/api/v1/settings/linear_window",
+        json={"value": 1},
+        headers=mutation(),
+    )
+    assert saved.status_code == 200, saved.text
+    assert saved.json() == {"key": "linear_window", "value": 1}
+    assert client.get("/api/v1/system/status").json()["linear_window"] == 1
+    assert saved.json() in client.get("/api/v1/settings").json()
+
+    for invalid in (0, 4, 1.5, True, "2"):
+        rejected = client.put(
+            "/api/v1/settings/linear_window",
+            json={"value": invalid},
+            headers=mutation(),
+        )
+        assert rejected.status_code == 422
+    assert client.get("/api/v1/system/status").json()["linear_window"] == 1
+
+
 def test_collection_crud_and_ordered_membership(
     client: TestClient,
     mutation: Callable[..., dict[str, str]],

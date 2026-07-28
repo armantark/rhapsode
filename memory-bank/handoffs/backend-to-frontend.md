@@ -209,6 +209,31 @@ each platform runner with `--target-triple` matching that runner.
   generation, scheduling, or grading; `ordinal` and segment ids remain the
   behavioral contract.
 
+## Linear Mastery Runway (2026-07-28)
+
+- `GET /api/v1/system/status` now includes `linear_window`, an integer from
+  1–3. The default is 3 when no row is stored.
+- Persist changes through the existing
+  `PUT /api/v1/settings/linear_window` request with
+  `{"value": <integer>}`. Non-integers, booleans, and values outside 1–3
+  return 422.
+- Smart sessions are already dealt in backend-owned runway order. The frontend
+  must render item order as returned and must not shuffle, regroup, or infer a
+  separate unlock policy.
+- `random_start` remains a valid manual mode but will never appear in a smart
+  session.
+- A smart session now ends with `forward_chaining` over a mastered prefix of at
+  least two lines, or `full_passage` when all lines are mastered.
+- Repeated `guided_recall` cards intentionally carry different prompt support
+  after each successful submission. Use the refreshed session returned by
+  `POST /sessions/{id}/attempts`; do not retain the session-creation prompt for
+  the next card.
+- `ReviewStateRead` carries `acquisition_succeeded` and `learning_step`, the
+  planner's own mastery gate. Derive "mastered" as
+  `acquisition_succeeded && learning_step === null` (the runway strip's
+  `runwayStates` helper does this); do not infer mastery from `mastery_stage`,
+  whose `learning` value covers two different situations.
+
 ## Frontend Handoff Prompt
 
 ```text

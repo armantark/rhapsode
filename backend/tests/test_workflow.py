@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from rhapsode.app import create_app
-from rhapsode.services import planning, prep
+from rhapsode.services import prep
 
 
 def test_end_to_end_recall_and_restart_recovery(
@@ -124,6 +124,64 @@ def test_guided_ladder_advances_after_three_cumulative_successes(
     assert next_item["prompt"]["learning_success_count"] == 0
 
 
+def test_guided_block_rebuilds_each_dealt_prompt_and_undo_restores_it(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    revision = passage["active_revision"]
+    acquisition = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    ).json()
+    for item in acquisition["items"]:
+        response = client.post(
+            f"/api/v1/sessions/{acquisition['id']}/attempts",
+            json={"item_id": item["id"], "rating": "hesitant"},
+            headers=mutation(),
+        )
+        assert response.status_code == 201, response.text
+
+    session = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision["id"], "segment_kinds": ["line"]},
+        headers=mutation(),
+    ).json()
+    target_id = session["items"][0]["segment_id"]
+    block = [item for item in session["items"] if item["segment_id"] == target_id]
+    assert len(block) == 3
+    assert block[0]["prompt"]["learning_success_count"] == 0
+
+    first = client.post(
+        f"/api/v1/sessions/{session['id']}/attempts",
+        json={"item_id": block[0]["id"], "rating": "hesitant"},
+        headers=mutation(),
+    )
+    assert first.status_code == 201, first.text
+    second = first.json()["session"]["items"][1]
+    assert second["prompt"]["learning_success_count"] == 1
+    assert second["prompt"]["target_text"] != block[0]["prompt"]["target_text"]
+
+    advanced = client.post(
+        f"/api/v1/sessions/{session['id']}/attempts",
+        json={"item_id": second["id"], "rating": "hesitant"},
+        headers=mutation(),
+    )
+    assert advanced.status_code == 201, advanced.text
+    third = advanced.json()["session"]["items"][2]
+    assert third["prompt"]["learning_success_count"] == 2
+
+    one_step_back = client.post(
+        f"/api/v1/sessions/{session['id']}/undo", headers=mutation()
+    ).json()
+    assert one_step_back["items"][1]["prompt"]["learning_success_count"] == 1
+    initial = client.post(
+        f"/api/v1/sessions/{session['id']}/undo", headers=mutation()
+    ).json()
+    assert initial["items"][0]["prompt"]["learning_success_count"] == 0
+
+
 def test_acquisition_failure_retries_once_at_session_tail(
     client: TestClient,
     mutation: Callable[..., dict[str, str]],
@@ -153,6 +211,13 @@ def test_acquisition_failure_retries_once_at_session_tail(
     assert "retry_source_item_id" not in retry
     assert failed.json()["mastery_stage"] == "new"
 
+    updated_hint = client.put(
+        f"/api/v1/segments/{first['segment_id']}/note",
+        json={"text": "retry-time mnemonic"},
+        headers=mutation(),
+    )
+    assert updated_hint.status_code == 200, updated_hint.text
+
     # The intervening line is completed before the generated tail retry.
     advanced = client.post(
         f"/api/v1/sessions/{session['id']}/attempts",
@@ -160,6 +225,7 @@ def test_acquisition_failure_retries_once_at_session_tail(
         headers=mutation(),
     ).json()["session"]
     assert advanced["current_index"] == retry["position"]
+    assert advanced["items"][-1]["prompt"]["hint"] == "retry-time mnemonic"
 
     # A retry is terminal even when it fails; it never recursively appends.
     retried = client.post(
@@ -268,8 +334,7 @@ def test_manual_acquisition_is_rejected_as_coach_only(
     assert "coach-only" in response.json()["detail"]
 
 
-def test_smart_session_random_start_targets_are_shuffled(
-    monkeypatch: pytest.MonkeyPatch,
+def test_smart_session_never_deals_random_start(
     client: TestClient,
     session_factory: object,
     mutation: Callable[..., dict[str, str]],
@@ -279,10 +344,6 @@ def test_smart_session_random_start_targets_are_shuffled(
 
     from rhapsode import models
 
-    def reverse(items: list[models.Segment]) -> None:
-        items.reverse()
-
-    monkeypatch.setattr(planning.random, "shuffle", reverse)
     revision = passage["active_revision"]
     lines = [segment for segment in revision["segments"] if segment["kind"] == "line"]
     with session_factory() as db:  # type: ignore[operator]
@@ -305,11 +366,10 @@ def test_smart_session_random_start_targets_are_shuffled(
         headers=mutation(),
     )
     assert created.status_code == 201, created.text
-    random_items = [
-        item for item in created.json()["items"] if item["mode"] == "random_start"
-    ]
-    assert [item["prompt"]["target_text"] for item in random_items] == [
-        segment["text"] for segment in reversed(lines)
+    items = created.json()["items"]
+    assert all(item["mode"] != "random_start" for item in items)
+    assert [item["segment_id"] for item in items[:-1]] == [
+        segment["id"] for segment in lines
     ]
 
 

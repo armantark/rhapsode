@@ -61,6 +61,7 @@ def system_status(db: Db) -> schemas.SystemStatusRead:
         gemini_key_configured=prep.resolve_api_key(db) is not None,
         fsrs_personal_parameters=scheduling._fsrs_parameters(db) is not None,
         desired_retention=settings.desired_retention,
+        linear_window=planning.linear_window(db),
     )
 
 
@@ -637,6 +638,7 @@ def get_session_detail(session_id: str, db: Db) -> models.PracticeSession:
     )
     if session is None:
         raise not_found("Session")
+    session_service.refresh_dealt_prompt(db, session)
     return session
 
 
@@ -1000,8 +1002,12 @@ def today(db: Db) -> schemas.TodayRead:
         )
         forecast.append(schemas.TodayForecastDay(date=day, due=due))
 
+    # Count only the due units the runway will actually deal: a due mid-ladder
+    # line past the window boundary is locked, and advertising it makes the
+    # "Practice N due" button promise cards the plan will not contain.
+    dealt_due = {item["segment_id"] for item in plan} & due_ids
     return schemas.TodayRead(
-        due_count=len(due_ids),
+        due_count=len(dealt_due),
         estimated_minutes=estimated_minutes,
         desired_retention=get_settings().desired_retention,
         measured_retention=measured,
@@ -1123,11 +1129,18 @@ def list_settings(db: Db) -> list[schemas.SettingRead]:
 
 @router.put("/settings/{key}", response_model=schemas.SettingRead, tags=["settings"])
 def put_setting(key: str, payload: schemas.SettingInput, db: Db) -> schemas.SettingRead:
+    if key == planning.LINEAR_WINDOW_SETTING:
+        try:
+            value = planning.validate_linear_window(payload.value)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+    else:
+        value = payload.value
     setting = db.get(models.AppSetting, key)
     if setting is None:
-        setting = models.AppSetting(key=key, value=payload.value)
+        setting = models.AppSetting(key=key, value=value)
         db.add(setting)
     else:
-        setting.value = payload.value
+        setting.value = value
     db.commit()
     return schemas.SettingRead(key=setting.key, value=setting.value)

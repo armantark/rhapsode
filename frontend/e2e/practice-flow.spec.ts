@@ -270,13 +270,16 @@ test('smart session teaches fresh lines through acquisition while junctures keep
 	await gradeWithKey(page, '4');
 	await expect(page.getByText('Session complete')).toBeVisible();
 
-	// With both flanking lines started, the next session admits the juncture
-	// on its established progressive-fading lesson.
+	// Both lines are acquired but neither has finished the ladder, so the
+	// juncture stays gated (its flanks must be MASTERED, not merely started).
+	// The next session instead deals each window line as a three-rep guided
+	// block: two lines, six ladder cards.
 	await page.goto('/');
 	await page.getByRole('link', { name: title }).click();
 	await page.getByRole('button', { name: '✦ Smart session' }).first().click();
 	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
-	await expect(page.getByText('0/3 items')).toBeVisible();
+	await expect(page.getByText('0/6 items')).toBeVisible();
+	await expect(page.getByText('progressive fading', { exact: true })).not.toBeVisible();
 });
 
 test('smart sessions gate each guided phase behind three successful recalls', async ({ page }) => {
@@ -291,18 +294,21 @@ test('smart sessions gate each guided phase behind three successful recalls', as
 	await expect(page.getByText('Session complete')).toBeVisible();
 	await page.goto(passageUrl);
 
+	// The runway deals the whole three-rep block in ONE session, and each card
+	// is rebuilt at deal time, so the success count advances between reps
+	// instead of between sessions.
+	await page.getByRole('button', { name: '✦ Smart session' }).first().click();
+	await expect(page).toHaveURL(/\/practice\/[\w-]+/);
 	for (const successCount of [0, 1, 2]) {
-		await page.getByRole('button', { name: '✦ Smart session' }).first().click();
-		await expect(page).toHaveURL(/\/practice\/[\w-]+/);
 		await expect(page.getByText('guided recall', { exact: true })).toBeVisible();
 		await expect(page.getByText('Cumulative chunks')).toBeVisible();
 		await expect(page.getByLabel(`${successCount} of 3 successful recalls`)).toBeVisible();
 		await page.getByRole('button', { name: /Show answer/ }).click();
 		await expect(page.getByRole('button', { name: '3 Good' })).toBeEnabled();
 		await gradeWithKey(page, '3');
-		await expect(page.getByText('Session complete')).toBeVisible();
-		await page.goto(passageUrl);
 	}
+	await expect(page.getByText('Session complete')).toBeVisible();
+	await page.goto(passageUrl);
 
 	await page.getByRole('button', { name: '✦ Smart session' }).first().click();
 	await expect(page.getByText('Fade the ending')).toBeVisible();

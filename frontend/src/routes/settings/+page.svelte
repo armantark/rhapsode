@@ -15,6 +15,11 @@
 	let savingKey = $state(false);
 	let keyNotice = $state('');
 
+	// The window lives server-side (unlike the practice defaults below) because
+	// the planner reads it when it builds a session, not the browser.
+	const WINDOW_CHOICES = [1, 2, 3];
+	let savingWindow = $state(false);
+
 	// Practice defaults live in localStorage (per-browser, like the practice
 	// page toggles) — surfaced here so they're discoverable in one place.
 	const MIC_KEY = 'rhapsode.micEnabled';
@@ -29,6 +34,8 @@
 		if (hours < 48) return `${Math.round(hours)}h ago`;
 		return `${Math.round(hours / 24)} days ago`;
 	});
+
+	const linearWindow = $derived.by(() => (status as SystemStatus | null)?.linear_window ?? 3);
 
 	onMount(async () => {
 		soundOn = isSoundEnabled();
@@ -57,6 +64,20 @@
 			error = `Could not save the key: ${cause instanceof Error ? cause.message : cause}`;
 		} finally {
 			savingKey = false;
+		}
+	}
+
+	async function saveWindow(size: number) {
+		if (savingWindow || size === linearWindow) return;
+		savingWindow = true;
+		error = '';
+		try {
+			await api.putSetting('linear_window', size);
+			status = await api.systemStatus();
+		} catch (cause) {
+			error = `Could not change the window: ${cause instanceof Error ? cause.message : cause}`;
+		} finally {
+			savingWindow = false;
 		}
 	}
 
@@ -110,6 +131,29 @@
 					<code>uv run --extra optimizer python scripts/optimize_fsrs.py</code> from
 					<code>backend/</code> to fit personal weights.
 				{/if}
+			</p>
+		</section>
+
+		<section class="card">
+			<span class="eyebrow">Linear window</span>
+			<p>
+				Lines unlock in passage order. The window is how many not-yet-mastered lines a session
+				may work on at once — everything after them stays locked until the ones in front are
+				mastered.
+			</p>
+			<div class="toggles" role="group" aria-label="Linear window size">
+				{#each WINDOW_CHOICES as size (size)}
+					<button
+						class:active={linearWindow === size}
+						aria-pressed={linearWindow === size}
+						disabled={savingWindow}
+						onclick={() => saveWindow(size)}
+					>{size} line{size === 1 ? '' : 's'}</button>
+				{/each}
+			</div>
+			<p class="muted small">
+				Three lines is the default. One line is the purist setting: you never meet a new line
+				until the line before it is mastered, which takes about 50% longer to cover a passage.
 			</p>
 		</section>
 

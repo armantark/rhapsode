@@ -567,8 +567,11 @@ Arman's Codex session.
 
 ## Next Work
 
-- Push repo to GitHub and cut first desktop release tag (`desktop-v0.0.1` or
-  `v0.0.1`) to trigger draft release workflow.
+- DONE 2026-07-29: main pushed through commit 73d96d5; `desktop-v0.0.2`
+  tagged (tauri 2.11.5 via cargo update, app version 0.0.2, sidecar smoke
+  green) and the draft-release workflow ran; the site/ nested repo now
+  lives at github.com/armantark/rhapsode-site (PRIVATE — its data
+  migration carries personal learning history; never make it public).
 - Code signing / notarization (macOS) and Windows Authenticode — optional second
   pass; unsigned artifacts show OS trust warnings.
 - Manual install smoke: open `.dmg`/installer, create passage, practice, reload,

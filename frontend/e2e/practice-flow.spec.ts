@@ -247,6 +247,67 @@ test('desktop two-column layout stacks on a phone viewport', async ({ page }) =>
 	expect(phoneCols).toBe(1);
 });
 
+test.describe('phone emulation', () => {
+	// hasTouch flips (pointer: coarse) in Chromium, which is what drives the
+	// touch-first copy; a bare viewport resize leaves the pointer "fine".
+	test.use({ hasTouch: true, viewport: { width: 390, height: 844 } });
+
+	test('phone viewport pins the grade bar to the bottom as four thumb-reachable buttons', async ({
+		page
+	}) => {
+		const title = `Mobile grade bar e2e ${Date.now()}`;
+		await createGreekPassage(page, title);
+
+		await startManualSession(page);
+		await expect(page).toHaveURL(/\/practice\/[\w-]+/);
+		await expect(page.getByText('Recite this line to the end.')).toBeVisible();
+
+		const grades = page.locator('.grades');
+		// The toolbar must never collide with the session title, and nothing may
+		// bleed past the viewport's right edge.
+		const headTitle = await page.locator('.head-title').boundingBox();
+		const headActions = await page.locator('.head-actions').boundingBox();
+		expect(headTitle).not.toBeNull();
+		expect(headActions).not.toBeNull();
+		if (!headTitle || !headActions) return;
+		// The mobile head stacks: title line first, toolbar on its own row BELOW
+		// it — so the regions must not overlap vertically.
+		expect(headActions.y).toBeGreaterThanOrEqual(headTitle.y + headTitle.height - 1);
+		expect(headActions.x + headActions.width).toBeLessThanOrEqual(390);
+
+		// Four across in one row, stuck to the bottom edge. Polling avoids the
+		// mount-time re-render race (pointer detection recreates the bar).
+		await expect(grades).toBeVisible();
+		await expect
+			.poll(async () =>
+				grades.evaluate(
+					(element) => getComputedStyle(element).gridTemplateColumns.split(' ').length
+				)
+			)
+			.toBe(4);
+		await expect
+			.poll(async () => (await grades.boundingBox())?.y ?? 0)
+			.toBeGreaterThan(844 - 200);
+		const box = await grades.boundingBox();
+		expect((box?.y ?? 0) + (box?.height ?? 0)).toBeGreaterThan(844 - 16);
+
+		// Grading stays reachable while the content above is scrolled.
+		await page.evaluate(() => window.scrollBy(0, 120));
+		const afterScroll = await grades.boundingBox();
+		expect((afterScroll?.y ?? 0) + (afterScroll?.height ?? 0)).toBeGreaterThan(844 - 16);
+
+		// Touch copy: the keyboard shortcut phrasing is for fine pointers only.
+		await expect(page.getByText(/press .*Space.* to check/)).not.toBeVisible();
+		await expect(page.getByText(/tap .*Show answer to check/)).toBeVisible();
+
+		// The bar is live: reveal via the button, then grade from the bar. On
+		// touch the digit keycap is hidden, so the accessible name is bare.
+		await page.getByRole('button', { name: /Show answer/ }).click();
+		await page.getByRole('button', { name: 'Easy', exact: true }).click();
+		await expect(page.getByText('1/2 items')).toBeVisible();
+	});
+});
+
 test('smart session teaches fresh lines through acquisition while junctures keep fading', async ({ page }) => {
 	const title = `Smart e2e ${Date.now()}`;
 	await createGreekPassage(page, title);

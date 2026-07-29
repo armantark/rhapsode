@@ -136,8 +136,39 @@
 	}
 
 	@media (max-width: 700px) {
+		/* Phone: one compact row instead of the old two-row wrap, which spent
+		   ~90px of the first screenful on chrome. The brand collapses to its
+		   monogram (the full wordmark still lives in the tab title) and the
+		   links scroll sideways if they ever outgrow the row — nothing is
+		   hidden behind a menu, and Practice stays one tap away. */
 		nav {
-			gap: 8px 16px;
+			flex-wrap: nowrap;
+			gap: 6px 15px;
+			padding: 14px 0;
+			margin-bottom: 18px;
+			overflow-x: auto;
+			scrollbar-width: none;
+		}
+
+		nav::-webkit-scrollbar {
+			display: none;
+		}
+
+		nav a:not(.brand) {
+			font-size: 0.88rem;
+			white-space: nowrap;
+		}
+
+		/* The full wordmark needs letter-spacing to breathe; the collapsed
+		   monogram doesn't, and leftover spacing would offset its centering. */
+		.brand {
+			font-size: 0;
+			letter-spacing: 0;
+			flex-shrink: 0;
+		}
+
+		.brand::first-letter {
+			font-size: 1.05rem;
 		}
 	}
 

@@ -274,6 +274,34 @@
 		width: 26px;
 	}
 
+	/* Phone: let the week share the full width evenly. A fixed 26px column left
+	   the counts offset from their bars and the row cramped to one side. */
+	@media (max-width: 700px) {
+		.head {
+			align-items: flex-start;
+			flex-direction: column;
+			gap: 10px;
+		}
+
+		.head .new {
+			align-self: stretch;
+		}
+
+		.head .new button {
+			width: 100%;
+		}
+
+		.forecast {
+			gap: 8px;
+			padding: 0;
+		}
+
+		.forecast-day {
+			width: auto;
+			flex: 1;
+		}
+	}
+
 	.forecast-bar {
 		width: 100%;
 		background: var(--surface-2, #1e232c);

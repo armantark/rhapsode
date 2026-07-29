@@ -499,6 +499,18 @@ deploys the merged database and the runway/warmup Worker port back to
 Sites. Retired source passages remain, marked "Merged into", deletable
 via the UI whenever.
 
+Sites Phase B local release prepared (2026-07-28): the Worker now matches the
+warmup → work → cooldown planner, automatic rotations contain no chains or
+`random_start`, the temporary export route is removed, and the SPA is a fresh
+frontend production build from root commit `7558b16`. `npm run data:export`
+ran once and wrote
+`0002_merged_data.sql` with 2,587 merged local rows. A new migration was
+required because live D1 already records `0001_live_data` as applied. The Site
+build and all 19 tests pass. Deployment stopped before version creation because
+this session cannot resolve the Sites Git host and the Sites connector has no
+native source-upload command. Production is unchanged, so the Phase A export
+route is still live.
+
 ## Next Work
 
 - Push repo to GitHub and cut first desktop release tag (`desktop-v0.0.1` or

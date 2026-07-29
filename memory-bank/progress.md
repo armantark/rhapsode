@@ -302,3 +302,9 @@
   attempts, practice items/sessions, FSRS logs/cards, notes, settings, media
   metadata, and content rows. Practice freeze began at 2026-07-28T22:48:04Z;
   Phase B must remove the route after deploying the merged database.
+- Sites Phase B local release (2026-07-28): the runway Worker now includes the
+  warmup → work → cooldown addendum, the SPA is rebuilt, the temporary route is
+  removed locally, and `0002_merged_data.sql` contains the one-time 2,587-row
+  local snapshot. The Site build and 19 tests pass. Deployment is still
+  pending because this session cannot reach the Sites source Git host. The
+  production Phase A route remains live until that deployment succeeds.

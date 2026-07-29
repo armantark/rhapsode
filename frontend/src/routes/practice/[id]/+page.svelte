@@ -86,6 +86,9 @@
 	// Consecutive clean recalls this tab — a competence/curiosity driver that
 	// escalates the reward (brighter tone, growing chip).
 	let streak = $state(0);
+	// Keyboard affordances (⌘Z, Space) are hidden on touch devices, where the
+	// on-screen buttons carry the same actions with touch phrasing instead.
+	let finePointer = $state(true);
 
 	function trailingCleans(): number {
 		let count = 0;
@@ -245,6 +248,7 @@
 	onMount(async () => {
 		micEnabled = localStorage.getItem(MIC_KEY) === 'true';
 		soundOn = isSoundEnabled();
+		finePointer = window.matchMedia('(pointer: fine)').matches;
 		const storedLayerPrefs = localStorage.getItem(LAYERS_KEY);
 		hasStoredLayerPrefs = storedLayerPrefs !== null;
 		try {
@@ -531,7 +535,7 @@
 	<p class="error-banner" role="alert">{error || 'Session not found.'}</p>
 {:else}
 	<header class="head">
-		<div>
+		<div class="head-title">
 			<span class="eyebrow">{collectionName ? 'Collection practice' : 'Practice session'}</span>
 			<h1>{sessionTitle}</h1>
 			{#if collectionName && passageReference}
@@ -539,6 +543,7 @@
 			{/if}
 		</div>
 		<div class="head-actions">
+			<span class="tag">{doneCount}/{items.length} items</span>
 			{#if streak >= 2}
 				{#key streak}
 					<span class="streak" class:hot={streak >= 5} title="{streak} clean in a row">
@@ -550,14 +555,13 @@
 				class="ghost"
 				onclick={undo}
 				disabled={undoing || session.status === 'expired' || (doneCount === 0 && session.status !== 'completed')}
-				title="Undo last card (⌘Z)"
+				title={finePointer ? 'Undo last card (⌘Z)' : 'Undo last card'}
 			>
-				↶ Undo <kbd>⌘Z</kbd>
+				↶ Undo{#if finePointer} <kbd>⌘Z</kbd>{/if}
 			</button>
 			<button class="ghost" onclick={toggleSound} aria-pressed={soundOn} title="Toggle sound">
 				{soundOn ? '🔊' : '🔇'}
 			</button>
-			<span class="tag">{doneCount}/{items.length} items</span>
 		</div>
 	</header>
 
@@ -680,10 +684,13 @@
 						Read the line, rebuild it, and check the rebuild — grading unlocks at the check.
 					{:else if currentItem.mode === 'typed_recall' || (currentItem.mode === 'guided_recall' && (currentItem.prompt as Record<string, unknown>).response_format === 'typed')}
 						<!-- Space types into the textarea, so pointing at it would lie. -->
-						Type from memory, then click “Show answer to check” — grading unlocks after
+						Type from memory, then {#if finePointer}click{:else}tap{/if} “Show answer to check” — grading unlocks after
+						the check.
+					{:else if finePointer}
+						Recite from memory, then press <kbd>Space</kbd> to check — grading unlocks after
 						the check.
 					{:else}
-						Recite from memory, then press <kbd>Space</kbd> to check — grading unlocks after
+						Recite from memory, then tap “Show answer to check” — grading unlocks after
 						the check.
 					{/if}
 				</p>
@@ -691,6 +698,9 @@
 		{/if}
 		{#if lastFeedback}
 			<p class="feedback">{lastFeedback}</p>
+		{/if}
+		{#if currentItem.mode !== 'recital'}
+			<div class="grade-scroll-pad" aria-hidden="true"></div>
 		{/if}
 	{:else if session.status === 'expired'}
 		<div class="card summary">
@@ -717,7 +727,7 @@
 			</ul>
 			<p class="muted small">
 				Counts reflect attempts submitted in this browser tab; the durable record lives in review
-				analytics. Press <kbd>⌘Z</kbd> to reopen the last card.
+				analytics. {#if finePointer}Press <kbd>⌘Z</kbd> to reopen the last card.{:else}Tap ↶ Undo to reopen the last card.{/if}
 			</p>
 			<div class="row">
 				{#if remainingDue !== null && remainingDue > 0}
@@ -742,6 +752,7 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: flex-end;
+		gap: 14px;
 	}
 
 	.head h1 {
@@ -752,6 +763,32 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
+		flex-shrink: 0;
+	}
+
+	/* Phone: the card is the hero, not the session title. The title shrinks to
+	   a single truncated line and the toolbar moves BELOW it, so the two can
+	   never overlap — a side-by-side flex row is what let Undo drift over the
+	   wrapped title. The counter lives with the toolbar so the title never has
+	   to share a row. */
+	@media (max-width: 700px) {
+		.head {
+			flex-direction: column;
+			align-items: stretch;
+			gap: 2px;
+		}
+
+		.head h1 {
+			font-size: 1.12rem;
+			margin: 4px 0 0;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		.head-actions {
+			justify-content: flex-end;
+		}
 	}
 
 	.ghost {
@@ -956,6 +993,26 @@
 		margin: 4px 0 12px;
 	}
 
+	/* Phone: a wrapping chip row orphaned single chips (Meter alone on a line);
+	   a single horizontally scrollable strip keeps the row tidy. */
+	@media (max-width: 700px) {
+		.layers {
+			flex-wrap: nowrap;
+			overflow-x: auto;
+			padding-bottom: 4px;
+			scrollbar-width: none;
+		}
+
+		.layers::-webkit-scrollbar {
+			display: none;
+		}
+
+		.layers .muted,
+		.layer-chip {
+			flex-shrink: 0;
+		}
+	}
+
 	.layer-chip {
 		font-size: 0.74rem;
 		padding: 3px 10px;
@@ -999,6 +1056,14 @@
 		gap: 10px;
 		align-items: center;
 		flex-wrap: wrap;
+	}
+
+	/* Reserve room below the last element so the sticky grade bar never covers
+	   the card tail or the recorder when scrolled to the bottom. */
+	@media (max-width: 700px) {
+		.grade-scroll-pad {
+			height: 86px;
+		}
 	}
 
 	.queue-clear {

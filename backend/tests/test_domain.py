@@ -742,9 +742,11 @@ def test_smart_plan_serves_due_reviews_before_new_material(session_factory: obje
         assert planned == {2, 3, 4, 5, 6}
         assert plan[0]["mode"] == "forward_chaining"
         assert ordinals[plan[0]["segment_id"]] == 3
-        # A warmup that starts mid-passage (prefix is 4 lines, tail covers
-        # 2-4) anchors on the preceding line's tail so the entry is cued.
+        # A run is cued at BOTH ends: the warmup chain (prefix is 4 lines,
+        # tail covers 2-4) enters on line 0's tail and hands off into the
+        # head of the line after the chain.
         assert plan[0]["prompt"]["lead_in"] == "line 0"
+        assert plan[0]["prompt"]["lead_out"] == "line 4"
         assert [ordinals[item["segment_id"]] for item in plan[1:6]] == [2, 3, 4, 5, 6]
         assert plan[-1]["mode"] == "forward_chaining"
         assert ordinals[plan[-1]["segment_id"]] == 3

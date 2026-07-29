@@ -682,15 +682,21 @@
 		{/if}
 	{:else if isChaining}
 		{#if typeof prompt.lead_in === 'string' && prompt.lead_in}
-			<!-- A warmup chain that starts mid-passage cues its own entry point
-			     with the preceding line's tail, the way junctures do — a chain
-			     with no reference is a cold drop, not a run-up. -->
+			<!-- A run is cued at BOTH ends: the previous line's tail says where
+			     it enters, the next line's head says where it hands off. A chain
+			     that stops dead mid-poem trains a recitation that stops dead. -->
 			<div class="cue-line">
 				<span class="cue passage-text" {lang} style:font-family={fonts}>{prompt.lead_in}</span>
 				<span class="muted">… carry on from here</span>
 			</div>
 		{/if}
 		<p class="muted blank">Recite {chainRange} from memory.</p>
+		{#if typeof prompt.lead_out === 'string' && prompt.lead_out}
+			<div class="cue-line">
+				<span class="muted">… handing off into</span>
+				<span class="cue passage-text" {lang} style:font-family={fonts}>{prompt.lead_out}</span>
+			</div>
+		{/if}
 	{:else if item.mode === 'meaning_recall'}
 		<div class="cue-line">
 			<span class="meaning-cue">“{translationCue}”</span>

@@ -259,6 +259,14 @@ def _guided_recall_prompt(
 
 
 def _previous_line(target: models.Segment) -> models.Segment | None:
+    return _adjacent_line(target, -1)
+
+
+def _next_line(target: models.Segment) -> models.Segment | None:
+    return _adjacent_line(target, 1)
+
+
+def _adjacent_line(target: models.Segment, offset: int) -> models.Segment | None:
     revision = target.revision
     if revision is None:
         return None
@@ -268,7 +276,8 @@ def _previous_line(target: models.Segment) -> models.Segment | None:
     )
     for index, line in enumerate(lines):
         if line.id == target.id:
-            return lines[index - 1] if index > 0 else None
+            neighbour = index + offset
+            return lines[neighbour] if 0 <= neighbour < len(lines) else None
     return None
 
 
@@ -516,10 +525,23 @@ def prompt_for(
             return _typed_recall_prompt(target, effective_hint)
         case "meaning_recall":
             return _meaning_recall_prompt(target)
-        case "forward_chaining":
-            return _chain_prompt(context, line_numbers)
-        case "backward_chaining":
-            return _chain_prompt(context, line_numbers)
+        case "forward_chaining" | "backward_chaining":
+            # A run carries a cue at BOTH ends (Arman's ruling, 2026-07-29):
+            # the previous line's tail says where the run enters, and the next
+            # line's head says where it hands off — a chain that stops dead
+            # mid-poem trains a recitation that stops dead mid-poem. The
+            # passage's true first and last lines stay uncued.
+            prompt = _chain_prompt(context, line_numbers)
+            if context:
+                from rhapsode.services.passages import _head, _tail
+
+                previous = _previous_line(context[0])
+                if previous is not None:
+                    prompt["lead_in"] = _tail(previous.text)
+                following = _next_line(context[-1])
+                if following is not None:
+                    prompt["lead_out"] = _head(following.text)
+            return prompt
         case "cue_recall":
             return _recall_prompt(target, "Recite this line to the end.", effective_hint)
         case "random_start":
@@ -1217,12 +1239,10 @@ def build_smart_plan_for_revisions(
     # comes from the last collection member with a mastered prefix. And a
     # warmup that starts mid-passage must CUE its own entry point: "recite
     # 1.6-1.8 from memory" with no reference is the same cold drop the warmup
-    # exists to prevent, so it carries the preceding line's tail as a lead-in
-    # anchor, the way junctures do.
-    warmup: list[tuple[models.Segment, str, list[models.Segment], str | None]] = []
+    # exists to prevent. Both anchors (the entry tail and the exit head) now
+    # live on the chain prompt itself, so the warmup needs no special casing.
+    warmup: list[tuple[models.Segment, str, list[models.Segment]]] = []
     if candidates:
-        from rhapsode.services.passages import _tail as line_tail
-
         for revision, _segments in reversed(revision_segments):
             lines = sorted(
                 lines_by_ordinal_by_revision[revision.id].values(),
@@ -1234,20 +1254,13 @@ def build_smart_plan_for_revisions(
             if not prefix:
                 continue
             tail = prefix[-3:]
-            # The anchor is whatever line precedes the tail in the PASSAGE, not
-            # in the scope: a range starting at line 40 still deserves line 39's
-            # tail as its entry cue, and unscoped this is exactly prefix[-4].
-            anchor_index = lines.index(tail[0]) - 1
-            lead_in = line_tail(lines[anchor_index].text) if anchor_index >= 0 else None
             if len(tail) >= 2:
-                warmup.append(
-                    (tail[-1], PracticeMode.forward_chaining.value, tail, lead_in)
-                )
+                warmup.append((tail[-1], PracticeMode.forward_chaining.value, tail))
             elif all(segment.id != tail[0].id for segment, _mode in candidates):
                 # A one-line warmup is a plain cued recall — unless the review
                 # portion already deals that very line, which serves as the
                 # warmup itself (it is first in passage order anyway).
-                warmup.append((tail[0], PracticeMode.cue_recall.value, [tail[0]], None))
+                warmup.append((tail[0], PracticeMode.cue_recall.value, [tail[0]]))
             break
 
     seconds = _mode_seconds(db)
@@ -1342,12 +1355,7 @@ def build_smart_plan_for_revisions(
             int(segment.kind != "juncture"),
         )
 
-    items = []
-    for target, mode, context, lead_in in warmup:
-        item = definition(target, mode, context)
-        if lead_in is not None:
-            item["prompt"]["lead_in"] = lead_in
-        items.append(item)
+    items = [definition(target, mode, context) for target, mode, context in warmup]
     items.extend(
         definition(segment, mode)
         for segment, mode in [

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deadline Night — Everything That Shipped</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌙</text></svg>">
+<style>
+:root {
+    --bg: #0c0e12;
+    --surface: #161a21;
+    --surface-2: #1e232c;
+    --border: #2a3040;
+    --text: #e8ecf4;
+    --text-dim: #8b95a8;
+    --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.15);
+    --red: #ff5c5c;
+    --green: #4ade80;
+    --amber: #fbbf24;
+    --purple: #a78bfa;
+    --radius: 12px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Outfit', 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
+    line-height: 1.55; padding: 2.5rem 1.5rem 4rem;
+}
+.wrap { max-width: 1080px; margin: 0 auto; }
+.badge {
+    display: inline-block; font-family: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+    font-size: 0.7rem; letter-spacing: 0.12em; color: var(--green);
+    background: rgba(74,222,128,0.12); border: 1px solid var(--green);
+    border-radius: 999px; padding: 0.3rem 0.9rem; margin-bottom: 1rem;
+}
+h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+.subtitle { color: var(--text-dim); font-size: 0.95rem; max-width: 64ch; }
+h2 { font-size: 1.1rem; margin: 2.1rem 0 0.9rem; }
+p { margin-bottom: 0.7rem; }
+.dim { color: var(--text-dim); }
+.small { font-size: 0.8rem; }
+.card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.2rem 1.35rem; margin-bottom: 1rem;
+}
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.7rem; }
+.metric {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 0.7rem 0.9rem; text-align: center;
+}
+.metric .val { font-family: 'JetBrains Mono', Menlo, monospace; font-size: 1.1rem; color: var(--green); font-weight: 700; }
+.metric .lbl { font-size: 0.66rem; color: var(--text-dim); letter-spacing: 0.06em; margin-top: 0.15rem; }
+/* timeline */
+.timeline { border-left: 2px solid var(--border); margin-left: 0.5rem; padding-left: 1.4rem; }
+.tl {
+    position: relative; margin-bottom: 1.15rem;
+}
+.tl::before {
+    content: ""; position: absolute; left: -1.85rem; top: 0.35rem;
+    width: 11px; height: 11px; border-radius: 50%;
+    background: var(--accent); border: 2px solid var(--bg);
+}
+.tl.warn::before { background: var(--amber); }
+.tl .when { font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.62rem; letter-spacing: 0.1em; color: var(--text-dim); }
+.tl .what { font-weight: 600; font-size: 0.95rem; }
+.tl p { font-size: 0.85rem; color: var(--text-dim); margin: 0.15rem 0 0; }
+/* session sweep mockup */
+.mock { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-top: 0.6rem; }
+.mock .mtitle {
+    font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.62rem;
+    letter-spacing: 0.14em; padding: 0.4rem 0.7rem; background: var(--surface-2);
+    color: var(--text-dim); border-bottom: 1px solid var(--border);
+}
+.mrow {
+    display: flex; align-items: center; gap: 0.55rem; padding: 0.28rem 0.7rem;
+    font-size: 0.74rem; border-bottom: 1px solid rgba(42,48,64,0.5);
+}
+.mrow:last-child { border-bottom: none; }
+.chip {
+    font-family: 'JetBrains Mono', Menlo, monospace; font-size: 0.6rem;
+    border-radius: 4px; padding: 0.05rem 0.4rem; flex-shrink: 0; min-width: 6.2rem; text-align: center;
+}
+.c-rev { background: rgba(74,222,128,0.15); color: var(--green); }
+.c-lad { background: rgba(79,140,255,0.18); color: var(--accent); }
+.c-jun { background: rgba(251,191,36,0.15); color: var(--amber); }
+.mtext { color: var(--text-dim); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+ul.plain { list-style: none; }
+ul.plain li { margin-bottom: 0.45rem; padding-left: 1.1rem; position: relative; font-size: 0.87rem; }
+ul.plain li::before { content: "—"; position: absolute; left: 0; color: var(--accent); }
+.publish {
+    border: 1px solid var(--amber); border-radius: var(--radius);
+    background: rgba(251,191,36,0.06); padding: 1.2rem 1.35rem; margin-bottom: 1rem;
+}
+.publish pre {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.9rem; font-size: 0.72rem; line-height: 1.5; overflow-x: auto;
+    font-family: 'JetBrains Mono', Menlo, monospace; white-space: pre-wrap; margin: 0.7rem 0;
+}
+button.copybtn {
+    background: var(--amber); color: #0c0e12; font-weight: 700; border: none;
+    border-radius: 8px; padding: 0.55rem 1.1rem; font-size: 0.85rem;
+    cursor: pointer; font-family: inherit;
+}
+.warnbox { border-left: 3px solid var(--amber); padding-left: 0.9rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<span class="badge">COMPLETED · DEADLINE NIGHT · 2026-07-28</span>
+<h1>Everything That Shipped Tonight</h1>
+<p class="subtitle">
+Target: Iliad 1.1–1.13 by morning. One passage, one truth, one forward sweep per
+session, a range picker for exactly the lines that matter tonight, and drills
+that speed up when you are good and step down when you are stuck.
+</p>
+
+<h2>Verification — all green, both repos committed</h2>
+<div class="metrics">
+  <div class="metric"><div class="val">129</div><div class="lbl">BACKEND PYTEST</div></div>
+  <div class="metric"><div class="val">113</div><div class="lbl">VITEST</div></div>
+  <div class="metric"><div class="val">24/24</div><div class="lbl">PLAYWRIGHT</div></div>
+  <div class="metric"><div class="val">29/29</div><div class="lbl">WORKER TESTS</div></div>
+  <div class="metric"><div class="val">0/0</div><div class="lbl">SVELTE-CHECK</div></div>
+  <div class="metric"><div class="val">2/2</div><div class="lbl">REVIEW ROUNDS (DRY)</div></div>
+</div>
+
+<div class="publish">
+<strong>⚠ One step pending: paste this into your Codex session.</strong>
+<pre id="publish-text">Publish the current site build (do NOT rebuild, do NOT run npm run data:export
+— publish dist/ as built). This bundle carries: the one-sweep linear session
+(warmup → position-sorted reviews/seams/blocks → finisher, never a backward
+jump), the runway range picker (tap two lines → "Practice lines N–M" scopes
+the whole planner to them), Easy counting as two ladder successes, two
+consecutive failures dropping a line one ladder phase, failed chains blaming
+only their last line, instant grade taps, the fade-the-opening phase carrying
+the previous line's tail, and the mobile fixes. Live smoke: a smart session on
+Iliad 1 deals monotonically forward with seams between blocks; pick lines 9-13
+on the strip and confirm the session opens on the 1.8→1.9 seam cued by 1.8's
+tail; grade taps advance instantly on a phone.
+Report the live URL and smoke results.</pre>
+<button class="copybtn" onclick="copyPublish(this)">Copy the publish prompt</button>
+</div>
+
+<h2>Your session now — verified live on your real data</h2>
+<div class="card">
+<div class="mock">
+<div class="mtitle">ONE SWEEP, NEVER BACKWARD (actual plan from your database)</div>
+<div class="mrow"><span class="chip c-rev">warmup chain</span><span class="mtext">recite 1.6 → 1.8, cued by 1.5's tail</span></div>
+<div class="mrow"><span class="chip c-rev">review</span><span class="mtext">1.8 (due) — shadowing with the teacher's audio</span></div>
+<div class="mrow"><span class="chip c-lad">ladder ×3</span><span class="mtext">1.9 — half-word cues, Easy counts double</span></div>
+<div class="mrow"><span class="chip c-jun">seam</span><span class="mtext">1.9 → 1.10, dealt exactly at its position</span></div>
+<div class="mrow"><span class="chip c-lad">ladder ×3</span><span class="mtext">1.10, then 1.11 — blocks stay adjacent</span></div>
+<div class="mrow"><span class="chip c-rev">finisher</span><span class="mtext">chain 1.1 → 1.8 (full passage once all master)</span></div>
+</div>
+<p class="dim small" style="margin-top:0.6rem;">
+Scoping 9–13 with the picker opens on the 1.8→1.9 seam cued by 1.8's actual tail
+("… ἔριδι ξυνέηκε μάχεσθαι;") — the runway strip is the picker: tap a start line,
+tap an end line, hit "Practice lines 9–13".
+</p>
+</div>
+
+<h2>The night, in order</h2>
+<div class="card">
+<div class="timeline">
+<div class="tl"><span class="when">SYNC</span><div class="what">The site's D1 progress came home</div><p>Codex added a token-gated export route (a code-only deploy), dumped all 2,469 rows, and the importer rebuilt local SQLite from it — snapshots first, counts and foreign keys verified.</p></div>
+<div class="tl"><span class="when">MERGE</span><div class="what">Four Iliad passages became one</div><p>20 labeled lines, 19 junctures, every review state, attempt, FSRS log, note, and audio cue span carried over. Collections are now shelves for families of works.</p></div>
+<div class="tl warn"><span class="when">REPAIR</span><div class="what">Two data lies corrected</div><p>106 orphaned word-soup tokens re-parented (a merge bug, fixed and test-pinned), and the old Worker's fake mastery undone: it had marked lines mastered on acquisition alone — zero guided recalls in the entire history. Honest count: 8 of 20; 1.9–1.12 re-entered at half-word cues.</p></div>
+<div class="tl"><span class="when">MOBILE</span><div class="what">The phone became the primary surface</div><p>Grade bar fixed to the bottom edge (four across, thumb height), stacked header, touch-first copy, compact nav, tidy chip strip — Kimi's design, with the sticky-versus-fixed pinning gap and three spec bugs fixed in review.</p></div>
+<div class="tl"><span class="when">DRILLS</span><div class="what">Practice fights on your side</div><p>Two consecutive failures step a line down a ladder phase (mastered lines re-enter at the last phase). A failed chain blames only its last line — your solid lines stop eating lapses. Easy counts as two successes. Grade taps advance instantly.</p></div>
+<div class="tl"><span class="when">GOAL LOOP</span><div class="what">"As linear as possible" — two rounds, then dry</div><p>Round one: sessions concatenated portion-by-portion and jumped backward — replaced with one position-sorted sweep; the fade-the-opening phase now carries the previous line's tail (openings are cued by predecessors, per your own doctrine). Round two, fresh read plus live plans: nothing actionable left.</p></div>
+</div>
+</div>
+
+<h2>Open items</h2>
+<div class="card warnbox">
+<ul class="plain">
+<li>The publish (above) — after it, the deployed site is the source of truth again; the sync pipeline (export route pattern, importer, merge tool) exists for the next round trip.</li>
+<li>Sono Chi no Sadame carries the same old-Worker fake-mastery pattern on its four started lines — same one-line repair when you next practice it.</li>
+<li>Small carried-over polish: passage-page launcher lock copy, lock-aware 7-day forecast, settings/collections 390px nits.</li>
+<li>Codex and Claude are past today's budget lines (next blocks within the hour); Kimi is guarded per your call. Nothing left tonight needs any of them.</li>
+</ul>
+</div>
+
+</div>
+<script>
+function copyPublish(btn) {
+  navigator.clipboard.writeText(document.getElementById('publish-text').textContent).then(() => {
+    btn.textContent = 'Copied ✓';
+    setTimeout(() => { btn.textContent = 'Copy the publish prompt'; }, 1500);
+  });
+}
+</script>
+</body>
+</html>

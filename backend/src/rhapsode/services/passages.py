@@ -310,15 +310,6 @@ def merge_passages(
                 ],
             )
 
-        inputs: list[schemas.SegmentInput] = []
-        for line in source_lines:
-            inputs.append(_input(line, None))
-            inputs.extend(
-                _input(child, line)
-                for child in sorted(
-                    children_by_parent.get(line.id, []), key=lambda s: s.ordinal
-                )
-            )
         prior_ids = {
             segment.id
             for segment in host_revision.segments
@@ -333,6 +324,23 @@ def merge_passages(
             default=-1,
         )
         offset = prior_max + 1
+        inputs: list[schemas.SegmentInput] = []
+        for line in source_lines:
+            inputs.append(_input(line, None))
+            for child in sorted(
+                children_by_parent.get(line.id, []), key=lambda s: s.ordinal
+            ):
+                # add_segments processes inputs sorted by ordinal and resolves
+                # parent_client_id against already-created rows. append shifts
+                # only top-level ordinals, so an unshifted child would sort
+                # BEFORE its shifted parent and be orphaned to the top level
+                # (the merged-Iliad word-soup bug). Shift children by the same
+                # offset their parents will receive.
+                inputs.append(
+                    _input(child, line).model_copy(
+                        update={"ordinal": child.ordinal + offset}
+                    )
+                )
         host_revision = append_segments(db, host_revision, inputs)
 
         appended = sorted(

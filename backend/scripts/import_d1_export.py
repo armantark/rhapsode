@@ -52,7 +52,7 @@ TABLE_ORDER = [
 def _sqlite_value(value: Any) -> Any:
     if isinstance(value, bool):
         return int(value)
-    if isinstance(value, (dict, list)):
+    if isinstance(value, dict | list):
         return json.dumps(value)
     return value
 
@@ -105,7 +105,7 @@ def main() -> None:
                 row[1]
                 for row in connection.execute(f"PRAGMA table_info({name})").fetchall()
             }
-            columns = [column for column in rows[0].keys() if column in local_columns]
+            columns = [column for column in rows[0] if column in local_columns]
             dropped = set(rows[0].keys()) - set(columns)
             if dropped:
                 print(f"{name}: ignoring D1-only columns {sorted(dropped)}")

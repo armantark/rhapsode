@@ -517,6 +517,18 @@ this session cannot resolve the Sites Git host and the Sites connector has no
 native source-upload command. Production is unchanged, so the Phase A export
 route is still live.
 
+Sites Phase B deployed (2026-07-28 at 17:21 PDT): Sites version 8 publishes
+site commit `bec1547` at `https://rhapsode-arman.tarkavor.chatgpt.site`.
+The existing `dist/` artifact was published without rebuilding or rerunning
+`npm run data:export`. Production shows one library-visible merged `Iliad 1`
+passage with 20 lines and a runway of 12 mastered; the retired split passages
+remain in the API only and are marked "Merged into". A live smart-session smoke
+opened with a forward chain over Iliad 1.10-1.12, contained 12 items, and dealt
+no `random_start`. Live setting checks returned 200 for `linear_window=1` and
+422 for `linear_window=4`, then restored 3. The removed admin export route
+returns 404. At a 390x844 viewport, the grade group is fixed at bottom 0 with
+z-index 40. The Phase A practice freeze is over.
+
 ## Next Work
 
 - Push repo to GitHub and cut first desktop release tag (`desktop-v0.0.1` or

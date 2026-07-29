@@ -915,14 +915,31 @@ def test_merge_passages_stitches_progress_onto_the_host(session_factory: object)
                 ),
             ),
         )
+        source_segments = lines(
+            "seven eight nine", "ten eleven twelve", labels=["Iliad 1.3", "Iliad 1.4"]
+        )
+        # Token children ride along under their line; the merge must keep the
+        # parent linkage (unshifted child ordinals once orphaned these into
+        # top-level word-soup segments).
+        source_segments[0] = source_segments[0].model_copy(update={"client_id": "l0"})
+        source_segments.extend(
+            schemas.SegmentInput(
+                kind="token",
+                ordinal=index + 1,
+                text=word,
+                parent_client_id="l0",
+                annotations=[
+                    schemas.AnnotationInput(layer="gloss", value=f"g-{word}", data={})
+                ],
+            )
+            for index, word in enumerate(["seven", "eight", "nine"])
+        )
         source_revision = create_revision(
             db,
             source,
             schemas.RevisionInput(
                 source_text="seven eight nine\nten eleven twelve",
-                segments=lines(
-                    "seven eight nine", "ten eleven twelve", labels=["Iliad 1.3", "Iliad 1.4"]
-                ),
+                segments=source_segments,
             ),
         )
         host_lines = sorted(
@@ -1051,6 +1068,19 @@ def test_merge_passages_stitches_progress_onto_the_host(session_factory: object)
         assert seam.cue is not None and "five six" in seam.cue
         assert seam.id not in states
         assert internal.id in states
+
+        # Token children stay parented under their merged line — never orphaned
+        # to the top level — and keep their annotations.
+        merged_tokens = [
+            s for s in merged.segments if s.kind == "token"
+        ]
+        assert len(merged_tokens) == 3
+        assert all(token.parent_id == merged_lines[2].id for token in merged_tokens)
+        assert {a.value for token in merged_tokens for a in token.annotations} == {
+            "g-seven",
+            "g-eight",
+            "g-nine",
+        }
 
         attempt = db.scalar(select(models.Attempt))
         assert attempt is not None and attempt.segment_id == merged_lines[2].id

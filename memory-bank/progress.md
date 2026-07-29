@@ -308,3 +308,8 @@
   local snapshot. The Site build and 19 tests pass. Deployment is still
   pending because this session cannot reach the Sites source Git host. The
   production Phase A route remains live until that deployment succeeds.
+- Sites Phase B production release (2026-07-28): version 8 deployed commit
+  `bec1547` from the existing `dist/` artifact. Live smoke passed the merged
+  Iliad runway (1.1-1.12 mastered), forward-chain warmup, no `random_start`,
+  `linear_window` 200/422 contract, removed export-route 404, and fixed-bottom
+  phone grade bar at 390x844. The Phase A practice freeze is over.

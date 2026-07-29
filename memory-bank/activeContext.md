@@ -553,9 +553,17 @@ Review round 1 findings (queued behind the workflow, planner files locked):
    Frontend rendering for both already landed in PromptCard (guided cards
    render prompt.lead_in; chain cards render it since the warmup-anchor
    fix). Backend + Worker emission still to do.
-Round 2 planned after those land: fresh read of planner + prompts + cards
-for residual order-breaking or uncued entries; stop when a pass finds
-nothing actionable.
+Round 2 (completed): both round-1 findings shipped and verified live on
+the merged DB — the full session deals warmup → 1.9 block → seam →
+1.10 block → 1.11 block → finisher monotonically forward, and a scoped
+9-13 session opens on the 1.8→1.9 seam cued by 1.8's tail. Round 2's
+fresh read found nothing actionable: remaining non-positional entries
+(meaning_recall's semantic cue, manual random_start) are deliberate
+user-approved semantics. GOAL MET: pedagogy maximally linear, review
+loop dry. All layers verified (129 backend tests, svelte-check 0/0,
+113 vitest, 24/24 non-media Playwright, 29/29 site tests); both repos
+committed; the site bundle is staged and awaits one publish from
+Arman's Codex session.
 
 ## Next Work
 

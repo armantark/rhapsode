@@ -1,6 +1,6 @@
 [package]
 name = "rhapsode"
-version = "0.0.1"
+version = "0.0.2"
 description = "Rhapsode desktop shell"
 authors = ["Arman Tarkhanian"]
 edition = "2021"

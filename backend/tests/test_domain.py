@@ -344,6 +344,9 @@ def test_smart_plan_opens_with_a_warmup_chain_over_the_mastered_tail(
             "full_passage",
         ]
         warmup = plan[0]
+        # The whole prefix fits in the warmup, so it starts at line 1 and
+        # needs no lead-in anchor.
+        assert "lead_in" not in warmup["prompt"]
         assert warmup["segment_id"] == revision.segments[2].id
         assert warmup["prompt"]["chain"] == ["line 0", "line 1", "line 2"]
         assert warmup["prompt"]["range_label"] == "lines 1-3 in this passage"
@@ -732,6 +735,9 @@ def test_smart_plan_serves_due_reviews_before_new_material(session_factory: obje
         assert planned == {2, 3, 4, 5, 6}
         assert plan[0]["mode"] == "forward_chaining"
         assert ordinals[plan[0]["segment_id"]] == 3
+        # A warmup that starts mid-passage (prefix is 4 lines, tail covers
+        # 2-4) anchors on the preceding line's tail so the entry is cued.
+        assert plan[0]["prompt"]["lead_in"] == "line 0"
         assert [ordinals[item["segment_id"]] for item in plan[1:6]] == [2, 3, 4, 5, 6]
         assert plan[-1]["mode"] == "forward_chaining"
         assert ordinals[plan[-1]["segment_id"]] == 3

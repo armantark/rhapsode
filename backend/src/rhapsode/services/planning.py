@@ -1165,9 +1165,15 @@ def build_smart_plan_for_revisions(
     # Without it, dueness skews the opening card to the NEWEST material — the
     # Sites deploy opened a collection session on a cold "recite 1.8-1.10"
     # (Arman's ruling, 2026-07-28). Chains cannot span revisions, so the tail
-    # comes from the last collection member with a mastered prefix.
-    warmup: list[tuple[models.Segment, str, list[models.Segment]]] = []
+    # comes from the last collection member with a mastered prefix. And a
+    # warmup that starts mid-passage must CUE its own entry point: "recite
+    # 1.6-1.8 from memory" with no reference is the same cold drop the warmup
+    # exists to prevent, so it carries the preceding line's tail as a lead-in
+    # anchor, the way junctures do.
+    warmup: list[tuple[models.Segment, str, list[models.Segment], str | None]] = []
     if candidates:
+        from rhapsode.services.passages import _tail as line_tail
+
         for revision, _segments in reversed(revision_segments):
             lines = sorted(
                 lines_by_ordinal_by_revision[revision.id].values(),
@@ -1177,13 +1183,16 @@ def build_smart_plan_for_revisions(
             if not prefix:
                 continue
             tail = prefix[-3:]
+            lead_in = line_tail(prefix[-4].text) if len(prefix) > 3 else None
             if len(tail) >= 2:
-                warmup.append((tail[-1], PracticeMode.forward_chaining.value, tail))
+                warmup.append(
+                    (tail[-1], PracticeMode.forward_chaining.value, tail, lead_in)
+                )
             elif all(segment.id != tail[0].id for segment, _mode in candidates):
                 # A one-line warmup is a plain cued recall — unless the review
                 # portion already deals that very line, which serves as the
                 # warmup itself (it is first in passage order anyway).
-                warmup.append((tail[0], PracticeMode.cue_recall.value, [tail[0]]))
+                warmup.append((tail[0], PracticeMode.cue_recall.value, [tail[0]], None))
             break
 
     seconds = _mode_seconds(db)
@@ -1195,7 +1204,7 @@ def build_smart_plan_for_revisions(
     else:
         budget = minutes * 60.0 - sum(
             seconds.get(mode, FALLBACK_MODE_SECONDS)
-            for _target, mode, _context in [*warmup, *finishers]
+            for mode in [entry[1] for entry in warmup] + [mode for _t, mode, _c in finishers]
         )
         for candidate in candidates:
             cost = seconds.get(candidate[1], FALLBACK_MODE_SECONDS)
@@ -1258,7 +1267,12 @@ def build_smart_plan_for_revisions(
                     budget -= cost
                     fill_turns.append((segment, mode))
 
-    items = [definition(target, mode, context) for target, mode, context in warmup]
+    items = []
+    for target, mode, context, lead_in in warmup:
+        item = definition(target, mode, context)
+        if lead_in is not None:
+            item["prompt"]["lead_in"] = lead_in
+        items.append(item)
     items.extend(
         definition(segment, mode)
         for segment, mode in [*selected_candidates, *fill_turns]

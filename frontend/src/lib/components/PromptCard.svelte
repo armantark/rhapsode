@@ -672,6 +672,15 @@
 			></textarea>
 		{/if}
 	{:else if isChaining}
+		{#if typeof prompt.lead_in === 'string' && prompt.lead_in}
+			<!-- A warmup chain that starts mid-passage cues its own entry point
+			     with the preceding line's tail, the way junctures do — a chain
+			     with no reference is a cold drop, not a run-up. -->
+			<div class="cue-line">
+				<span class="cue passage-text" {lang} style:font-family={fonts}>{prompt.lead_in}</span>
+				<span class="muted">… carry on from here</span>
+			</div>
+		{/if}
 		<p class="muted blank">Recite {chainRange} from memory.</p>
 	{:else if item.mode === 'meaning_recall'}
 		<div class="cue-line">

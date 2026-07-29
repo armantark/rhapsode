@@ -6,6 +6,27 @@ from sqlalchemy.orm import Session
 from rhapsode import models
 from rhapsode.config import get_settings
 from rhapsode.services import planning
+from rhapsode.services.scheduling import FAILURE_RATINGS
+
+# Cards that grade several review units from one recitation. recital is absent
+# on purpose: its stumble map already attributes per line.
+CHAINED_RECALL_MODES = {"forward_chaining", "backward_chaining", "full_passage"}
+
+
+def attribute_chain_failure(
+    mode: str, rating: str, affected: list[tuple[str, str]]
+) -> list[tuple[str, str]]:
+    """Blame a failed multi-line recall on its last line.
+
+    Reaching the end of a chain means the earlier lines were recited to get
+    there, so the line that gave out is the last one. Fanning the failing grade
+    across the whole chain would bury already-solid lines under lapses they did
+    not earn; the earlier lines grade "hesitant" instead, which records the
+    recall as real but effortful. Successes still fan unchanged.
+    """
+    if mode not in CHAINED_RECALL_MODES or rating not in FAILURE_RATINGS:
+        return affected
+    return [(segment_id, "hesitant") for segment_id, _ in affected[:-1]] + affected[-1:]
 
 
 def expire_stale_sessions(db: Session, now: datetime | None = None) -> int:

@@ -540,6 +540,15 @@
 			Good or Easy advances the support; {guidedRequired - guidedSuccesses} successful
 			{guidedRequired - guidedSuccesses === 1 ? ' recall remains' : ' recalls remain'} in this phase.
 		</p>
+		{#if typeof prompt.lead_in === 'string' && prompt.lead_in}
+			<!-- The previous line's tail anchors the phase in passage flow: a
+			     line's opening is cued by its predecessor, so even the hardest
+			     ladder phase retrieves forward instead of from nothing. -->
+			<div class="cue-line">
+				<span class="cue passage-text" {lang} style:font-family={fonts}>{prompt.lead_in}</span>
+				<span class="muted">… this line follows</span>
+			</div>
+		{/if}
 		<div class="passage-text guided-cue" {lang} style:font-family={fonts}>{guidedCue}</div>
 		{#if guidedResponse === 'typed'}
 			<textarea

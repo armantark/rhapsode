@@ -410,6 +410,50 @@ def test_chaining_attempt_reviews_every_line_in_the_chain(
     assert chain_segment_ids.issubset(reviewed)
 
 
+def test_failed_chain_blames_its_last_line_and_undo_restores_the_rest(
+    client: TestClient,
+    mutation: Callable[..., dict[str, str]],
+    passage: dict[str, object],
+) -> None:
+    revision = passage["active_revision"]
+    created = client.post(
+        "/api/v1/sessions",
+        json={
+            "revision_id": revision["id"],
+            "modes": ["forward_chaining"],
+            "segment_kinds": ["line"],
+        },
+        headers=mutation(),
+    )
+    assert created.status_code == 201, created.text
+    session = created.json()
+    chained = next(item for item in session["items"] if len(item["prompt"]["chain"]) > 1)
+    *earlier_ids, last_id = chained["prompt"]["chain_segment_ids"]
+
+    attempted = client.post(
+        f"/api/v1/sessions/{session['id']}/attempts",
+        json={"item_id": chained["id"], "rating": "revealed"},
+        headers=mutation(),
+    )
+    assert attempted.status_code == 201, attempted.text
+
+    def stages() -> dict[str, str]:
+        return {
+            state["segment_id"]: state["mastery_stage"]
+            for state in client.get("/api/v1/analytics/mastery").json()["items"]
+        }
+
+    # "hesitant" on the earlier lines counts as successful acquisition; only
+    # the last line carries the failure, so only it stays unacquired.
+    graded = stages()
+    assert all(graded[segment_id] == "learning" for segment_id in earlier_ids)
+    assert graded[last_id] == "new"
+
+    undone = client.post(f"/api/v1/sessions/{session['id']}/undo", headers=mutation())
+    assert undone.status_code == 200, undone.text
+    assert stages() == {}
+
+
 def test_session_listing_expires_abandoned_sessions(
     client: TestClient,
     session_factory: object,

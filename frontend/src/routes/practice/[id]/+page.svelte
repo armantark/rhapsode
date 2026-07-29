@@ -8,7 +8,9 @@
 	import PromptCard from '$lib/components/PromptCard.svelte';
 	import { api, isConflict } from '$lib/api/client';
 	import type {
+		AttemptCreate,
 		AttemptRating,
+		AttemptResult,
 		LanguageProfile,
 		Media,
 		PracticeItem,
@@ -51,7 +53,6 @@
 	let revealed = $state(false);
 	let acquisitionReady = $state(false);
 	let segmentNote: string | null = $state(null);
-	let submitting = $state(false);
 	let undoing = $state(false);
 	let savingBest = $state(false);
 	let pendingMediaId: string | null = $state(null);
@@ -60,6 +61,19 @@
 	// Client-side stack of the ratings submitted this tab, so Cmd+Z can roll the
 	// on-screen tally back in step with the server-side review-state undo.
 	const history: AttemptRating[] = [];
+	// A grade tap advances the card from state we already hold and posts in the
+	// background: waiting on a round trip that returns the whole session made
+	// every tap feel like a page load. Grades stay strictly ordered — the
+	// backend advances the cursor per attempt, so two in flight at once could
+	// land out of order — and each response reconciles the local session.
+	type PendingGrade = {
+		item: PracticeItem;
+		rating: AttemptRating;
+		attempt: AttemptCreate;
+		feedbackSuffix: string;
+	};
+	let pending: PendingGrade[] = $state([]);
+	let flush: Promise<void> = Promise.resolve();
 	// Juicy feedback: a brief full-card colour pulse keyed to the grade, plus
 	// tuned tones (see utils/feedback). flashToken retriggers the CSS animation.
 	let flash: AttemptRating | null = $state(null);
@@ -137,7 +151,16 @@
 		const fromIndex = items.slice(session.current_index).find((item) => !item.completed);
 		return fromIndex ?? items.find((item) => !item.completed) ?? null;
 	});
+	// Card-scoped effects key on these ids rather than on `currentItem` itself:
+	// reconciling a grade response rebuilds the session objects, and an identity
+	// change would wipe a reveal or refetch a note under a card the learner is
+	// still working. A derived string only propagates when the card truly turns.
+	const currentItemId = $derived(currentItem?.id ?? null);
+	const currentSegmentId = $derived(currentItem?.segment_id ?? null);
 	const doneCount = $derived(items.filter((item) => item.completed).length);
+	// The summary must wait for the last grade to be durable: a failed final
+	// post puts the learner back on that card instead of celebrating.
+	const savingLastCard = $derived(pending.length > 0 && !currentItem);
 	// The active revision follows the current card (collection sessions) and
 	// falls back to the session's own revision (single-passage sessions).
 	// The cast works around a svelte-check flow-analysis quirk where the
@@ -212,7 +235,7 @@
 
 	$effect(() => {
 		// restart the latency clock and reveal state per item
-		void currentItem?.id;
+		void currentItemId;
 		revealed = false;
 		acquisitionReady = false;
 		focusedMs = 0;
@@ -223,7 +246,7 @@
 	// The session's prompt.hint was frozen at plan time; fetch the live note so
 	// edits made this session surface immediately. A 404 is "no note" (null).
 	$effect(() => {
-		const segmentId = currentItem?.segment_id ?? null;
+		const segmentId = currentSegmentId;
 		segmentNote = null;
 		if (!segmentId) return;
 		let cancelled = false;
@@ -351,71 +374,150 @@
 		return lineIds.reduce((total, id) => total + (spans.get(id) ?? 0), 0);
 	});
 
-	async function confirmRecital(stumbledSegmentIds: string[]) {
+	function confirmRecital(stumbledSegmentIds: string[]) {
 		// The recital's summary rating mirrors its per-line map: any stumble is
 		// a lapse, a clean pass is Good. The backend derives per-line grades.
 		const pacing =
 			recitalReferenceSeconds !== null
 				? ` · you ≈${Math.round(elapsedFocusedMs() / 1000)}s · reference ≈${Math.round(recitalReferenceSeconds)}s`
 				: '';
-		await grade(stumbledSegmentIds.length ? 'incorrect' : 'hesitant', {
+		grade(stumbledSegmentIds.length ? 'incorrect' : 'hesitant', {
 			stumbledSegmentIds,
 			feedbackSuffix: pacing
 		});
 	}
 
-	async function grade(
+	function grade(
 		rating: AttemptRating,
 		recital?: { stumbledSegmentIds: string[]; feedbackSuffix: string }
 	) {
-		if (!session || !currentItem || submitting || undoing) return;
-		submitting = true;
+		if (!session || !currentItem || undoing) return;
+		const item = currentItem;
 		error = '';
+		// Anki model (grill): showing the answer is a neutral self-check, so
+		// the grade is exactly what the learner pressed. We still record that
+		// they peeked as an informational flag.
+		const attempt: AttemptCreate = {
+			item_id: item.id,
+			rating,
+			revealed: revealed || (item.mode === 'acquisition' && acquisitionReady),
+			latency_ms: Math.max(0, Math.round(elapsedFocusedMs())),
+			media_asset_id: pendingMediaId,
+			stumbled_segment_ids: recital?.stumbledSegmentIds ?? null
+		};
+		const feedbackSuffix = recital?.feedbackSuffix ?? '';
+		pending = [...pending, { item, rating, attempt, feedbackSuffix }];
+		// Everything the learner can see happens now; the response only refines
+		// it (mastery in the feedback line, the next card's cue level).
+		history.push(rating);
+		tally = { ...tally, [rating]: tally[rating] + 1 };
+		streak = rating === 'clean' ? streak + 1 : 0;
+		lastFeedback = RATING_LABELS[rating] + feedbackSuffix;
+		playGrade(rating, streak);
+		pulse(rating);
+		session = {
+			...session,
+			current_index: Math.max(session.current_index, item.position + 1),
+			items: (session.items ?? []).map((entry) =>
+				entry.id === item.id ? { ...entry, completed: true } : entry
+			)
+		};
+		flush = flush.then(sendNextGrade);
+	}
+
+	async function sendNextGrade() {
+		const job = pending[0];
+		if (!session || !job) return;
 		try {
-			// Anki model (grill): showing the answer is a neutral self-check, so
-			// the grade is exactly what the learner pressed. We still record that
-			// they peeked as an informational flag.
-			const result = await api.submitAttempt(session.id, {
-				item_id: currentItem.id,
-				rating,
-				revealed: revealed || (currentItem.mode === 'acquisition' && acquisitionReady),
-				latency_ms: Math.max(0, Math.round(elapsedFocusedMs())),
-				media_asset_id: pendingMediaId,
-				stumbled_segment_ids: recital?.stumbledSegmentIds ?? null
-			});
-			const landed = result.attempt.rating as AttemptRating;
-			history.push(landed);
-			tally = { ...tally, [landed]: tally[landed] + 1 };
-			lastFeedback =
-				(result.mastery_stage
-					? `${RATING_LABELS[landed]} · mastery ${result.mastery_stage}${result.due_at ? ` · next ${new Date(result.due_at).toLocaleDateString()}` : ''}`
-					: RATING_LABELS[landed]) + (recital?.feedbackSuffix ?? '');
-			session = result.session;
-			streak = landed === 'clean' ? streak + 1 : 0;
-			playGrade(landed, streak);
-			pulse(landed);
-			if (items.every((item) => item.completed)) {
-				await finish();
-				celebrate = true;
-				playComplete();
-				try {
-					remainingDue = (await api.today()).due_count;
-				} catch {
-					remainingDue = null;
-				}
-			}
+			const result = await api.submitAttempt(session.id, job.attempt);
+			pending = pending.slice(1);
+			await settleGrade(job, result);
 		} catch (cause) {
 			error = `Could not submit the attempt: ${cause instanceof Error ? cause.message : cause}`;
-		} finally {
-			submitting = false;
+			rollbackPendingGrades();
 		}
 	}
 
+	async function settleGrade(job: PendingGrade, result: AttemptResult) {
+		reconcileSession(result.session);
+		// Only the newest grade owns the feedback line and the completion check:
+		// an earlier response must not report mastery for a card the learner has
+		// already moved past.
+		if (pending.length) return;
+		lastFeedback =
+			(result.mastery_stage
+				? `${RATING_LABELS[job.rating]} · mastery ${result.mastery_stage}${result.due_at ? ` · next ${new Date(result.due_at).toLocaleDateString()}` : ''}`
+				: RATING_LABELS[job.rating]) + job.feedbackSuffix;
+		if (items.every((item) => item.completed)) {
+			await finish();
+			celebrate = true;
+			playComplete();
+			try {
+				remainingDue = (await api.today()).due_count;
+			} catch {
+				remainingDue = null;
+			}
+		}
+	}
+
+	function reconcileSession(fromServer: PracticeSession) {
+		if (!session) return;
+		const localById = new Map((session.items ?? []).map((item) => [item.id, item]));
+		// A guided_recall card's support is materialized when it is dealt, so the
+		// card on screen can arrive upgraded. Adopting it mid-card would move the
+		// answer under the learner, so a checked card keeps the prompt it showed.
+		const frozenPromptId = revealed || acquisitionReady ? currentItemId : null;
+		session = {
+			...fromServer,
+			// Grades still queued are invisible to the server, so local progress
+			// wins wherever the two disagree.
+			current_index: Math.max(fromServer.current_index, session.current_index),
+			items: (fromServer.items ?? []).map((item) => {
+				const local = localById.get(item.id);
+				if (!local) return item;
+				return {
+					...item,
+					completed: item.completed || local.completed,
+					prompt: item.id === frozenPromptId ? local.prompt : item.prompt
+				};
+			})
+		};
+	}
+
+	/** A grade that never reached the server must not be lost silently: drop the
+	 *  whole queue behind it and put the learner back on the card that failed. */
+	function rollbackPendingGrades() {
+		const dropped = pending;
+		pending = [];
+		if (!session || !dropped.length) return;
+		const droppedIds = new Set(dropped.map((job) => job.item.id));
+		session = {
+			...session,
+			current_index: dropped[0].item.position,
+			items: (session.items ?? []).map((item) =>
+				droppedIds.has(item.id) ? { ...item, completed: false } : item
+			)
+		};
+		for (const job of dropped) {
+			history.pop();
+			tally = { ...tally, [job.rating]: Math.max(0, tally[job.rating] - 1) };
+		}
+		streak = trailingCleans();
+		celebrate = false;
+		lastFeedback = '';
+	}
+
 	async function undo() {
-		if (!session || submitting || undoing) return;
+		if (!session || undoing) return;
 		undoing = true;
 		error = '';
 		try {
+			// Queued grades must land first: the server pops the most recent
+			// attempt, so undoing ahead of them would rewind the wrong card.
+			await flush;
+			// A failed grade has already returned the learner to its card; undoing
+			// on top of that would rewind a card they never asked to revisit.
+			if (error || !session) return;
 			session = await api.undoAttempt(session.id);
 			celebrate = false;
 			const last = history.pop();
@@ -672,7 +774,7 @@
 			     the reciter doesn't hear, so grading blind would inflate the schedule.
 			     The peek itself stays neutral — it never forces a grade. A recital has
 			     no grade bar at all: its stumble map IS the grade. -->
-			<GradeBar onGrade={grade} disabled={submitting || requiresCheck} />
+			<GradeBar onGrade={grade} disabled={undoing || requiresCheck} />
 			{#if revealed}
 				<p class="muted small">
 					Answer shown — grade yourself honestly. Pick <strong>Again</strong> only if you
@@ -702,6 +804,14 @@
 		{#if currentItem.mode !== 'recital'}
 			<div class="grade-scroll-pad" aria-hidden="true"></div>
 		{/if}
+	{:else if savingLastCard}
+		<!-- The last card is graded but its attempt is still in flight. Claiming
+		     the session is over before the server agrees would be a lie if the
+		     post fails, or if the grade deals a supported retry. -->
+		<div class="card summary">
+			<span class="eyebrow">Saving</span>
+			<h2>Filing your last card…</h2>
+		</div>
 	{:else if session.status === 'expired'}
 		<div class="card summary">
 			<span class="eyebrow">Session expired</span>

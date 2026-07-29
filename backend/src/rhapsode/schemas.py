@@ -237,6 +237,23 @@ class SessionCreate(BaseModel):
     # Time budget: the planner converts minutes into an item count using the
     # caller's own per-mode attempt latencies. None keeps the fixed item cap.
     minutes: int | None = Field(default=None, ge=1, le=180)
+    # A scoped runway: 1-based, inclusive positions among the target's
+    # practiceable lines. The planner treats the range as its whole universe —
+    # the owner's hand on the wheel when the linear lock points somewhere else.
+    line_start: int | None = Field(default=None, ge=1)
+    line_end: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode="after")
+    def line_range_scopes_a_smart_session(self) -> Self:
+        if self.line_start is None and self.line_end is None:
+            return self
+        if self.line_start is None or self.line_end is None:
+            raise ValueError("Send both line_start and line_end to scope a session.")
+        if self.line_start > self.line_end:
+            raise ValueError("line_start must not be greater than line_end.")
+        if self.modes is not None:
+            raise ValueError("A line range applies to smart sessions only.")
+        return self
 
     @model_validator(mode="after")
     def exactly_one_target(self) -> Self:

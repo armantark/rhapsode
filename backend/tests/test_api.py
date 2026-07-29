@@ -190,6 +190,36 @@ def test_collection_crud_and_ordered_membership(
     }
 
 
+def test_scoped_session_rejects_a_range_past_the_last_line(
+    client: TestClient, mutation: Callable[..., dict[str, str]], passage: dict[str, object]
+) -> None:
+    revision_id = passage["active_revision"]["id"]  # type: ignore[index]
+    out_of_range = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision_id, "line_start": 1, "line_end": 9},
+        headers=mutation(),
+    )
+    assert out_of_range.status_code == 422
+    assert "2 lines" in out_of_range.json()["detail"]
+
+    # The same passage's real range plans a session scoped to line 2 alone.
+    scoped = client.post(
+        "/api/v1/sessions",
+        json={"revision_id": revision_id, "line_start": 2, "line_end": 2},
+        headers=mutation(),
+    )
+    assert scoped.status_code == 201, scoped.text
+    body = scoped.json()
+    assert body["plan"]["line_start"] == 2
+    lines = [
+        segment
+        for segment in passage["active_revision"]["segments"]  # type: ignore[index]
+        if segment["kind"] == "line"
+    ]
+    second = next(segment for segment in lines if segment["ordinal"] == 1)
+    assert {item["segment_id"] for item in body["items"]} == {second["id"]}
+
+
 def test_common_not_found_errors(
     client: TestClient, mutation: Callable[..., dict[str, str]]
 ) -> None:

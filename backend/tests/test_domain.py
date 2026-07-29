@@ -3,9 +3,10 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from fsrs import Rating
+from fsrs import Card, Rating
 from pydantic import ValidationError
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from rhapsode import models, schemas
 from rhapsode.services import furigana, planning, prep
@@ -23,12 +24,18 @@ from rhapsode.services.planning import (
     build_smart_plan,
     build_smart_plan_for_revisions,
     learning_scaffold_steps,
+    learning_step_successes_required,
     progressive_masks,
     prompt_for,
     register_practice_mode,
     smart_mode_for,
 )
-from rhapsode.services.scheduling import RATING_MAP, _next_clean_streak, mastery_stage
+from rhapsode.services.scheduling import (
+    RATING_MAP,
+    _next_clean_streak,
+    mastery_stage,
+    review_segment,
+)
 
 
 def test_progressive_masks_fade_toward_the_opening_cue() -> None:
@@ -831,6 +838,141 @@ def test_collection_window_spans_revisions_in_member_order(session_factory: obje
         }.isdisjoint({item["segment_id"] for item in plan})
 
 
+def _mastered_state(segment_id: str, *, due: bool) -> models.ReviewState:
+    return models.ReviewState(
+        segment_id=segment_id,
+        fsrs_card_json="{}",
+        due_at=datetime.now(UTC) + timedelta(days=-1 if due else 30),
+        mastery_stage="review",
+        clean_count=2,
+        attempt_count=2,
+        acquisition_succeeded=True,
+        learning_step=None,
+    )
+
+
+def _scope_revision(db: Session, slug: str, count: int) -> models.PassageRevision:
+    language = models.LanguageProfile(slug=slug, name="Latin")
+    passage = models.Passage(title="Aeneid", language_profile=language)
+    revision = models.PassageRevision(passage=passage, revision_number=1, source_text="...")
+    revision.segments = [
+        models.Segment(kind="line", ordinal=index, text=f"line {index}")
+        for index in range(count)
+    ]
+    db.add(passage)
+    db.flush()
+    return revision
+
+
+def test_line_scope_opens_the_window_inside_the_picked_range(
+    session_factory: object,
+) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        revision = _scope_revision(db, "latin-scope-window", 10)
+        db.commit()
+
+        # The scope is the whole world: the window is the first W unmastered
+        # lines WITHIN lines 5-8, not the passage's own frontier at line 1.
+        plan = build_smart_plan(db, revision, ["line"], line_scope=(5, 8))
+        ordinals = {segment.id: segment.ordinal for segment in revision.segments}
+        assert [ordinals[item["segment_id"]] for item in plan] == [4, 5, 6]
+        assert {item["mode"] for item in plan} == {"acquisition"}
+
+
+def test_line_scope_keeps_due_reviews_inside_the_range(session_factory: object) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        revision = _scope_revision(db, "latin-scope-reviews", 8)
+        for segment in revision.segments:
+            db.add(_mastered_state(segment.id, due=True))
+        db.commit()
+
+        # Every line is mastered and overdue, so only the scope decides which
+        # reviews are dealt.
+        plan = build_smart_plan(db, revision, ["line"], line_scope=(4, 6))
+        ordinals = {segment.id: segment.ordinal for segment in revision.segments}
+        assert {ordinals[item["segment_id"]] for item in plan} == {3, 4, 5}
+        # The scope is fully mastered, so it closes on its own holistic recital
+        # rather than a partial chain.
+        assert plan[-1]["mode"] == "full_passage"
+        # Line numbers stay absolute so the card names the passage's own lines.
+        assert plan[-1]["prompt"]["range_label"] == "lines 4-6 in this passage"
+
+
+def test_line_scope_gates_junctures_at_its_edges(session_factory: object) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="latin-scope-juncture", name="Latin")
+        passage = models.Passage(title="Aeneid", language_profile=language)
+        revision = models.PassageRevision(
+            passage=passage, revision_number=1, source_text="..."
+        )
+        lines = [
+            models.Segment(kind="line", ordinal=index, text=f"line {index}")
+            for index in range(4)
+        ]
+        junctures = [
+            models.Segment(
+                kind="juncture",
+                ordinal=index,
+                text=f"line {index} opening",
+                metadata_json={"juncture_after": index - 1},
+            )
+            for index in range(1, 4)
+        ]
+        revision.segments = [*lines, *junctures]
+        db.add(passage)
+        db.flush()
+        for line in lines:
+            db.add(_mastered_state(line.id, due=False))
+        db.commit()
+
+        plan = build_smart_plan(db, revision, None, line_scope=(3, 4))
+        planned = {item["segment_id"] for item in plan}
+        # Only the seam whose BOTH flanks sit inside lines 3-4 survives; the
+        # one landing on line 3 from the line before the scope does not.
+        assert junctures[2].id in planned
+        assert {junctures[0].id, junctures[1].id}.isdisjoint(planned)
+
+
+def test_scoped_warmup_anchors_on_the_line_before_the_range(
+    session_factory: object,
+) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        revision = _scope_revision(db, "latin-scope-warmup", 6)
+        for segment in revision.segments[:5]:
+            db.add(_mastered_state(segment.id, due=False))
+        db.commit()
+
+        plan = build_smart_plan(db, revision, ["line"], line_scope=(3, 6))
+        ordinals = {segment.id: segment.ordinal for segment in revision.segments}
+        # The warmup chains the scope's own mastered prefix (lines 3-5), and
+        # cues its mid-passage entry with the tail of line 2 — the line just
+        # OUTSIDE the scope, which is exactly what a runner needs to start.
+        assert plan[0]["mode"] == "forward_chaining"
+        assert ordinals[plan[0]["segment_id"]] == 4
+        assert plan[0]["prompt"]["lead_in"] == "line 1"
+        assert plan[0]["prompt"]["line_start"] == 3
+        # Line 6 is the scope's frontier; lines 1-2 stay out of the session.
+        assert ordinals[plan[1]["segment_id"]] == 5
+        assert {0, 1}.isdisjoint({ordinals[item["segment_id"]] for item in plan})
+
+
+def test_line_range_must_be_an_ordered_pair_on_a_smart_session() -> None:
+    assert schemas.SessionCreate(revision_id="rev", line_start=2, line_end=5).line_end == 5
+    with pytest.raises(ValidationError):
+        schemas.SessionCreate(revision_id="rev", line_start=5, line_end=2)
+    with pytest.raises(ValidationError):
+        schemas.SessionCreate(revision_id="rev", line_start=2)
+    with pytest.raises(ValidationError):
+        schemas.SessionCreate(revision_id="rev", line_start=0, line_end=2)
+    with pytest.raises(ValidationError):
+        schemas.SessionCreate(
+            revision_id="rev",
+            line_start=1,
+            line_end=2,
+            modes=[schemas.PracticeMode.cue_recall],
+        )
+
+
 def test_clean_streak_regresses_mastery() -> None:
     # Again wipes the streak; Hard demotes one threshold step (grill B2).
     assert _next_clean_streak(5, "clean") == 6
@@ -1224,10 +1366,12 @@ def test_juncture_history_is_grandfathered_before_flanks_master(
         db.commit()
 
         plan = build_smart_plan(db, revision, None)
+        # The single sweep deals the seam right before its landing line —
+        # sessions never jump backward to a juncture after the frontier work.
         assert [item["segment_id"] for item in plan] == [
             first.id,
-            second.id,
             juncture.id,
+            second.id,
         ]
 
 
@@ -2229,6 +2373,170 @@ def test_both_failure_ratings_schedule_as_lapses() -> None:
     assert RATING_MAP["incorrect"] == Rating.Again
     assert RATING_MAP["hesitant"] == Rating.Good
     assert RATING_MAP["clean"] == Rating.Easy
+
+
+def test_two_consecutive_failures_drop_a_ladder_phase(session_factory: object) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="ladder-demote", name="Latin")
+        passage = models.Passage(title="Aeneid", language_profile=language)
+        revision = models.PassageRevision(
+            passage=passage, revision_number=1, source_text="..."
+        )
+        revision.segments = [
+            models.Segment(kind="line", ordinal=index, text=f"line {index} one two three four")
+            for index in range(4)
+        ] + [models.Segment(kind="juncture", ordinal=1, text="line 1 …", cue="four")]
+        db.add(passage)
+        db.commit()
+        line, mastered, steady, stalled, seam = revision.segments
+        for segment, step in (
+            (line, 2),
+            (mastered, None),
+            (steady, 2),
+            (stalled, 0),
+            (seam, None),
+        ):
+            db.add(
+                models.ReviewState(
+                    segment_id=segment.id,
+                    fsrs_card_json=Card().to_json(),
+                    due_at=datetime.now(UTC),
+                    mastery_stage="learning",
+                    clean_count=0,
+                    attempt_count=1,
+                    acquisition_succeeded=True,
+                    learning_step=step,
+                    learning_success_count=2,
+                )
+            )
+        session = models.PracticeSession(revision_id=revision.id, plan={})
+        db.add(session)
+        db.flush()
+        item = models.PracticeItem(
+            session_id=session.id, position=0, mode="cue_recall", prompt={}
+        )
+        db.add(item)
+        db.flush()
+        clock = datetime.now(UTC)
+
+        def grade(segment: models.Segment, rating: str) -> models.ReviewState:
+            # Replays what submit_attempt does: the attempt row lands first, so
+            # the review reads it as history rather than as its own precedent.
+            nonlocal clock
+            clock += timedelta(minutes=1)
+            attempt = models.Attempt(
+                session_id=session.id,
+                item_id=item.id,
+                segment_id=segment.id,
+                mode="cue_recall",
+                rating=rating,
+                created_at=clock,
+            )
+            db.add(attempt)
+            db.flush()
+            state = review_segment(
+                db, segment.id, rating, attempt_id=attempt.id, mode="cue_recall"
+            )
+            db.flush()
+            return state
+
+        # Mid-ladder: the second failure widens support by one phase and the
+        # phase's success credit restarts. The first failure alone does not.
+        assert grade(line, "incorrect").learning_step == 2
+        demoted = grade(line, "revealed")
+        assert (demoted.learning_step, demoted.learning_success_count) == (1, 0)
+
+        # A mastered line re-enters at the LAST phase — the lightest scaffold,
+        # not the whole ladder again.
+        grade(mastered, "revealed")
+        relapsed = grade(mastered, "incorrect")
+        assert relapsed.learning_step == len(learning_scaffold_steps(mastered)) - 1
+        assert relapsed.learning_success_count == 0
+        assert relapsed.mastery_stage == "learning"
+
+        # Failures split by a success are not consecutive.
+        grade(steady, "incorrect")
+        grade(steady, "clean")
+        assert grade(steady, "revealed").learning_step == 2
+
+        # Step zero already re-engages acquisition support; junctures have no
+        # ladder to fall down.
+        grade(stalled, "incorrect")
+        assert grade(stalled, "revealed").learning_step == 0
+        grade(seam, "incorrect")
+        assert grade(seam, "revealed").learning_step is None
+
+
+def test_clean_guided_recall_counts_as_two_phase_successes(
+    session_factory: object,
+) -> None:
+    with session_factory() as db:  # type: ignore[operator]
+        language = models.LanguageProfile(slug="ladder-credit", name="Latin")
+        passage = models.Passage(title="Aeneid", language_profile=language)
+        revision = models.PassageRevision(
+            passage=passage, revision_number=1, source_text="..."
+        )
+        # Four words put the first phase at the plain three-success threshold.
+        revision.segments = [
+            models.Segment(kind="line", ordinal=index, text="alpha beta gamma delta")
+            for index in range(3)
+        ]
+        db.add(passage)
+        db.commit()
+        mixed, doubled, overshooting = revision.segments
+        assert learning_step_successes_required(mixed, 0) == 3
+        for segment in revision.segments:
+            db.add(
+                models.ReviewState(
+                    segment_id=segment.id,
+                    fsrs_card_json=Card().to_json(),
+                    due_at=datetime.now(UTC),
+                    mastery_stage="learning",
+                    clean_count=0,
+                    attempt_count=1,
+                    acquisition_succeeded=True,
+                    learning_step=0,
+                    learning_success_count=0,
+                )
+            )
+        db.flush()
+
+        def grade(segment: models.Segment, rating: str) -> models.ReviewState:
+            state = review_segment(db, segment.id, rating, mode="guided_recall")
+            db.flush()
+            return state
+
+        # A clean recall banks two of the three, but does not skip the phase.
+        partway = grade(mixed, "clean")
+        assert (partway.learning_step, partway.learning_success_count) == (0, 2)
+        advanced = grade(mixed, "hesitant")
+        assert (advanced.learning_step, advanced.learning_success_count) == (1, 0)
+
+        # Two cleans alone finish the phase.
+        assert grade(doubled, "clean").learning_step == 0
+        assert grade(doubled, "clean").learning_step == 1
+
+        # Landing past the requirement rather than exactly on it still advances.
+        grade(overshooting, "hesitant")
+        grade(overshooting, "hesitant")
+        overshot = grade(overshooting, "clean")
+        assert (overshot.learning_step, overshot.learning_success_count) == (1, 0)
+
+
+def test_chain_failure_falls_on_the_last_line_only() -> None:
+    chain = [("first", "clean"), ("middle", "clean"), ("last", "clean")]
+
+    failed = session_service.attribute_chain_failure("forward_chaining", "revealed", chain)
+    assert failed == [("first", "hesitant"), ("middle", "hesitant"), ("last", "clean")]
+    assert session_service.attribute_chain_failure("full_passage", "incorrect", chain)[-1] == (
+        "last",
+        "clean",
+    )
+    # Successes still fan; recital already grades per line from its stumble map.
+    assert session_service.attribute_chain_failure("full_passage", "clean", chain) == chain
+    assert session_service.attribute_chain_failure("recital", "incorrect", chain) == chain
+    single = chain[:1]
+    assert session_service.attribute_chain_failure("cue_recall", "incorrect", single) == single
 
 
 def test_fsrs_parameters_load_from_settings_with_safe_fallback(

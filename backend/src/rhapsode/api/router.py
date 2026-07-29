@@ -575,6 +575,20 @@ def create_session(payload: schemas.SessionCreate, db: Db) -> models.PracticeSes
         only_segment_ids = planning.due_segment_ids(db, practiceable_ids)
         if not only_segment_ids:
             raise HTTPException(status_code=422, detail="No segments are due for review.")
+    line_scope = None
+    if payload.line_start is not None and payload.line_end is not None:
+        line_count = sum(
+            1
+            for revision in revisions
+            for segment in revision.segments
+            if segment.kind == "line"
+        )
+        if payload.line_end > line_count:
+            raise HTTPException(
+                status_code=422,
+                detail=f"The target has {line_count} lines; that range is out of bounds.",
+            )
+        line_scope = (payload.line_start, payload.line_end)
     library_wide = payload.revision_id is None and payload.collection_id is None
     if payload.modes is None:
         requested_modes: list[str] = []
@@ -587,6 +601,7 @@ def create_session(payload: schemas.SessionCreate, db: Db) -> models.PracticeSes
             # A due queue must be clearable: the momentum cap is for
             # exploratory smart sessions, and FSRS already bounds the queue.
             cap=None if library_wide else planning.SMART_SESSION_CAP,
+            line_scope=line_scope,
         )
     else:
         requested_modes = [mode.value for mode in payload.modes]
@@ -615,6 +630,8 @@ def create_session(payload: schemas.SessionCreate, db: Db) -> models.PracticeSes
             "smart": payload.modes is None,
             "due_only": payload.due_only,
             "minutes": payload.minutes,
+            "line_start": payload.line_start,
+            "line_end": payload.line_end,
             "revision_ids": [revision.id for revision in revisions],
         },
     )
@@ -730,9 +747,16 @@ def submit_attempt(
         revision = db.get(models.PassageRevision, revision_id) if revision_id else None
         if revision is not None:
             kinds = planning.practiceable_kinds(revision)
+            # A juncture carries its landing line's ordinal, so the tie is
+            # broken toward the juncture: it is recited INTO that line, and the
+            # last-line failure attribution below must land on the closing line
+            # rather than on the seam before it.
             affected = [
                 (segment.id, payload.rating.value)
-                for segment in sorted(revision.segments, key=lambda segment: segment.ordinal)
+                for segment in sorted(
+                    revision.segments,
+                    key=lambda segment: (segment.ordinal, segment.kind != "juncture"),
+                )
                 if segment.kind in kinds
             ]
     elif item.mode in {
@@ -752,6 +776,9 @@ def submit_attempt(
         )
     elif item.segment_id:
         affected = [(item.segment_id, payload.rating.value)]
+    affected = session_service.attribute_chain_failure(
+        item.mode, payload.rating.value, affected
+    )
     snapshot = [scheduling.snapshot_review_state(db, sid) for sid, _ in affected]
     attempt = models.Attempt(
         session_id=session_id,

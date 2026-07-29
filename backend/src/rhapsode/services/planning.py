@@ -232,7 +232,7 @@ def _guided_recall_prompt(
     if step["kind"] == "chunk":
         width = step["target_widths"][target_level]
         instruction = f"From the first word, recall words 1–{width}, then stop."
-    return {
+    prompt = {
         "kind": step["kind"],
         "label": step["label"],
         "instruction": instruction,
@@ -244,6 +244,32 @@ def _guided_recall_prompt(
         "required_successes": step["required_successes"],
         "response_format": random.choice(["oral", "typed"]),
     }
+    if step["kind"] == "fade_front":
+        # The one phase that hides the line's OPENING. An opening's cue is the
+        # PREVIOUS line's tail (the lead-in doctrine), so producing it from
+        # nothing trains an anti-linear retrieval; the anchor keeps even this
+        # phase flowing forward. The passage's first line stays uncued — that
+        # is the poem's true entry.
+        previous = _previous_line(target)
+        if previous is not None:
+            from rhapsode.services.passages import _tail as line_tail
+
+            prompt["lead_in"] = line_tail(previous.text)
+    return prompt
+
+
+def _previous_line(target: models.Segment) -> models.Segment | None:
+    revision = target.revision
+    if revision is None:
+        return None
+    lines = sorted(
+        (segment for segment in revision.segments if segment.kind == "line"),
+        key=lambda segment: segment.ordinal,
+    )
+    for index, line in enumerate(lines):
+        if line.id == target.id:
+            return lines[index - 1] if index > 0 else None
+    return None
 
 
 def _recall_prompt(
@@ -870,9 +896,10 @@ def build_smart_plan(
     segment_kinds: list[str] | None,
     only_segment_ids: set[str] | None = None,
     minutes: int | None = None,
+    line_scope: tuple[int, int] | None = None,
 ) -> list[dict[str, Any]]:
     return build_smart_plan_for_revisions(
-        db, [revision], segment_kinds, only_segment_ids, minutes
+        db, [revision], segment_kinds, only_segment_ids, minutes, line_scope=line_scope
     )
 
 
@@ -891,6 +918,7 @@ def build_smart_plan_for_revisions(
     only_segment_ids: set[str] | None = None,
     minutes: int | None = None,
     cap: int | None = SMART_SESSION_CAP,
+    line_scope: tuple[int, int] | None = None,
 ) -> list[dict[str, Any]]:
     revision_segments: list[tuple[models.PassageRevision, list[models.Segment]]] = []
     for revision in revisions:
@@ -925,16 +953,31 @@ def build_smart_plan_for_revisions(
             key=lambda segment: segment.ordinal,
         )
     ]
+    # A picked line range becomes the session's entire world. The runway rules
+    # are untouched — window, reviews, junctures, chains — they simply run over
+    # the chosen slice. This is the owner's deliberate override of the global
+    # order lock, which is why the scope replaces `ordered_lines` outright
+    # instead of intersecting with the passage-wide window.
+    scoped_lines = (
+        ordered_lines
+        if line_scope is None
+        else ordered_lines[line_scope[0] - 1 : line_scope[1]]
+    )
+    scope_ids = None if line_scope is None else {line.id for line in scoped_lines}
+
+    def within_scope(lines: list[models.Segment]) -> list[models.Segment]:
+        return lines if scope_ids is None else [line for line in lines if line.id in scope_ids]
+
     active_window = [
         line
-        for line in ordered_lines
+        for line in scoped_lines
         if not _mastered(line.id, acquisition_succeeded, learning_steps)
     ][: linear_window(db)]
     if active_window:
-        boundary = ordered_lines.index(active_window[-1])
-        unlocked_line_ids = {line.id for line in ordered_lines[: boundary + 1]}
+        boundary = scoped_lines.index(active_window[-1])
+        unlocked_line_ids = {line.id for line in scoped_lines[: boundary + 1]}
     else:
-        unlocked_line_ids = {line.id for line in ordered_lines}
+        unlocked_line_ids = {line.id for line in scoped_lines}
 
     line_numbers_by_revision = {
         revision.id: _line_number_map(_ordered_segments(revision, None))
@@ -1021,7 +1064,7 @@ def build_smart_plan_for_revisions(
             (segment for segment in revision.segments if segment.kind == "line"),
             key=lambda segment: segment.ordinal,
         )
-        prefix = _mastered_prefix(lines, acquisition_succeeded, learning_steps)
+        prefix = _mastered_prefix(within_scope(lines), acquisition_succeeded, learning_steps)
         if mode in {
             PracticeMode.forward_chaining.value,
             PracticeMode.backward_chaining.value,
@@ -1083,6 +1126,10 @@ def build_smart_plan_for_revisions(
         for segment in segments:
             if only_segment_ids is not None and segment.id not in only_segment_ids:
                 continue
+            if scope_ids is not None and segment.kind not in {"line", "juncture"}:
+                # The picker's universe is lines, so chunk-grain material has
+                # no position in the range the owner selected.
+                continue
             if segment.kind == "line" and segment.id not in unlocked_line_ids:
                 continue
             # Grandfathered out-of-order history can leave a due juncture whose
@@ -1140,9 +1187,11 @@ def build_smart_plan_for_revisions(
     finishers: list[tuple[models.Segment, str, list[models.Segment]]] = []
     selected_revision_ids = {segment.revision_id for segment, _mode in candidates}
     for revision, _segments in revision_segments:
-        lines = sorted(
-            lines_by_ordinal_by_revision[revision.id].values(),
-            key=lambda line: line.ordinal,
+        lines = within_scope(
+            sorted(
+                lines_by_ordinal_by_revision[revision.id].values(),
+                key=lambda line: line.ordinal,
+            )
         )
         prefix = _mastered_prefix(lines, acquisition_succeeded, learning_steps)
         if len(prefix) < 2:
@@ -1179,11 +1228,17 @@ def build_smart_plan_for_revisions(
                 lines_by_ordinal_by_revision[revision.id].values(),
                 key=lambda line: line.ordinal,
             )
-            prefix = _mastered_prefix(lines, acquisition_succeeded, learning_steps)
+            prefix = _mastered_prefix(
+                within_scope(lines), acquisition_succeeded, learning_steps
+            )
             if not prefix:
                 continue
             tail = prefix[-3:]
-            lead_in = line_tail(prefix[-4].text) if len(prefix) > 3 else None
+            # The anchor is whatever line precedes the tail in the PASSAGE, not
+            # in the scope: a range starting at line 40 still deserves line 39's
+            # tail as its entry cue, and unscoped this is exactly prefix[-4].
+            anchor_index = lines.index(tail[0]) - 1
+            lead_in = line_tail(lines[anchor_index].text) if anchor_index >= 0 else None
             if len(tail) >= 2:
                 warmup.append(
                     (tail[-1], PracticeMode.forward_chaining.value, tail, lead_in)
@@ -1267,6 +1322,26 @@ def build_smart_plan_for_revisions(
                     budget -= cost
                     fill_turns.append((segment, mode))
 
+    # ONE forward sweep between warmup and finisher. The portions above decide
+    # WHAT is dealt (reviews before blocks before junctures when the cap
+    # bites), but concatenating them portion-by-portion made the session jump
+    # backward — drill 1.9-1.11, then rewind to a 1.4→1.5 seam card. Presenting
+    # the selected work sorted by passage position (a juncture just before its
+    # landing line, block reps adjacent via stable sort) makes every session a
+    # single front-to-back pass (Arman's ruling: "still doesn't feel linear
+    # enough"). Fill rounds are already forward sweeps of their own.
+    revision_order = {
+        revision.id: index for index, (revision, _segments) in enumerate(revision_segments)
+    }
+
+    def sweep_key(entry: tuple[models.Segment, str]) -> tuple[int, int, int]:
+        segment = entry[0]
+        return (
+            revision_order.get(segment.revision_id, 0),
+            segment.ordinal,
+            int(segment.kind != "juncture"),
+        )
+
     items = []
     for target, mode, context, lead_in in warmup:
         item = definition(target, mode, context)
@@ -1275,7 +1350,10 @@ def build_smart_plan_for_revisions(
         items.append(item)
     items.extend(
         definition(segment, mode)
-        for segment, mode in [*selected_candidates, *fill_turns]
+        for segment, mode in [
+            *sorted(selected_candidates, key=sweep_key),
+            *fill_turns,
+        ]
     )
     items.extend(
         definition(target, mode, context) for target, mode, context in finishers

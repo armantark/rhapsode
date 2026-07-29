@@ -19,6 +19,8 @@ RATING_MAP = {
     "revealed": Rating.Again,
 }
 
+FAILURE_RATINGS = {"incorrect", "revealed"}
+
 
 def snapshot_review_state(db: Session, segment_id: str) -> dict[str, Any]:
     """Capture a segment's review state before an attempt mutates it, so the
@@ -144,7 +146,12 @@ def review_segment(
     if rating in {"hesitant", "clean"}:
         state.acquisition_succeeded = True
         if mode == "guided_recall" and state.learning_step is not None:
-            state.learning_success_count += 1
+            # A clean recall is worth two of the phase's required recalls and a
+            # hesitant one is worth one: recalling without hesitation says the
+            # current support level is already surplus, so making it take the
+            # same number of cards as a shaky recall just grinds. Overshooting
+            # the requirement is fine — every threshold below compares with >=.
+            state.learning_success_count += 2 if rating == "clean" else 1
             if state.learning_success_count >= LEARNING_STEP_SUCCESSES:
                 from rhapsode.services.planning import (
                     learning_scaffold_steps,
@@ -165,8 +172,54 @@ def review_segment(
                         else None
                     )
                     state.learning_success_count = 0
+    elif _previous_attempt_rating(db, segment_id, attempt_id) in FAILURE_RATINGS:
+        _demote_learning_support(db, state, segment_id)
     state.mastery_stage = mastery_stage(state)
     return state
+
+
+def _previous_attempt_rating(
+    db: Session, segment_id: str, attempt_id: str | None
+) -> str | None:
+    """The rating of the attempt before the one being graded. The caller has
+    already flushed the current attempt, so it must be excluded by id."""
+    query = (
+        select(models.Attempt.rating)
+        .where(models.Attempt.segment_id == segment_id)
+        .order_by(models.Attempt.created_at.desc(), models.Attempt.id.desc())
+        .limit(1)
+    )
+    if attempt_id is not None:
+        query = query.where(models.Attempt.id != attempt_id)
+    return db.scalar(query)
+
+
+def _demote_learning_support(
+    db: Session, state: models.ReviewState, segment_id: str
+) -> None:
+    """Two consecutive failures say the current support level is too thin, so
+    the line drops back a ladder phase instead of grinding at a phase it has
+    not earned. A mastered line re-enters at the ladder's LAST phase: it needs
+    the lightest scaffold back, not the whole ladder again. At step 0 nothing
+    moves — acquisition support already re-engages there — and junctures have
+    no ladder to fall down."""
+    segment = db.get(models.Segment, segment_id)
+    if segment is None or segment.kind == "juncture":
+        return
+    if state.learning_step is None:
+        if not state.acquisition_succeeded:
+            return
+        from rhapsode.services.planning import learning_scaffold_steps
+
+        step_count = len(learning_scaffold_steps(segment))
+        if step_count == 0:
+            return
+        state.learning_step = step_count - 1
+    elif state.learning_step > 0:
+        state.learning_step -= 1
+    else:
+        return
+    state.learning_success_count = 0
 
 
 DURABLE_STREAK = 5

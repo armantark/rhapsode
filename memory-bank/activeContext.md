@@ -529,6 +529,34 @@ no `random_start`. Live setting checks returned 200 for `linear_window=1` and
 returns 404. At a 390x844 viewport, the grade group is fixed at bottom 0 with
 z-index 40. The Phase A practice freeze is over.
 
+## Goal loop: maximal linearity (2026-07-28 evening, running notes)
+
+Arman set a /goal: make the pedagogy as linear as possible, review-loop the
+code until nothing is left. Deadline context: Iliad 1.1-1.13 by morning.
+Shipped this evening (workflow 1, verified): failure downgrade (two
+consecutive fails demote a ladder phase; mastered lines re-enter at the
+final phase), last-line chain blame (failed chains grade only the last
+line down, earlier lines hesitant), optimistic grading (instant card
+advance). In flight (workflow 2): Easy counts as two ladder successes
+(lane done), runway line-range picker (scoped runway; strip is the picker,
+travel-site style), then Worker parity for both.
+
+Review round 1 findings (queued behind the workflow, planner files locked):
+1. ONE-SWEEP INTERLEAVE — session portions (reviews → blocks → junctures)
+   concatenate as separate sweeps and jump backward between them; merge
+   into a single position-sorted pass (juncture before its landing line,
+   block reps adjacent), warmup first, finisher last. This is the "still
+   not linear enough" fix.
+2. fade_front ladder phase asks for a line's opening from nothing; the
+   opening's cue is the PREVIOUS line's tail (lead-in doctrine), so the
+   phase should carry that tail as an anchor (line 1 stays uncued).
+   Frontend rendering for both already landed in PromptCard (guided cards
+   render prompt.lead_in; chain cards render it since the warmup-anchor
+   fix). Backend + Worker emission still to do.
+Round 2 planned after those land: fresh read of planner + prompts + cards
+for residual order-breaking or uncued entries; stop when a pass finds
+nothing actionable.
+
 ## Next Work
 
 - Push repo to GitHub and cut first desktop release tag (`desktop-v0.0.1` or

@@ -311,7 +311,9 @@
 		}
 	}
 
-	async function startSession(smart = false) {
+	// A range picked on the runway strip scopes the planner to those lines —
+	// its window, its reviews, its chains all run inside the range.
+	async function startSession(smart = false, range: { start: number; end: number } | null = null) {
 		if (!revision || !passage) return;
 		startingSession = true;
 		error = '';
@@ -322,7 +324,10 @@
 			const session = await api.createSession({
 				revision_id: revision.id,
 				...(smart
-					? { ...(minutesChoice !== null ? { minutes: minutesChoice } : {}) }
+					? {
+							...(minutesChoice !== null ? { minutes: minutesChoice } : {}),
+							...(range ? { line_start: range.start, line_end: range.end } : {})
+						}
 					: { modes: chosenModes, segment_kinds: chosenKinds })
 			});
 			rememberActiveSession({
@@ -367,7 +372,13 @@
 	{#if revision}
 		{#if lineSegments.length > 1}
 			<section class="card">
-				<RunwayStrip lines={lineSegments} mastered={masteredIds} windowSize={linearWindow} />
+				<RunwayStrip
+					lines={lineSegments}
+					mastered={masteredIds}
+					windowSize={linearWindow}
+					launching={startingSession}
+					onPractice={(start, end) => startSession(true, { start, end })}
+				/>
 			</section>
 		{/if}
 

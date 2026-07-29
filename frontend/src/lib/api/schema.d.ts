@@ -1149,6 +1149,10 @@ export interface components {
              * @default false
              */
             due_only: boolean;
+            /** Line End */
+            line_end?: number | null;
+            /** Line Start */
+            line_start?: number | null;
             /** Minutes */
             minutes?: number | null;
             /** Modes */

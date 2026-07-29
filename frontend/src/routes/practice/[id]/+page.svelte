@@ -5,7 +5,9 @@
 	import AttemptRecorder from '$lib/components/AttemptRecorder.svelte';
 	import AudioPlayer from '$lib/components/AudioPlayer.svelte';
 	import GradeBar from '$lib/components/GradeBar.svelte';
+	import PracticeRibbon from '$lib/components/PracticeRibbon.svelte';
 	import PromptCard from '$lib/components/PromptCard.svelte';
+	import { ribbonSpanFor } from '$lib/utils/ribbon';
 	import { api, isConflict } from '$lib/api/client';
 	import type {
 		AttemptCreate,
@@ -170,6 +172,32 @@
 		currentItem?.revision_id ?? (session as PracticeSession | null)?.revision_id ?? null
 	);
 	const revision = $derived(activeRevisionId ? (revisionMap[activeRevisionId] ?? null) : null);
+	// The ribbon's map of the poem: line positions in passage order, the
+	// current card's span, and the trail this session has already swept.
+	const ribbonLines = $derived.by(() =>
+		(revision?.segments ?? [])
+			.filter((segment) => segment.kind === 'line')
+			.slice()
+			.sort((a, b) => a.ordinal - b.ordinal)
+	);
+	const ribbonPositions = $derived(
+		new Map(ribbonLines.map((line, index) => [line.id, index + 1]))
+	);
+	const ribbonSpan = $derived(
+		currentItem && revision
+			? ribbonSpanFor(currentItem, revision.segments ?? [], ribbonPositions)
+			: null
+	);
+	const ribbonDealt = $derived.by(() => {
+		const swept = new Set<number>();
+		if (!revision) return swept;
+		for (const item of items) {
+			if (!item.completed) continue;
+			const span = ribbonSpanFor(item, revision.segments ?? [], ribbonPositions);
+			if (span && span.end === span.start) swept.add(span.start);
+		}
+		return swept;
+	});
 	const profile = $derived(activeRevisionId ? (profileMap[activeRevisionId] ?? null) : null);
 	const referenceMedia = $derived(activeRevisionId ? (mediaMap[activeRevisionId] ?? []) : []);
 	const passageTitle = $derived(activeRevisionId ? (titleMap[activeRevisionId] ?? '') : '');
@@ -690,6 +718,16 @@
 				></span>
 			{/each}
 		</div>
+	{/if}
+
+	{#if session?.status === 'active'}
+		<PracticeRibbon
+			total={ribbonLines.length}
+			span={ribbonSpan}
+			dealt={ribbonDealt}
+			labelFor={(position) =>
+				ribbonLines[position - 1]?.reference_label || `line ${position}`}
+		/>
 	{/if}
 
 	{#if error}<p class="error-banner" role="alert">{error}</p>{/if}

@@ -476,11 +476,17 @@ collection, and review-state totals match. Cloudflare's `_cf_KV` and
 and contain no Rhapsode learning data. The practice freeze began at
 2026-07-28T22:48:04Z (15:48:04 PDT): use local practice until Phase B deploys
 the merged database and removes the temporary route.
-Deploy route note (2026-07-28, Arman): GPT Sites is believed to be a Codex
-PLUGIN, so Claude can likely drive deploys indirectly via `codex exec`
-(house path `/Applications/ChatGPT.app/Contents/Resources/codex`) instead
-of Arman running a separate Codex session by hand. Untested; try on the
-next deploy (Phase B of `handoffs/sites-data-sync.md`).
+Deploy route note (2026-07-28, tested): headless `codex exec` under
+`-s workspace-write` can do ALL local Sites work (Worker port, tests, SPA
+refresh, data export) but CANNOT publish — the connector exposed
+status/log operations without a source-upload op, and the publish remote
+`git.chatgpt-team.site` did not resolve from that environment. Arman's
+interactive Codex session publishes fine (versions 5 and 6 shipped that
+way). Untested hypothesis for next deploy: the gap is the SANDBOX level,
+not headlessness — plugins surface more tooling under full access, which
+the permission classifier blocked this session; Arman can pre-allow it in
+settings to test. Until then the stable pipeline is: Claude stages and
+verifies the full bundle, Arman pastes one publish line into his session.
 
 Sync + merge executed (2026-07-28 evening): Codex's Phase A exported all
 D1 tables via a temporary token-gated Worker route (route still live,
